@@ -70,68 +70,32 @@ start_native() {
     
     # Setup virtual environment if it doesn't exist (in root)
     if [ ! -d "venv" ]; then
-        print_color "Creating virtual environment with Python 3.12..." "$YELLOW"
-        # Check if python3.12 is available
+        print_color "Creating virtual environment..." "$YELLOW"
+        
+        # Check Python version
+        PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
+        print_color "Using Python version: $PYTHON_VERSION" "$YELLOW"
+        
+        # Create venv with available Python
         if command_exists python3.12; then
+            print_color "Found Python 3.12, using it for virtual environment..." "$GREEN"
             python3.12 -m venv venv
-        else
-            print_color "Python 3.12 not found. Would you like to download and install it locally? (y/n)" "$YELLOW"
-            read -p "" -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                # Create a local Python installation directory
-                PYTHON_DIR="$PWD/.python3.12"
-                
-                # Detect OS and architecture
-                OS=$(uname -s)
-                ARCH=$(uname -m)
-                
-                print_color "Downloading Python 3.12 for local installation..." "$GREEN"
-                
-                # Create temp directory for download
-                mkdir -p /tmp/python3.12-install
-                cd /tmp/python3.12-install
-                
-                if [ "$OS" = "Linux" ]; then
-                    print_color "Building Python 3.12 from source for Linux..." "$YELLOW"
-                    wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz
-                    tar -xf Python-3.12.0.tgz
-                    cd Python-3.12.0
-                    
-                    # Configure for local installation without root
-                    ./configure --prefix="$PYTHON_DIR" --enable-optimizations
-                    make -j $(nproc)
-                    make install
-                    
-                    # Create venv with locally installed Python
-                    if [ -f "$PYTHON_DIR/bin/python3.12" ]; then
-                        print_color "Python 3.12 installed locally. Creating virtual environment..." "$GREEN"
-                        "$PYTHON_DIR/bin/python3.12" -m venv venv
-                    else
-                        print_color "Local installation failed. Using default Python 3..." "$RED"
-                        python3 -m venv venv || python -m venv venv
-                    fi
-                elif [ "$OS" = "Darwin" ]; then
-                    print_color "Downloading Python 3.12 for macOS..." "$YELLOW"
-                    # Download official Python installer framework
-                    wget https://www.python.org/ftp/python/3.12.0/python-3.12.0-macos11.pkg
-                    
-                    print_color "Please install Python 3.12 manually from the downloaded installer." "$YELLOW"
-                    print_color "Then re-run this script." "$YELLOW"
-                    open python-3.12.0-macos11.pkg
-                    exit 1
-                else
-                    print_color "Unsupported OS: $OS. Please install Python 3.12 manually." "$RED"
-                    exit 1
-                fi
-                
-                # Clean up
-                cd -
-                rm -rf /tmp/python3.12-install
+        elif command_exists python3; then
+            # Check if python3 is at least 3.8 (minimum for our requirements)
+            PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+            PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+            
+            if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 8 ]; then
+                print_color "Python $PYTHON_VERSION is compatible. Creating virtual environment..." "$GREEN"
+                python3 -m venv venv
             else
-                print_color "Using default Python 3..." "$YELLOW"
-                python3 -m venv venv || python -m venv venv
+                print_color "Warning: Python $PYTHON_VERSION may have compatibility issues." "$YELLOW"
+                print_color "Python 3.8+ is recommended. Continuing anyway..." "$YELLOW"
+                python3 -m venv venv
             fi
+        else
+            print_color "Error: No suitable Python 3 found. Please install Python 3.8 or newer." "$RED"
+            exit 1
         fi
     fi
     
