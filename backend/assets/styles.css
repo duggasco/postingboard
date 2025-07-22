@@ -1,0 +1,167 @@
+/* Global styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+}
+
+/* Navigation */
+.nav-link {
+    color: white;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Idea cards */
+.idea-card:hover {
+    border-color: #007bff !important;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Admin navigation */
+.admin-nav-link {
+    display: inline-block;
+    padding: 8px 16px;
+    margin-right: 10px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.admin-nav-link:hover {
+    background-color: #0056b3;
+}
+
+/* Stat cards */
+.stat-card {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.stat-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 2em;
+    color: #2c3e50;
+}
+
+.stat-card p {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 0.9em;
+}
+
+/* Buttons */
+button {
+    transition: opacity 0.3s;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+/* DataTable customization */
+.dash-table-container {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dash-cell-value {
+    white-space: normal !important;
+    line-height: 1.4;
+}
+
+/* Form inputs */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+.Select-control {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    transition: border-color 0.3s;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+/* Dropdown styling */
+.Select-control {
+    height: 38px;
+}
+
+.Select-placeholder {
+    line-height: 38px;
+}
+
+/* Date picker */
+.DateInput_input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Loading spinner */
+._dash-loading {
+    margin: auto;
+    color: transparent;
+    width: 0;
+    height: 0;
+    text-align: center;
+}
+
+._dash-loading::after {
+    content: '';
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    color: #007bff;
+    vertical-align: text-bottom;
+    border: 0.25em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spinner 0.75s linear infinite;
+}
+
+@keyframes spinner {
+    to { transform: rotate(360deg); }
+}
+
+/* Modal overlay fix for Dash */
+#claim-modal {
+    position: fixed !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .nav-link {
+        display: block;
+        margin-bottom: 5px;
+    }
+    
+    .stat-card {
+        margin-bottom: 10px;
+    }
+    
+    .idea-card {
+        margin-bottom: 15px;
+    }
+}

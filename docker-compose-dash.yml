@@ -1,0 +1,13 @@
+services:
+  dash-app:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=sqlite:///posting_board.db
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend/posting_board.db:/app/posting_board.db
+      - ./backend/assets:/app/assets
+      - ./backend/pages:/app/pages
+    restart: unless-stopped

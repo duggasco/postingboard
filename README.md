@@ -2,6 +2,10 @@
 
 A web application for posting and claiming citizen developer ideas/projects with skill matching and reward tracking.
 
+> **Note**: This project now has two implementations:
+> - **React/Flask version** (original) - See instructions below
+> - **Dash version** (Python-only) - See [README-DASH.md](README-DASH.md)
+
 ## Features
 
 - **Post Ideas**: Submit development ideas with required skills, priority, size, and rewards
