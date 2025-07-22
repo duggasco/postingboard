@@ -9,8 +9,15 @@ The application has been converted from React/Flask to use Plotly Dash, providin
 
 ### Configuration
 - **Port**: The application runs on port **9094** (changed from default 5000)
-- **Python Version**: Requires Python 3.12 for optimal compatibility
+- **Python Version**: Requires Python 3.8 or newer (Python 3.12 preferred)
 - **Proxy Support**: Automatic pip proxy configuration via HTTP_PROXY/HTTPS_PROXY environment variables
+
+### Python Setup
+The `start-dash.sh` script handles Python version detection and virtual environment creation:
+- **Automatic version check**: Verifies Python 3.8+ is available
+- **Python 3.12 priority**: Uses Python 3.12 if found, otherwise falls back to system Python 3
+- **No root required**: All installation happens in user space (virtual environment)
+- **Version compatibility**: Requirements use flexible version ranges for better compatibility
 
 ### Dash Architecture
 - **Single Application**: Dash app with Flask server backend
@@ -554,3 +561,20 @@ jupyter notebook dash_app_wrapper.ipynb
 - Database file (`posting_board.db`) persists between sessions
 - Server runs as long as the kernel is active
 - For production deployment, use the standard deployment methods (Gunicorn/Docker)
+
+## Dependency Management
+
+### Python Version Compatibility
+- **Minimum Python version**: 3.8 (required for all dependencies)
+- **Recommended Python version**: 3.12 (optimal performance and compatibility)
+- **Virtual environment**: Always created in user space, no root access required
+
+### Package Versions
+Updated for Python 3.12 compatibility:
+- **numpy**: >=1.26.0,<2.0.0 (flexible range to avoid compatibility issues)
+- **pandas**: >=2.1.0,<3.0.0 (ensures numpy compatibility)
+- Other packages use fixed versions for stability
+
+### Known Issues and Solutions
+1. **"Failed to import site module" error**: This occurs when trying to use a locally built Python with missing dependencies. Solution: Use system Python (3.8+) instead.
+2. **numpy/pandas compatibility**: Earlier versions (numpy 1.24.3, pandas 2.0.3) don't support Python 3.12. Solution: Use the updated flexible version ranges.
