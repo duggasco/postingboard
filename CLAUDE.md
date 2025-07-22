@@ -7,6 +7,11 @@ This is a web application for posting and claiming citizen developer ideas. It a
 
 The application has been converted from React/Flask to use Plotly Dash, providing a unified Python codebase with server-side rendering.
 
+### Configuration
+- **Port**: The application runs on port **9094** (changed from default 5000)
+- **Python Version**: Requires Python 3.12 for optimal compatibility
+- **Proxy Support**: Automatic pip proxy configuration via HTTP_PROXY/HTTPS_PROXY environment variables
+
 ### Dash Architecture
 - **Single Application**: Dash app with Flask server backend
 - **Page-based Routing**: Uses Dash Pages for multi-page navigation
@@ -103,12 +108,17 @@ pages/
 ./start-dash.sh up          # Start with Docker
 ./start-dash.sh down        # Stop all services
 
+# With proxy configuration
+HTTP_PROXY=http://proxy:8080 HTTPS_PROXY=http://proxy:8080 ./start-dash.sh
+
 # Manual commands
 source venv/bin/activate
 pip install -r requirements.txt
 cd backend
 python dash_app.py
 ```
+
+The application will be accessible at http://localhost:9094
 
 ### Testing Dash App
 - No API endpoints to test with curl
@@ -147,7 +157,7 @@ python dash_app.py
 ## Production Deployment
 ```bash
 # With Gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 dash_app:server
+gunicorn -w 4 -b 0.0.0.0:9094 dash_app:server
 
 # With Docker
 docker compose -f docker-compose-dash.yml up -d
@@ -251,8 +261,8 @@ docker restart postingboard-dash-app-1
 
 ### PR_END_OF_FILE_ERROR
 This error means the browser is trying HTTPS on an HTTP-only server. Always use:
-- Correct: `http://192.168.1.189:5000`
-- Wrong: `https://192.168.1.189:5000`
+- Correct: `http://192.168.1.189:9094`
+- Wrong: `https://192.168.1.189:9094`
 
 ### Ideas Not Showing on Home Page
 If ideas exist in the database but aren't displaying, check enum comparisons in filters:
@@ -489,7 +499,7 @@ Dash renders its UI dynamically with JavaScript. To verify navigation changes:
 
 ```bash
 # Get the Dash layout JSON (more reliable than HTML)
-curl -s http://localhost:5000/_dash-layout | python3 -m json.tool | grep "My Ideas"
+curl -s http://localhost:9094/_dash-layout | python3 -m json.tool | grep "My Ideas"
 ```
 
 The initial HTML response shows only the loading page - the actual navigation is rendered client-side.
