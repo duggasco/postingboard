@@ -58,7 +58,6 @@ backend/
 
 1. Install dependencies:
 ```bash
-cd backend
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -66,6 +65,7 @@ pip install -r requirements.txt
 
 2. Initialize database:
 ```bash
+cd backend
 python database.py
 ```
 

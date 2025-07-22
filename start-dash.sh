@@ -68,9 +68,7 @@ start_native() {
         fi
     fi
     
-    cd backend
-    
-    # Setup virtual environment if it doesn't exist
+    # Setup virtual environment if it doesn't exist (in root)
     if [ ! -d "venv" ]; then
         print_color "Creating virtual environment..." "$YELLOW"
         python3 -m venv venv || python -m venv venv
@@ -79,9 +77,12 @@ start_native() {
     # Activate virtual environment
     source venv/bin/activate || source venv/Scripts/activate
     
-    # Install dependencies
+    # Install dependencies from root requirements.txt
     print_color "Installing dependencies..." "$YELLOW"
     pip install -r requirements.txt
+    
+    # Now change to backend directory for running the app
+    cd backend
     
     # Initialize database if needed
     if [ ! -f "posting_board.db" ]; then
