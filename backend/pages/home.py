@@ -1,11 +1,8 @@
-import dash
 from dash import html, dcc, callback, Input, Output, State, dash_table
 import pandas as pd
 from datetime import datetime
 from database import get_session
 from models import Idea, Skill, Claim, IdeaStatus, PriorityLevel, IdeaSize
-
-dash.register_page(__name__, path='/')
 
 # Priority colors
 PRIORITY_COLORS = {
@@ -116,6 +113,13 @@ def update_skill_options(n):
      Input('refresh-interval', 'n_intervals')]
 )
 def update_ideas_list(skill_filter, priority_filter, status_filter, sort_by, n):
+    # Handle None/empty values from dropdowns on initial load
+    if status_filter == '' or status_filter is None:
+        status_filter = 'open'
+    if sort_by is None:
+        sort_by = 'date_desc'
+    
+    print(f"DEBUG: Filters - skill: {skill_filter}, priority: {repr(priority_filter)}, status: {repr(status_filter)}")
     db = get_session()
     try:
         # Build query
@@ -126,10 +130,10 @@ def update_ideas_list(skill_filter, priority_filter, status_filter, sort_by, n):
             query = query.join(Idea.skills).filter(Skill.name == skill_filter)
         
         if priority_filter:
-            query = query.filter(Idea.priority == priority_filter)
+            query = query.filter(Idea.priority == PriorityLevel(priority_filter))
             
         if status_filter:
-            query = query.filter(Idea.status == status_filter)
+            query = query.filter(Idea.status == IdeaStatus(status_filter))
         
         # Apply sorting
         if sort_by == 'date_desc':
@@ -152,11 +156,13 @@ def update_ideas_list(skill_filter, priority_filter, status_filter, sort_by, n):
         if sort_by not in ['priority', 'size']:
             ideas = query.all()
         
+        print(f"DEBUG: Found {len(ideas)} ideas after filtering")
+        
         # Create idea cards
         idea_cards = []
         for idea in ideas:
             # Get claim info
-            claim = db.query(Claim).filter_by(idea_id=idea.id).order_by(Claim.date_claimed.desc()).first()
+            claim = db.query(Claim).filter_by(idea_id=idea.id).order_by(Claim.claim_date.desc()).first()
             
             card = html.Div([
                 # Status badge
@@ -224,7 +230,7 @@ def update_ideas_list(skill_filter, priority_filter, status_filter, sort_by, n):
                     html.Div([
                         html.Strong("Claimed by: "),
                         html.Span(f"{claim.claimer_name} ({claim.claimer_team})"),
-                        html.Span(f" on {claim.date_claimed.strftime('%b %d, %Y')}", style={'color': '#6c757d'})
+                        html.Span(f" on {claim.claim_date.strftime('%b %d, %Y')}", style={'color': '#6c757d'})
                     ])
                 ]) if claim else None,
                 

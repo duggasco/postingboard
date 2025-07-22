@@ -27,6 +27,7 @@ The application has been converted from React/Flask to use Plotly Dash, providin
 pages/
 ├── home.py          # Browse/filter ideas with interactive cards
 ├── submit.py        # Submit new ideas with skill management
+├── my_ideas.py      # View user's submitted ideas (session/email based)
 ├── idea_detail.py   # Individual idea view with claim functionality
 ├── admin_login.py   # Password authentication (password: "2929arch")
 ├── admin_dashboard.py # Statistics and charts
@@ -208,4 +209,287 @@ backend/dash_app.py
 - Add print statements in callbacks
 - Check `flask_session/` for session files
 
+## Troubleshooting
+
+### Database Not Initialized
+If ideas are not showing or you get "no such table" errors:
+```bash
+# Initialize database in Docker container
+docker exec postingboard-dash-app-1 python database.py
+```
+
+### Admin Portal 404 Error
+The `/admin` route requires a redirect page. If missing, create `backend/pages/admin.py`:
+```python
+import dash
+from dash import html, dcc
+from flask import session
+
+dash.register_page(__name__, path='/admin')
+
+layout = html.Div([
+    dcc.Location(id='admin-redirect', refresh=True),
+    html.Div(id='admin-redirect-trigger')
+])
+
+@dash.callback(
+    dash.Output('admin-redirect', 'href'),
+    dash.Input('admin-redirect-trigger', 'children')
+)
+def redirect_admin(_):
+    if session.get('is_admin'):
+        return '/admin/dashboard'
+    else:
+        return '/admin/login'
+```
+
+Then copy to container and restart:
+```bash
+docker cp backend/pages/admin.py postingboard-dash-app-1:/app/pages/admin.py
+docker restart postingboard-dash-app-1
+```
+
+### PR_END_OF_FILE_ERROR
+This error means the browser is trying HTTPS on an HTTP-only server. Always use:
+- Correct: `http://192.168.1.189:5000`
+- Wrong: `https://192.168.1.189:5000`
+
+### Ideas Not Showing on Home Page
+If ideas exist in the database but aren't displaying, check enum comparisons in filters:
+
+**Problem**: SQLAlchemy enums can't be compared directly with strings
+```python
+# Wrong - will always return False
+query.filter(Idea.status == 'open')
+
+# Correct - convert string to enum first
+query.filter(Idea.status == IdeaStatus('open'))
+```
+
+**Fix in `backend/pages/home.py`** (lines 128-132):
+```python
+if priority_filter:
+    query = query.filter(Idea.priority == PriorityLevel(priority_filter))
+    
+if status_filter:
+    query = query.filter(Idea.status == IdeaStatus(status_filter))
+```
+
+**Apply the fix**:
+```bash
+docker cp backend/pages/home.py postingboard-dash-app-1:/app/pages/home.py
+docker restart postingboard-dash-app-1
+```
+
+**Testing the fix**:
+```bash
+# Verify the query works correctly
+docker exec postingboard-dash-app-1 python -c "
+from database import get_session
+from models import Idea, IdeaStatus
+db = get_session()
+open_ideas = db.query(Idea).filter(Idea.status == IdeaStatus('open')).all()
+print(f'Open ideas found: {len(open_ideas)}')
+db.close()
+"
+```
+
+This issue affects all enum-based filters (priority, status, size) throughout the application. Always convert string values to enum instances before comparison in SQLAlchemy queries.
+
+### Initial Page Load - Empty Dropdown Values
+On initial page load, Dash dropdowns may pass empty string values instead of their default values to callbacks. This causes ideas not to display even though the dropdown shows "Open" selected.
+
+**Problem**: The status dropdown has `value='open'` set, but the initial callback receives `''` (empty string)
+```python
+# Dropdown definition
+dcc.Dropdown(
+    id='status-filter',
+    options=[
+        {'label': 'All', 'value': ''},
+        {'label': 'Open', 'value': 'open'},
+        # ...
+    ],
+    value='open',  # Default value set
+    clearable=False
+)
+
+# But callback receives: status_filter = ''
+```
+
+**Solution in `backend/pages/home.py`**: Handle empty/None values in the callback
+```python
+def update_ideas_list(skill_filter, priority_filter, status_filter, sort_by, n):
+    # Handle None/empty values from dropdowns on initial load
+    if status_filter == '' or status_filter is None:
+        status_filter = 'open'
+    if sort_by is None:
+        sort_by = 'date_desc'
+```
+
+**Also fixed**: Changed `Claim.date_claimed` to `Claim.claim_date` to match the actual model attribute names.
+
+### Dash Pages Not Loading on Direct Navigation
+When using Dash Pages with dynamic routing (e.g., `/idea/<idea_id>`), pages may show blank on direct navigation due to `prevent_initial_call=True` on the internal pages callback.
+
+**Problem**: Accessing pages directly (not through navigation) shows a blank page
+- The Dash Pages callback that loads page content has `prevent_initial_call=True`
+- This prevents content from loading on initial page render
+- Affects all pages, but especially noticeable with dynamic routes like `/idea/2`
+
+**Solution**: Switch from Dash Pages to manual routing
+1. Remove `use_pages=True` from Dash app initialization
+2. Remove all `dash.register_page()` calls from page modules
+3. Add manual routing callback in `dash_app.py`:
+```python
+# Import pages at module level to register callbacks
+from pages import home, submit, idea_detail, admin, admin_login, admin_dashboard, admin_ideas, admin_skills
+
+@app.callback(
+    Output('page-content', 'children'),
+    Input('url', 'pathname')
+)
+def display_page(pathname):
+    if pathname == '/':
+        return home.layout
+    elif pathname and pathname.startswith('/idea/'):
+        idea_id = pathname.split('/')[-1]
+        return idea_detail.layout(idea_id=idea_id)
+    # ... other routes
+```
+
+This ensures pages load immediately on direct navigation without waiting for client-side callbacks.
+
+### Admin Dashboard Blank Page Issue
+The admin dashboard and other admin pages may show blank due to incorrect layout references and missing imports.
+
+**Problem 1**: Layout function vs variable mismatch
+- Some pages (admin_dashboard, admin_ideas, admin_skills) use `def layout():` functions
+- The routing callback was referencing them as variables: `admin_dashboard.layout`
+
+**Solution**: Call layout functions in routing
+```python
+@app.callback(
+    Output('page-content', 'children'),
+    Input('url', 'pathname')
+)
+def display_page(pathname):
+    # ...
+    elif pathname == '/admin/dashboard':
+        return admin_dashboard.layout()  # Note the parentheses
+    elif pathname == '/admin/ideas':
+        return admin_ideas.layout()
+    elif pathname == '/admin/skills':
+        return admin_skills.layout()
+```
+
+**Problem 2**: Missing PreventUpdate import
+```python
+# Error: NameError: name 'PreventUpdate' is not defined
+# Fix: Add import
+from dash.exceptions import PreventUpdate
+```
+
+**Admin Access**: 
+- Navigate to `/admin/login`
+- Password: `2929arch`
+- After login, redirects to `/admin/dashboard`
+
 This Dash implementation maintains all functionality while simplifying the architecture and deployment process.
+
+## User Features
+
+### My Ideas Functionality
+The application includes a "My Ideas" feature that allows users to track ideas they've submitted without requiring user accounts.
+
+#### Implementation Details
+- **Hybrid tracking approach**: Combines session-based and email-based tracking
+- **Session storage**: When users submit ideas, the idea IDs are stored in Flask session
+- **Email persistence**: User's email is stored in session and pre-filled on future submissions
+- **Query logic**: Shows ideas that match either:
+  - Idea IDs stored in the user's session
+  - Ideas with matching email address
+
+#### Key Files Modified
+1. **`pages/submit.py`**:
+   - Stores submitted idea IDs in `session['submitted_ideas']`
+   - Saves user email in `session['user_email']`
+   - Pre-fills email field from session on page load
+   - Changed from static layout to `layout()` function
+
+2. **`pages/my_ideas.py`** (new):
+   - Displays all ideas submitted by the current user
+   - Shows summary statistics (Open/Claimed/Complete counts)
+   - Uses same card design as home page for consistency
+   - Auto-refreshes every 30 seconds to update statuses
+   - Handles empty state with link to submit first idea
+
+3. **`dash_app.py`**:
+   - Added "My Ideas" link to navigation bar (between "All Ideas" and "Submit Idea")
+   - Added route `/my-ideas` to routing callback
+   - Updated submit page call to `submit.layout()` (function call)
+
+#### Usage
+- Users can access their submitted ideas by clicking "My Ideas" in the navigation
+- Ideas persist within the same browser session
+- Using the same email address allows viewing ideas across sessions
+- No login required - completely session/email based
+
+### Common Import Errors
+
+#### NameError: name 'dash' is not defined
+When using `dash.callback_context` in callbacks, you must import it properly:
+
+**Wrong**:
+```python
+from dash import html, dcc, callback, Input, Output, State, ALL
+# ...
+ctx = dash.callback_context  # Error: dash not imported
+```
+
+**Correct**:
+```python
+from dash import html, dcc, callback, Input, Output, State, ALL, callback_context
+# ...
+ctx = callback_context
+```
+
+This error commonly occurs in:
+- `pages/submit.py` - skill management callbacks
+- `pages/admin_skills.py` - admin skill actions
+
+### Docker Deployment Notes
+
+#### Rebuilding After Code Changes
+When making changes to the Dash application, you must rebuild the Docker container:
+
+```bash
+# Stop and rebuild with new changes
+docker compose -f docker-compose-dash.yml down
+docker compose -f docker-compose-dash.yml up -d --build
+```
+
+**Important**: Always ensure your changes are saved in the host directory before rebuilding, as Docker will copy files from the host during the build process.
+
+#### Verifying Changes in Container
+To confirm your changes are present in the running container:
+
+```bash
+# Check if a file exists
+docker exec postingboard-dash-app-1 ls -la pages/my_ideas.py
+
+# View specific content
+docker exec postingboard-dash-app-1 cat dash_app.py | grep "My Ideas"
+
+# Check container logs for errors
+docker logs postingboard-dash-app-1 --tail 50
+```
+
+#### Testing Navigation Changes
+Dash renders its UI dynamically with JavaScript. To verify navigation changes:
+
+```bash
+# Get the Dash layout JSON (more reliable than HTML)
+curl -s http://localhost:5000/_dash-layout | python3 -m json.tool | grep "My Ideas"
+```
+
+The initial HTML response shows only the loading page - the actual navigation is rendered client-side.

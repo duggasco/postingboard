@@ -1,11 +1,10 @@
-import dash
 from dash import html, dcc, callback, Input, Output
+from dash.exceptions import PreventUpdate
 from flask import session, redirect
 from database import get_session
 from models import Idea, Skill, IdeaStatus
 import plotly.graph_objs as go
 
-dash.register_page(__name__, path='/admin/dashboard')
 
 def layout():
     # Check authentication

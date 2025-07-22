@@ -1,11 +1,9 @@
-import dash
-from dash import html, dcc, callback, Input, Output, State, ALL
+from dash import html, dcc, callback, Input, Output, State, ALL, callback_context
 from dash.exceptions import PreventUpdate
 from flask import session
 from database import get_session
 from models import Skill
 
-dash.register_page(__name__, path='/admin/skills')
 
 def layout():
     # Check authentication
@@ -149,7 +147,7 @@ def add_new_skill(n_clicks, skill_name):
     [State({'type': 'skill-name', 'index': ALL}, 'value')]
 )
 def handle_skill_actions(save_clicks, delete_clicks, skill_names):
-    ctx = dash.callback_context
+    ctx = callback_context
     if not ctx.triggered:
         raise PreventUpdate
     

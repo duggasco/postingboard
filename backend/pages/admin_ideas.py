@@ -1,4 +1,3 @@
-import dash
 from dash import html, dcc, callback, Input, Output, State, dash_table, ALL
 from dash.exceptions import PreventUpdate
 from flask import session
@@ -6,7 +5,6 @@ from database import get_session
 from models import Idea, IdeaStatus, PriorityLevel, IdeaSize
 import pandas as pd
 
-dash.register_page(__name__, path='/admin/ideas')
 
 def layout():
     # Check authentication

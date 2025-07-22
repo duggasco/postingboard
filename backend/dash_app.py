@@ -23,13 +23,14 @@ Session(server)
 app = Dash(
     __name__,
     server=server,
-    suppress_callback_exceptions=True,
-    use_pages=True,
-    pages_folder='pages'
+    suppress_callback_exceptions=True
 )
 
 # Initialize database
 init_db()
+
+# Import pages to register their callbacks
+from pages import home, submit, idea_detail, my_ideas, admin, admin_login, admin_dashboard, admin_ideas, admin_skills
 
 # App layout with navigation
 app.layout = html.Div([
@@ -43,6 +44,7 @@ app.layout = html.Div([
             html.H1('Citizen Developer Posting Board', style={'margin': '0', 'color': 'white'}),
             html.Div([
                 dcc.Link('All Ideas', href='/', className='nav-link'),
+                dcc.Link('My Ideas', href='/my-ideas', className='nav-link'),
                 dcc.Link('Submit Idea', href='/submit', className='nav-link'),
                 dcc.Link('Admin', href='/admin', className='nav-link'),
             ], style={'display': 'flex', 'gap': '20px'})
@@ -57,8 +59,37 @@ app.layout = html.Div([
     ]),
     
     # Page content
-    dash.page_container
+    html.Div(id='page-content')
 ])
+
+# Page routing callback
+@app.callback(
+    Output('page-content', 'children'),
+    Input('url', 'pathname')
+)
+def display_page(pathname):
+    print(f"DEBUG: Routing to {pathname}, is_admin: {session.get('is_admin')}")
+    if pathname == '/':
+        return home.layout
+    elif pathname == '/submit':
+        return submit.layout()
+    elif pathname == '/my-ideas':
+        return my_ideas.layout()
+    elif pathname and pathname.startswith('/idea/'):
+        idea_id = pathname.split('/')[-1]
+        return idea_detail.layout(idea_id=idea_id)
+    elif pathname == '/admin':
+        return admin.layout
+    elif pathname == '/admin/login':
+        return admin_login.layout
+    elif pathname == '/admin/dashboard':
+        return admin_dashboard.layout()
+    elif pathname == '/admin/ideas':
+        return admin_ideas.layout()
+    elif pathname == '/admin/skills':
+        return admin_skills.layout()
+    else:
+        return html.Div('404 - Page not found')
 
 # Admin authentication callback
 @app.callback(

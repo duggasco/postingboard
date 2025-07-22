@@ -1,14 +1,17 @@
-import dash
-from dash import html, dcc, callback, Input, Output, State, ALL
+from dash import html, dcc, callback, Input, Output, State, ALL, callback_context
 from dash.exceptions import PreventUpdate
 from datetime import datetime, date
 import json
+from flask import session
 from database import get_session
 from models import Idea, Skill, IdeaStatus, PriorityLevel, IdeaSize
 
-dash.register_page(__name__)
 
-layout = html.Div([
+def layout():
+    # Get user's email from session if available
+    user_email = session.get('user_email', '')
+    
+    return html.Div([
     html.H2('Submit a New Idea', style={'textAlign': 'center', 'marginBottom': '30px'}),
     
     html.Div([
@@ -123,6 +126,7 @@ layout = html.Div([
                     id='email-input',
                     type='email',
                     placeholder='your.email@example.com',
+                    value=user_email,
                     style={'width': '100%', 'padding': '8px', 'marginBottom': '15px'}
                 )
             ], style={'flex': '1'})
@@ -168,11 +172,11 @@ layout = html.Div([
         # Feedback message
         html.Div(id='submit-feedback', style={'marginTop': '20px', 'textAlign': 'center'})
         
-    ], style={'maxWidth': '800px', 'margin': '0 auto', 'padding': '20px'}),
-    
-    # Hidden store for selected skills
-    dcc.Store(id='skills-store', data=[])
-])
+        ], style={'maxWidth': '800px', 'margin': '0 auto', 'padding': '20px'}),
+        
+        # Hidden store for selected skills
+        dcc.Store(id='skills-store', data=[])
+    ])
 
 # Update skill dropdown options
 @callback(
@@ -207,7 +211,7 @@ def update_skill_options(_, selected_skills):
      State('skills-store', 'data')]
 )
 def manage_skills(add_clicks, remove_clicks, dropdown_skill, custom_skill, current_skills):
-    ctx = dash.callback_context
+    ctx = callback_context
     
     if not ctx.triggered:
         return current_skills, [], '', ''
@@ -308,6 +312,17 @@ def submit_idea(n_clicks, title, description, skills, priority, size, team, emai
         
         db.add(idea)
         db.commit()
+        
+        # Track submitted idea in session
+        if 'submitted_ideas' not in session:
+            session['submitted_ideas'] = []
+        session['submitted_ideas'].append(idea.id)
+        
+        # Store user's email for consistency
+        session['user_email'] = email
+        
+        # Ensure session is saved
+        session.modified = True
         
         return html.Div([
             html.Div('✓ Idea submitted successfully!', style={

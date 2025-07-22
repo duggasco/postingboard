@@ -1,9 +1,7 @@
-import dash
 from dash import html, dcc, callback, Input, Output, State
 from dash.exceptions import PreventUpdate
 from flask import session
 
-dash.register_page(__name__, path='/admin/login')
 
 ADMIN_PASSWORD = '2929arch'
 

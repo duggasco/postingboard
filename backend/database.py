@@ -40,6 +40,9 @@ def get_db():
     finally:
         db.close()
 
+def get_session():
+    return SessionLocal()
+
 if __name__ == "__main__":
     init_db()
     print("Database initialized successfully!")

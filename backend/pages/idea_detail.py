@@ -1,12 +1,9 @@
-import dash
 from dash import html, dcc, callback, Input, Output, State
 from dash.exceptions import PreventUpdate
 from datetime import datetime
 from database import get_session
 from models import Idea, Claim, IdeaStatus
 from utils.email import send_claim_notification
-
-dash.register_page(__name__, path_template='/idea/<idea_id>')
 
 def layout(idea_id=None):
     if not idea_id:
@@ -19,7 +16,7 @@ def layout(idea_id=None):
             return html.Div('Idea not found')
         
         # Get claims history
-        claims = db.query(Claim).filter_by(idea_id=idea.id).order_by(Claim.date_claimed.desc()).all()
+        claims = db.query(Claim).filter_by(idea_id=idea.id).order_by(Claim.claim_date.desc()).all()
         
         # Priority colors
         priority_colors = {
@@ -138,7 +135,7 @@ def layout(idea_id=None):
                         html.Div([
                             html.Div([
                                 html.Strong(f"{claim.claimer_name} ({claim.claimer_team})"),
-                                html.Span(f" - {claim.date_claimed.strftime('%B %d, %Y')}", 
+                                html.Span(f" - {claim.claim_date.strftime('%B %d, %Y')}", 
                                          style={'color': '#6c757d'})
                             ]),
                             html.Div([
@@ -283,7 +280,8 @@ def layout(idea_id=None):
     State('claim-modal', 'style')
 )
 def toggle_modal(open_clicks, close_clicks, cancel_clicks, submit_clicks, current_style):
-    ctx = dash.callback_context
+    from dash import callback_context
+    ctx = callback_context
     if not ctx.triggered:
         raise PreventUpdate
     
