@@ -105,4 +105,4 @@ def check_admin_auth(pathname, auth_data):
     return auth_data or {}
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=5000)
+    app.run_server(debug=True, host='0.0.0.0', port=9094)

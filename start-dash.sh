@@ -51,12 +51,12 @@ start_native() {
         exit 1
     fi
     
-    # Check if port 5000 is in use
-    if check_port 5000; then
-        print_color "Port 5000 is already in use" "$YELLOW"
-        local pid=$(find_port_process 5000)
+    # Check if port 9094 is in use
+    if check_port 9094; then
+        print_color "Port 9094 is already in use" "$YELLOW"
+        local pid=$(find_port_process 9094)
         if [ ! -z "$pid" ]; then
-            print_color "Process $pid is using port 5000" "$YELLOW"
+            print_color "Process $pid is using port 9094" "$YELLOW"
             read -p "Do you want to stop it? (y/n) " -n 1 -r
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -173,7 +173,7 @@ start_native() {
     fi
     
     # Start Dash app
-    print_color "Starting Dash app on http://localhost:5000" "$GREEN"
+    print_color "Starting Dash app on http://localhost:9094" "$GREEN"
     python dash_app.py
 }
 
@@ -187,12 +187,12 @@ start_docker() {
         exit 1
     fi
     
-    # Check if port 5000 is in use
-    if check_port 5000; then
-        print_color "Port 5000 is already in use" "$YELLOW"
-        local pid=$(find_port_process 5000)
+    # Check if port 9094 is in use
+    if check_port 9094; then
+        print_color "Port 9094 is already in use" "$YELLOW"
+        local pid=$(find_port_process 9094)
         if [ ! -z "$pid" ]; then
-            print_color "Process $pid is using port 5000" "$YELLOW"
+            print_color "Process $pid is using port 9094" "$YELLOW"
             read -p "Do you want to stop it? (y/n) " -n 1 -r
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -212,7 +212,7 @@ start_docker() {
     print_color "\nContainer status:" "$GREEN"
     docker compose -f docker-compose-dash.yml ps
     
-    print_color "\nDash app is starting on http://localhost:5000" "$GREEN"
+    print_color "\nDash app is starting on http://localhost:9094" "$GREEN"
     print_color "View logs with: ./start-dash.sh logs" "$YELLOW"
 }
 
@@ -227,10 +227,10 @@ stop_services() {
     fi
     
     # Stop native processes
-    if check_port 5000; then
-        local pid=$(find_port_process 5000)
+    if check_port 9094; then
+        local pid=$(find_port_process 9094)
         if [ ! -z "$pid" ]; then
-            print_color "Stopping process on port 5000 (PID: $pid)..." "$YELLOW"
+            print_color "Stopping process on port 9094 (PID: $pid)..." "$YELLOW"
             kill $pid 2>/dev/null || sudo kill $pid
         fi
     fi

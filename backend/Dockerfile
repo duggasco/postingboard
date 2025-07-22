@@ -10,6 +10,6 @@ COPY ./backend .
 
 RUN python database.py
 
-EXPOSE 5000
+EXPOSE 9094
 
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "dash_app:server"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:9094", "dash_app:server"]
