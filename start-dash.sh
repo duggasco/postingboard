@@ -70,12 +70,31 @@ start_native() {
     
     # Setup virtual environment if it doesn't exist (in root)
     if [ ! -d "venv" ]; then
-        print_color "Creating virtual environment..." "$YELLOW"
-        python3 -m venv venv || python -m venv venv
+        print_color "Creating virtual environment with Python 3.12..." "$YELLOW"
+        # Check if python3.12 is available
+        if command_exists python3.12; then
+            python3.12 -m venv venv
+        else
+            print_color "Python 3.12 not found, using default Python 3..." "$YELLOW"
+            python3 -m venv venv || python -m venv venv
+        fi
     fi
     
     # Activate virtual environment
     source venv/bin/activate || source venv/Scripts/activate
+    
+    # Configure pip for proxy if environment variables are set
+    if [ ! -z "$HTTP_PROXY" ] || [ ! -z "$http_proxy" ]; then
+        PROXY="${HTTP_PROXY:-$http_proxy}"
+        print_color "Configuring pip for HTTP proxy: $PROXY" "$YELLOW"
+        pip config set global.proxy "$PROXY"
+    fi
+    
+    if [ ! -z "$HTTPS_PROXY" ] || [ ! -z "$https_proxy" ]; then
+        PROXY="${HTTPS_PROXY:-$https_proxy}"
+        print_color "Configuring pip for HTTPS proxy: $PROXY" "$YELLOW"
+        pip config set global.proxy "$PROXY"
+    fi
     
     # Install dependencies from root requirements.txt
     print_color "Installing dependencies..." "$YELLOW"
