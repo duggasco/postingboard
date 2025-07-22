@@ -493,3 +493,54 @@ curl -s http://localhost:5000/_dash-layout | python3 -m json.tool | grep "My Ide
 ```
 
 The initial HTML response shows only the loading page - the actual navigation is rendered client-side.
+
+## Jupyter Notebook Wrapper
+
+### Overview
+A comprehensive Jupyter notebook wrapper (`dash_app_wrapper.ipynb`) provides an alternative way to run the Dash application, particularly useful for data scientists and those comfortable with notebook environments.
+
+### Features
+- **Automatic dependency management**: Checks and installs missing packages including `nest-asyncio` for Jupyter compatibility
+- **Database initialization**: Sets up and verifies database with statistics display
+- **Port management**: Automatically finds available ports
+- **Dual launch modes**:
+  - **Blocking mode**: Runs server in main thread (recommended for development)
+  - **Background mode**: Runs server in background thread for continued notebook use
+- **Development utilities**:
+  - Server status checking
+  - Database query examples
+  - Sample data creation
+  - CSV export functionality
+- **Comprehensive documentation**: Each section includes explanations and usage examples
+
+### Usage
+```bash
+# Start Jupyter and open the wrapper notebook
+jupyter notebook dash_app_wrapper.ipynb
+```
+
+### Key Notebook Sections
+1. **Environment Setup**: Configures paths and imports
+2. **Dependency Check**: Verifies/installs required packages
+3. **Database Initialization**: Sets up database and shows statistics
+4. **Dash Import**: Loads application and displays available routes
+5. **Port Configuration**: Finds available port automatically
+6. **Launch Options**: Choose between blocking or background mode
+7. **Server Management**: Status checks and utilities
+8. **Database Queries**: Quick access to common database operations
+9. **Development Tools**: Create test data, export to CSV
+10. **Shutdown Instructions**: Proper cleanup procedures
+
+### Advantages of Notebook Wrapper
+- **Interactive development**: Run queries and test functions alongside the server
+- **Visual feedback**: See server status, database statistics, and logs in real-time
+- **Flexible execution**: Choose how to run the server based on your workflow
+- **Built-in utilities**: Common development tasks available as notebook cells
+- **Educational**: Great for understanding how the application works
+- **No additional dependencies**: Uses standard requirements.txt, installs extras as needed
+
+### Important Notes
+- The notebook installs `nest-asyncio` automatically to handle event loop conflicts in Jupyter
+- Database file (`posting_board.db`) persists between sessions
+- Server runs as long as the kernel is active
+- For production deployment, use the standard deployment methods (Gunicorn/Docker)
