@@ -75,67 +75,59 @@ start_native() {
         if command_exists python3.12; then
             python3.12 -m venv venv
         else
-            print_color "Python 3.12 not found. Would you like to download and install it? (y/n)" "$YELLOW"
+            print_color "Python 3.12 not found. Would you like to download and install it locally? (y/n)" "$YELLOW"
             read -p "" -n 1 -r
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
+                # Create a local Python installation directory
+                PYTHON_DIR="$PWD/.python3.12"
+                
                 # Detect OS and architecture
                 OS=$(uname -s)
                 ARCH=$(uname -m)
                 
+                print_color "Downloading Python 3.12 for local installation..." "$GREEN"
+                
+                # Create temp directory for download
+                mkdir -p /tmp/python3.12-install
+                cd /tmp/python3.12-install
+                
                 if [ "$OS" = "Linux" ]; then
-                    print_color "Installing Python 3.12 on Linux..." "$GREEN"
+                    print_color "Building Python 3.12 from source for Linux..." "$YELLOW"
+                    wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz
+                    tar -xf Python-3.12.0.tgz
+                    cd Python-3.12.0
                     
-                    # Check if we have apt-get (Debian/Ubuntu)
-                    if command_exists apt-get; then
-                        print_color "Using apt to install Python 3.12..." "$YELLOW"
-                        sudo apt update
-                        sudo apt install -y software-properties-common
-                        sudo add-apt-repository -y ppa:deadsnakes/ppa
-                        sudo apt update
-                        sudo apt install -y python3.12 python3.12-venv python3.12-dev
-                    # Check if we have yum (RHEL/CentOS/Fedora)
-                    elif command_exists yum; then
-                        print_color "Using yum to install Python 3.12..." "$YELLOW"
-                        sudo yum install -y epel-release
-                        sudo yum install -y python3.12 python3.12-devel
-                    # Build from source as fallback
+                    # Configure for local installation without root
+                    ./configure --prefix="$PYTHON_DIR" --enable-optimizations
+                    make -j $(nproc)
+                    make install
+                    
+                    # Create venv with locally installed Python
+                    if [ -f "$PYTHON_DIR/bin/python3.12" ]; then
+                        print_color "Python 3.12 installed locally. Creating virtual environment..." "$GREEN"
+                        "$PYTHON_DIR/bin/python3.12" -m venv venv
                     else
-                        print_color "Building Python 3.12 from source..." "$YELLOW"
-                        cd /tmp
-                        wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz
-                        tar -xf Python-3.12.0.tgz
-                        cd Python-3.12.0
-                        ./configure --enable-optimizations
-                        make -j $(nproc)
-                        sudo make altinstall
-                        cd -
+                        print_color "Local installation failed. Using default Python 3..." "$RED"
+                        python3 -m venv venv || python -m venv venv
                     fi
                 elif [ "$OS" = "Darwin" ]; then
-                    print_color "Installing Python 3.12 on macOS..." "$GREEN"
+                    print_color "Downloading Python 3.12 for macOS..." "$YELLOW"
+                    # Download official Python installer framework
+                    wget https://www.python.org/ftp/python/3.12.0/python-3.12.0-macos11.pkg
                     
-                    # Check if homebrew is installed
-                    if command_exists brew; then
-                        print_color "Using Homebrew to install Python 3.12..." "$YELLOW"
-                        brew install python@3.12
-                    else
-                        print_color "Homebrew not found. Installing Homebrew first..." "$YELLOW"
-                        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-                        brew install python@3.12
-                    fi
+                    print_color "Please install Python 3.12 manually from the downloaded installer." "$YELLOW"
+                    print_color "Then re-run this script." "$YELLOW"
+                    open python-3.12.0-macos11.pkg
+                    exit 1
                 else
                     print_color "Unsupported OS: $OS. Please install Python 3.12 manually." "$RED"
                     exit 1
                 fi
                 
-                # Check if installation was successful
-                if command_exists python3.12; then
-                    print_color "Python 3.12 installed successfully!" "$GREEN"
-                    python3.12 -m venv venv
-                else
-                    print_color "Python 3.12 installation failed. Using default Python 3..." "$RED"
-                    python3 -m venv venv || python -m venv venv
-                fi
+                # Clean up
+                cd -
+                rm -rf /tmp/python3.12-install
             else
                 print_color "Using default Python 3..." "$YELLOW"
                 python3 -m venv venv || python -m venv venv
