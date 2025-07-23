@@ -1,0 +1,4 @@
+title,description,email,benefactor_team,size,priority,skills,reward,needed_by,status
+"Automate Monthly Reports","We need to automate our monthly financial reports generation process. Currently takes 2 days of manual work.","finance.lead@example.com","Cash - GPP","medium","high","Python,SQL/Databases","Process improvement recognition","2025-09-30","open"
+"Customer Dashboard","Create a real-time dashboard showing customer activity and metrics for the sales team.","sales.manager@example.com","Cash - Sales","large","medium","Frontend/UI - Web,Python,SQL/Databases","Team lunch sponsorship","2025-10-15","open"
+"Compliance Tracker","Build a tool to track regulatory compliance requirements and deadlines.","compliance@example.com","SL - QAT","small","high","Python,Regulatory","$200 gift card","2025-08-01","open"

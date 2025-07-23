@@ -124,6 +124,10 @@ templates/
 - Idea management with inline editing (shows ALL ideas, not just open ones)
 - Skill management (add/edit/delete)
 - Team management (add/edit/delete/approve)
+- **User Management**: Full CRUD operations on user profiles
+  - Filter by name, email, role, and team
+  - Edit user profiles including role, team, skills, and verification
+  - Delete users with cascading deletion of related data
 - Manager requests approval workflow
 - Real-time updates
 - **Bulk Upload**: Import ideas and users from CSV files

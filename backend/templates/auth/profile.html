@@ -35,30 +35,15 @@
         </div>
         
         <div class="form-group">
-            <label>Role <span class="required">*</span></label>
+            <label for="role">Role <span class="required">*</span></label>
             <p class="help-text">Select your primary role:</p>
-            <div class="role-options">
-                <div class="role-option">
-                    <input type="radio" id="role-manager" name="role" value="manager" 
-                           {% if user.role == 'manager' %}checked{% endif %} required>
-                    <label for="role-manager">I'm a manager</label>
-                </div>
-                <div class="role-option">
-                    <input type="radio" id="role-idea-submitter" name="role" value="idea_submitter"
-                           {% if user.role == 'idea_submitter' %}checked{% endif %} required>
-                    <label for="role-idea-submitter">I've got an idea to submit</label>
-                </div>
-                <div class="role-option">
-                    <input type="radio" id="role-citizen-developer" name="role" value="citizen_developer"
-                           {% if user.role == 'citizen_developer' %}checked{% endif %} required>
-                    <label for="role-citizen-developer">I'm a citizen developer</label>
-                </div>
-                <div class="role-option">
-                    <input type="radio" id="role-developer" name="role" value="developer"
-                           {% if user.role == 'developer' %}checked{% endif %} required>
-                    <label for="role-developer">I'm a developer</label>
-                </div>
-            </div>
+            <select id="role" name="role" class="form-control" required>
+                <option value="">Select a role...</option>
+                <option value="manager" {% if user.role == 'manager' %}selected{% endif %}>I'm a manager</option>
+                <option value="idea_submitter" {% if user.role == 'idea_submitter' %}selected{% endif %}>I've got an idea to submit</option>
+                <option value="citizen_developer" {% if user.role == 'citizen_developer' %}selected{% endif %}>I'm a citizen developer</option>
+                <option value="developer" {% if user.role == 'developer' %}selected{% endif %}>I'm a developer</option>
+            </select>
         </div>
         
         <div class="form-group">
@@ -93,8 +78,8 @@
         </div>
         
         <div class="form-group" id="skills-section" style="display: none;">
-            <label>Skills <span class="required">*</span></label>
-            <p class="help-text">Select all skills that apply to you:</p>
+            <label>Skills</label>
+            <p class="help-text">Select any skills that apply to you (optional):</p>
             <div class="skills-grid">
                 {% for skill in skills %}
                 <div class="skill-checkbox">
@@ -104,6 +89,11 @@
                     <label for="skill-{{ skill.id }}">{{ skill.name }}</label>
                 </div>
                 {% endfor %}
+            </div>
+            <div class="custom-skill-section" style="margin-top: 15px;">
+                <p class="help-text">Or add a custom skill:</p>
+                <input type="text" id="custom-skill" name="custom_skill" class="form-control" 
+                       placeholder="Enter a custom skill name">
             </div>
         </div>
         
@@ -229,25 +219,6 @@
     color: #212529;
 }
 
-.role-options {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-}
-
-.role-option {
-    margin-bottom: 10px;
-}
-
-.role-option input[type="radio"] {
-    margin-right: 8px;
-}
-
-.role-option label {
-    margin-bottom: 0;
-    cursor: pointer;
-    font-weight: normal;
-}
 
 .team-input-group {
     display: flex;
@@ -258,6 +229,13 @@
 .team-input-group .form-control {
     flex: 1;
 }
+
+.custom-skill-section {
+    background: #e9ecef;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
 </style>
 
 <script>
@@ -267,49 +245,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
     const skillsSection = document.getElementById('skills-section');
-    const roleInputs = document.querySelectorAll('input[name="role"]');
+    const roleSelect = document.getElementById('role');
     const teamSelect = document.getElementById('team-select');
     const customTeam = document.getElementById('custom-team');
     
     // Function to toggle skills and managed team sections based on role
     function toggleSkillsSection() {
-        const selectedRole = document.querySelector('input[name="role"]:checked');
+        const selectedRole = roleSelect.value;
         const managedTeamSection = document.getElementById('managed-team-section');
         
-        if (selectedRole) {
-            const role = selectedRole.value;
-            if (role === 'citizen_developer' || role === 'developer') {
-                skillsSection.style.display = 'block';
-                // Make skills required
-                document.querySelectorAll('input[name="skills[]"]').forEach(checkbox => {
-                    checkbox.required = true;
-                });
+        if (selectedRole === 'citizen_developer' || selectedRole === 'developer') {
+            skillsSection.style.display = 'block';
+            // Skills are optional - don't make them required
+            document.querySelectorAll('input[name="skills[]"]').forEach(checkbox => {
+                checkbox.required = false;
+            });
+        } else {
+            skillsSection.style.display = 'none';
+            // Make skills not required
+            document.querySelectorAll('input[name="skills[]"]').forEach(checkbox => {
+                checkbox.required = false;
+            });
+        }
+        
+        // Show managed team section for managers
+        if (managedTeamSection) {
+            if (selectedRole === 'manager') {
+                managedTeamSection.style.display = 'block';
+                document.getElementById('managed-team').required = true;
             } else {
-                skillsSection.style.display = 'none';
-                // Make skills not required and uncheck all
-                document.querySelectorAll('input[name="skills[]"]').forEach(checkbox => {
-                    checkbox.required = false;
-                });
-            }
-            
-            // Show managed team section for managers
-            if (managedTeamSection) {
-                if (role === 'manager') {
-                    managedTeamSection.style.display = 'block';
-                    document.getElementById('managed-team').required = true;
-                } else {
-                    managedTeamSection.style.display = 'none';
-                    document.getElementById('managed-team').required = false;
-                    document.getElementById('managed-team').value = '';
-                }
+                managedTeamSection.style.display = 'none';
+                document.getElementById('managed-team').required = false;
+                document.getElementById('managed-team').value = '';
             }
         }
     }
     
-    // Add event listeners to role inputs
-    roleInputs.forEach(input => {
-        input.addEventListener('change', toggleSkillsSection);
-    });
+    // Add event listener to role select
+    roleSelect.addEventListener('change', toggleSkillsSection);
     
     // Initial toggle based on current selection
     toggleSkillsSection();
@@ -342,14 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Validate skills only for developers
-        const selectedSkills = formData.getAll('skills[]');
-        if ((selectedRole === 'citizen_developer' || selectedRole === 'developer') && selectedSkills.length === 0) {
-            errorMessage.textContent = 'Please select at least one skill.';
-            errorMessage.style.display = 'block';
-            successMessage.style.display = 'none';
-            return;
-        }
+        // Skills are optional for all roles - no validation needed
         
         // Validate managed team for managers
         const managedTeam = formData.get('managed_team');

@@ -125,6 +125,7 @@ def update_profile():
     custom_team = request.form.get('custom_team', '').strip()
     managed_team_id = request.form.get('managed_team')
     skill_ids = request.form.getlist('skills[]')
+    custom_skill = request.form.get('custom_skill', '').strip()
     
     if not name:
         return jsonify({'success': False, 'error': 'Name is required.'}), 400
@@ -135,9 +136,7 @@ def update_profile():
     if not team_id and not custom_team:
         return jsonify({'success': False, 'error': 'Please select or enter a team.'}), 400
     
-    # Only require skills for developers
-    if role in ['citizen_developer', 'developer'] and not skill_ids:
-        return jsonify({'success': False, 'error': 'Please select at least one skill.'}), 400
+    # Skills are now optional for all roles - no validation needed
     
     # Require managed team for managers
     if role == 'manager' and not managed_team_id:
@@ -156,6 +155,21 @@ def update_profile():
                 team_id = new_team.id
             else:
                 team_id = existing_team.id
+        
+        # Handle custom skill if provided
+        if custom_skill and role in ['citizen_developer', 'developer']:
+            # Check if skill already exists
+            existing_skill = db.query(Skill).filter_by(name=custom_skill).first()
+            if not existing_skill:
+                # Create new skill
+                new_skill = Skill(name=custom_skill)
+                db.add(new_skill)
+                db.commit()
+                skill_ids.append(str(new_skill.id))
+            else:
+                # Add existing skill ID if not already selected
+                if str(existing_skill.id) not in skill_ids:
+                    skill_ids.append(str(existing_skill.id))
         
         # Convert skill IDs to integers
         skill_ids = [int(sid) for sid in skill_ids if sid.isdigit()] if skill_ids else []

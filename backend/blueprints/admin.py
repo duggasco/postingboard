@@ -96,6 +96,12 @@ def bulk_upload():
     """Bulk upload page for importing ideas and users."""
     return render_template('admin/bulk_upload.html')
 
+@admin_bp.route('/users')
+@admin_required
+def users():
+    """Manage users page."""
+    return render_template('admin/users.html')
+
 @admin_bp.route('/download-template/<template_type>')
 @admin_required
 def download_template(template_type):

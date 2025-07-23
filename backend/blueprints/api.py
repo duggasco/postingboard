@@ -1596,3 +1596,129 @@ def bulk_upload_users():
         }), 500
     finally:
         db.close()
+
+@api_bp.route('/admin/users', methods=['GET'])
+def get_admin_users():
+    """Get all users for admin management."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Admin access required.'}), 403
+    
+    db = get_session()
+    try:
+        users = db.query(UserProfile).all()
+        
+        users_data = []
+        for user in users:
+            # Count submitted and claimed ideas
+            submitted_count = db.query(Idea).filter_by(email=user.email).count()
+            claimed_count = db.query(Claim).filter_by(claimer_email=user.email).count()
+            
+            users_data.append({
+                'email': user.email,
+                'name': user.name,
+                'role': user.role,
+                'team_id': user.team_id,
+                'team_name': user.team.name if user.team else None,
+                'managed_team_id': user.managed_team_id,
+                'managed_team_name': user.managed_team.name if user.managed_team else None,
+                'skills': [{'id': skill.id, 'name': skill.name} for skill in user.skills],
+                'is_verified': user.is_verified,
+                'submitted_ideas_count': submitted_count,
+                'claimed_ideas_count': claimed_count
+            })
+        
+        return jsonify({
+            'success': True,
+            'users': users_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        db.close()
+
+@api_bp.route('/admin/users/<email>', methods=['PUT'])
+def update_admin_user(email):
+    """Update a user's profile."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Admin access required.'}), 403
+    
+    data = request.json
+    db = get_session()
+    try:
+        user = db.query(UserProfile).filter_by(email=email).first()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found.'}), 404
+        
+        # Update user fields
+        if 'name' in data:
+            user.name = data['name']
+        if 'role' in data:
+            user.role = data['role']
+        if 'team_id' in data:
+            user.team_id = data['team_id']
+        if 'managed_team_id' in data:
+            user.managed_team_id = data['managed_team_id']
+        if 'is_verified' in data:
+            user.is_verified = data['is_verified']
+        
+        # Update skills
+        if 'skill_ids' in data:
+            # Clear existing skills
+            user.skills = []
+            # Add new skills
+            if data['skill_ids']:
+                skills = db.query(Skill).filter(Skill.id.in_(data['skill_ids'])).all()
+                user.skills = skills
+        
+        db.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'User updated successfully.'
+        })
+    except Exception as e:
+        db.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        db.close()
+
+@api_bp.route('/admin/users/<email>', methods=['DELETE'])
+def delete_admin_user(email):
+    """Delete a user and their associated data."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Admin access required.'}), 403
+    
+    db = get_session()
+    try:
+        user = db.query(UserProfile).filter_by(email=email).first()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found.'}), 404
+        
+        # Delete associated manager requests
+        db.query(ManagerRequest).filter_by(user_email=email).delete()
+        
+        # Delete associated claim approvals
+        db.query(ClaimApproval).filter_by(claimer_email=email).delete()
+        
+        # Delete the user
+        db.delete(user)
+        db.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'User deleted successfully.'
+        })
+    except Exception as e:
+        db.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        db.close()
