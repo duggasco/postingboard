@@ -63,8 +63,9 @@ templates/
 #### Database Models
 - **Idea**: Main entity with title, description, priority, size, status
 - **Skill**: Many-to-many relationship with ideas and users
+- **Team**: Stores team names with approval status (predefined teams are auto-approved)
 - **Claim**: Tracks who claimed which idea
-- **UserProfile**: Stores user email, name, verification status, and skills
+- **UserProfile**: Stores user email, name, verification status, role, team, and skills
 - **VerificationCode**: Tracks email verification codes with expiry and rate limiting
 - **Enums**: PriorityLevel, IdeaSize, IdeaStatus
 
@@ -74,6 +75,7 @@ templates/
 - `/api/ideas` - Get filtered ideas list
 - `/api/my-ideas` - Get user's submitted and claimed ideas (requires authentication)
 - `/api/skills` - Get all available skills
+- `/api/teams` - Get teams (all for admin, approved only for others)
 - `/api/admin/stats` - Get dashboard statistics
 - RESTful design with JSON responses
 
@@ -91,6 +93,8 @@ templates/
 - Stores user email in `session['user_email']` for persistence
 - Stores user name in `session['user_name']` after profile completion
 - Stores verification status in `session['user_verified']`
+- Stores user role in `session['user_role']` (manager, idea_submitter, citizen_developer, developer)
+- Stores user team in `session['user_team']` (team name)
 - Stores user skills in `session['user_skills']` as list of skill names
 - Admin authentication with `session['is_admin']`
 - Session data provides immediate access within same browser session
@@ -115,6 +119,7 @@ templates/
 - Dashboard with charts and statistics
 - Idea management with inline editing (shows ALL ideas, not just open ones)
 - Skill management (add/edit/delete)
+- Team management (add/edit/delete/approve)
 - Real-time updates
 
 ### Styling & UI Design
@@ -212,7 +217,8 @@ The application will be accessible at http://localhost:9094
   - Expire after 3 minutes
   - Maximum 3 active codes per email
   - 15-minute cooldown after rate limit
-- **Profile System**: Users create profiles with name and skills
+- **Profile System**: Users create profiles with name, role, team, and skills
+- **Role-Based Access**: Only developers and citizen developers can claim ideas
 - **Protected Routes**: Submit and claim features require authentication
 - **Claim Authentication**: Users must be logged in with a complete profile to claim ideas
 
@@ -225,7 +231,8 @@ The application will be accessible at http://localhost:9094
 ### Database Persistence
 - **Ideas table**: Stores submitter's email in `email` column (required field)
 - **Claims table**: Stores claimer's email in `claimer_email` column (required field)
-- **UserProfile table**: Stores user email, name, verification status, and skills
+- **UserProfile table**: Stores user email, name, verification status, role, team, and skills
+- **Teams table**: Stores team names with approval status (is_approved field)
 - **VerificationCode table**: Tracks verification attempts with timestamps
 - All submitted ideas permanently associated with submitter's email
 - All claims permanently associated with claimer's email
@@ -267,12 +274,20 @@ docker compose -f docker-compose-flask.yml up -d
   - Returns: Array of ideas with `relationship` field (submitted/claimed/both)
   - Includes `claim_info` for claimed ideas
 - `GET /api/skills` - List all available skills
+- `GET /api/teams` - List teams (all with approval status for admin, approved only for others)
 - `POST /idea/<id>/claim` - Claim an idea (requires complete profile)
   - Uses session email and name
   - Stores claimer information in database
+  - Only developers and citizen developers can claim
 
 ### Admin Endpoints
 - `GET /api/admin/stats` - Dashboard statistics
+- `POST /api/teams` - Add new team (admin only)
+- `PUT /api/teams/<id>` - Update team name or approval status (admin only)
+- `DELETE /api/teams/<id>` - Delete team (admin only)
+- `POST /api/skills` - Add new skill (admin only)
+- `PUT /api/skills/<id>` - Update skill (admin only)
+- `DELETE /api/skills/<id>` - Delete skill (admin only)
 - Requires admin session authentication
 
 ## Common Issues and Solutions
@@ -380,6 +395,16 @@ This issue affects all enum-based filters (priority, status, size) throughout th
 - Password: `2929arch`
 - After login, redirects to `/admin/dashboard`
 
+### Admin Features
+- **Dashboard**: View statistics and charts for ideas, skills, and teams
+- **Ideas Management**: Edit/delete any idea, unclaim ideas, change status
+- **Skills Management**: Add/edit/delete skills used across the platform
+- **Teams Management**: 
+  - Add/edit/delete teams
+  - Approve custom teams submitted by users
+  - Separate sections for approved and pending teams
+- **Email Settings**: Configure SMTP settings for verification emails
+
 ### Admin Dashboard Statistics Fix
 The admin dashboard statistics may show blank values on page refresh due to timing issues. This was fixed by implementing a robust retry mechanism with multiple loading strategies:
 
@@ -457,6 +482,27 @@ The admin ideas management page (`/admin/ideas`) displays ALL ideas in the syste
 The Flask implementation provides a traditional web application architecture with server-side rendering and REST APIs for dynamic functionality.
 
 ## User Features
+
+### Role-Based Profiles
+The application supports four user roles with different capabilities:
+- **Manager**: Can submit ideas but cannot claim ideas or specify skills
+- **Idea Submitter**: Can submit ideas but cannot claim ideas or specify skills  
+- **Citizen Developer**: Can submit and claim ideas, must specify skills
+- **Developer**: Can submit and claim ideas, must specify skills
+
+### Team Management
+Users and ideas are associated with teams:
+- **Predefined Teams**: 13 pre-approved teams are available:
+  - Cash - GPP, COO - IDA, COO - Business Management
+  - SL - QAT, SL - Trading, SL - Product, SL - Clients, SL - Tech
+  - Cash - PMG, Cash - US Product Strategy, Cash - EMEA Product Strategy
+  - Cash - Sales, Cash - CMX
+- **Custom Teams**: Users can enter custom team names
+  - Custom teams require admin approval before appearing in selection lists
+  - Stored with `is_approved=false` until admin approves
+- **Team Selection**: Available in both profile creation and idea submission
+  - Mutually exclusive dropdown/text input (selecting one clears the other)
+  - Team selection persisted in localStorage for convenience
 
 ### My Ideas Functionality
 The application includes a "My Ideas" feature that allows users to track both submitted and claimed ideas without requiring user accounts.

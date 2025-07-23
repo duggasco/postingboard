@@ -54,6 +54,16 @@ class Skill(Base):
     
     ideas = relationship('Idea', secondary=idea_skills, back_populates='skills')
 
+class Team(Base):
+    __tablename__ = 'teams'
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), unique=True, nullable=False)
+    is_approved = Column(Boolean, default=True)  # Pre-defined teams are approved by default
+    
+    # Relationships
+    users = relationship('UserProfile', back_populates='team')
+
 class Claim(Base):
     __tablename__ = 'claims'
     
@@ -80,12 +90,14 @@ class UserProfile(Base):
     email = Column(String(120), unique=True, nullable=False)
     name = Column(String(100))
     role = Column(String(50))  # 'manager', 'idea_submitter', 'citizen_developer', 'developer'
+    team_id = Column(Integer, ForeignKey('teams.id'))
     is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_verified_at = Column(DateTime)
     
     # Relationships
     skills = relationship('Skill', secondary=user_skills, backref='users')
+    team = relationship('Team', back_populates='users')
     verification_codes = relationship('VerificationCode', back_populates='user', cascade='all, delete-orphan')
     
     def can_claim_ideas(self):

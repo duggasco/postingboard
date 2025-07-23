@@ -7,7 +7,8 @@
     const addSkillBtn = document.getElementById('add-skill-btn');
     const selectedSkillsDiv = document.getElementById('selected-skills');
     const submitForm = document.getElementById('submit-form');
-    const teamInput = document.getElementById('team');
+    const teamSelect = document.getElementById('team-select');
+    const teamInput = document.getElementById('team-input');
     
     // State
     const selectedSkills = new Map(); // Map of skill id/name to skill object
@@ -34,6 +35,7 @@
         }
         
         await loadSkills();
+        await loadTeams();
         
         // Load persisted data
         loadPersistedData();
@@ -62,10 +64,27 @@
             }
         });
         
-        // Save team name when it changes
-        teamInput.addEventListener('change', function() {
-            localStorage.setItem(STORAGE_KEYS.team, this.value);
-        });
+        // Handle team selection mutual exclusivity
+        if (teamSelect) {
+            teamSelect.addEventListener('change', function() {
+                if (this.value) {
+                    teamInput.value = '';
+                    localStorage.setItem(STORAGE_KEYS.team, this.value);
+                }
+            });
+        }
+        
+        if (teamInput) {
+            teamInput.addEventListener('input', function() {
+                if (this.value) {
+                    teamSelect.value = '';
+                }
+            });
+            
+            teamInput.addEventListener('change', function() {
+                localStorage.setItem(STORAGE_KEYS.team, this.value);
+            });
+        }
         
         // Add clear saved data functionality
         const clearLink = document.getElementById('clear-saved-data');
@@ -101,6 +120,28 @@
         } catch (error) {
             console.error('Error loading skills:', error);
             alert('Error loading skills. Please refresh the page and try again.');
+        }
+    }
+    
+    // Load teams for dropdown
+    async function loadTeams() {
+        try {
+            console.log('Loading teams...');
+            const teams = await utils.fetchJson('/api/teams');
+            console.log('Loaded teams:', teams.length);
+            
+            teamSelect.innerHTML = '<option value="">Select a team...</option>';
+            teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team.name;  // Use name as value for consistency
+                option.textContent = team.name;
+                teamSelect.appendChild(option);
+            });
+            
+            console.log('Teams dropdown populated');
+        } catch (error) {
+            console.error('Error loading teams:', error);
+            // Don't alert for teams as it's not critical
         }
     }
     
@@ -147,10 +188,19 @@
     function loadPersistedData() {
         // Load team name
         const savedTeam = localStorage.getItem(STORAGE_KEYS.team);
-        if (savedTeam && teamInput) {
-            teamInput.value = savedTeam;
+        if (savedTeam) {
+            // Check if it matches a team in the select
+            if (teamSelect) {
+                const matchingOption = Array.from(teamSelect.options).find(opt => opt.value === savedTeam);
+                if (matchingOption) {
+                    teamSelect.value = savedTeam;
+                } else if (teamInput) {
+                    teamInput.value = savedTeam;
+                }
+            } else if (teamInput) {
+                teamInput.value = savedTeam;
+            }
         }
-        
     }
     
     // Clear persisted data from localStorage
@@ -159,6 +209,9 @@
         localStorage.removeItem(STORAGE_KEYS.team);
         
         // Clear form fields
+        if (teamSelect) {
+            teamSelect.value = '';
+        }
         if (teamInput) {
             teamInput.value = '';
         }
@@ -192,6 +245,14 @@
     
     // Handle form submission
     function handleSubmit(e) {
+        // Check if team is selected
+        const teamValue = teamInput ? teamInput.value.trim() : '';
+        if (!teamValue) {
+            e.preventDefault();
+            alert('Please select or enter a team');
+            return;
+        }
+        
         // Check if skills are selected
         if (selectedSkills.size === 0) {
             e.preventDefault();

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings
 from sqlalchemy import desc, asc, func
 from datetime import datetime
 from decorators import require_verified_email
@@ -147,6 +147,102 @@ def delete_skill(skill_id):
             return jsonify({'success': False, 'message': 'Cannot delete skill that is in use'}), 400
         
         db.delete(skill)
+        db.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/teams')
+def get_teams():
+    """Get teams - all for admin, approved only for others."""
+    db = get_session()
+    try:
+        if session.get('is_admin'):
+            # Admin sees all teams with approval status
+            teams = db.query(Team).order_by(Team.name).all()
+            return jsonify([{'id': t.id, 'name': t.name, 'is_approved': t.is_approved} for t in teams])
+        else:
+            # Non-admin users only see approved teams
+            teams = db.query(Team).filter(Team.is_approved == True).order_by(Team.name).all()
+            return jsonify([{'id': t.id, 'name': t.name} for t in teams])
+    finally:
+        db.close()
+
+@api_bp.route('/teams', methods=['POST'])
+def add_team():
+    """Add a new team (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        name = request.json.get('name')
+        if not name:
+            return jsonify({'success': False, 'message': 'Name is required'}), 400
+        
+        # Check if team already exists
+        existing = db.query(Team).filter_by(name=name).first()
+        if existing:
+            return jsonify({'success': False, 'message': 'Team already exists'}), 400
+        
+        team = Team(name=name, is_approved=True)
+        db.add(team)
+        db.commit()
+        return jsonify({'success': True, 'id': team.id})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/teams/<int:team_id>', methods=['PUT'])
+def update_team(team_id):
+    """Update a team (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        team = db.query(Team).get(team_id)
+        if not team:
+            return jsonify({'success': False, 'message': 'Team not found'}), 404
+        
+        name = request.json.get('name')
+        if name:
+            team.name = name
+        
+        is_approved = request.json.get('is_approved')
+        if is_approved is not None:
+            team.is_approved = is_approved
+        
+        db.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/teams/<int:team_id>', methods=['DELETE'])
+def delete_team(team_id):
+    """Delete a team (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        team = db.query(Team).get(team_id)
+        if not team:
+            return jsonify({'success': False, 'message': 'Team not found'}), 404
+        
+        # Check if team is in use by users
+        if team.users:
+            return jsonify({'success': False, 'message': 'Cannot delete team that has users'}), 400
+        
+        db.delete(team)
         db.commit()
         return jsonify({'success': True})
     except Exception as e:

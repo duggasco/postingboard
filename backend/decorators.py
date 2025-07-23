@@ -98,6 +98,8 @@ def update_session_from_db(email):
             session['user_email'] = user.email
             session['user_name'] = user.name
             session['user_role'] = user.role
+            session['user_team'] = user.team.name if user.team else None
+            session['user_team_id'] = user.team_id
             session['user_verified'] = user.is_verified
             session['user_skills'] = [skill.name for skill in user.skills]
             session.permanent = True

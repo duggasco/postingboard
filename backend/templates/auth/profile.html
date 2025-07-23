@@ -49,6 +49,23 @@
             </div>
         </div>
         
+        <div class="form-group">
+            <label>Team <span class="required">*</span></label>
+            <p class="help-text">Select your team or enter a custom one:</p>
+            <div class="team-input-group">
+                <select id="team-select" name="team" class="form-control">
+                    <option value="">Select a team...</option>
+                    {% for team in teams %}
+                    <option value="{{ team.id }}" {% if user.team_id == team.id %}selected{% endif %}>
+                        {{ team.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <input type="text" id="custom-team" name="custom_team" class="form-control" 
+                       placeholder="Or enter a custom team name">
+            </div>
+        </div>
+        
         <div class="form-group" id="skills-section" style="display: none;">
             <label>Skills <span class="required">*</span></label>
             <p class="help-text">Select all skills that apply to you:</p>
@@ -205,6 +222,16 @@
     cursor: pointer;
     font-weight: normal;
 }
+
+.team-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.team-input-group .form-control {
+    flex: 1;
+}
 </style>
 
 <script>
@@ -215,6 +242,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const successMessage = document.getElementById('success-message');
     const skillsSection = document.getElementById('skills-section');
     const roleInputs = document.querySelectorAll('input[name="role"]');
+    const teamSelect = document.getElementById('team-select');
+    const customTeam = document.getElementById('custom-team');
     
     // Function to toggle skills section based on role
     function toggleSkillsSection() {
@@ -244,6 +273,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial toggle based on current selection
     toggleSkillsSection();
+    
+    // Handle team selection mutual exclusivity
+    teamSelect.addEventListener('change', function() {
+        if (this.value) {
+            customTeam.value = '';
+        }
+    });
+    
+    customTeam.addEventListener('input', function() {
+        if (this.value) {
+            teamSelect.value = '';
+        }
+    });
     
     form.addEventListener('submit', async function(e) {
         e.preventDefault();

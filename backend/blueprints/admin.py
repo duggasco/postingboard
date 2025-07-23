@@ -71,6 +71,12 @@ def skills():
     """Manage skills page."""
     return render_template('admin/skills.html')
 
+@admin_bp.route('/teams')
+@admin_required
+def teams():
+    """Manage teams page."""
+    return render_template('admin/teams.html')
+
 @admin_bp.route('/email-settings')
 @admin_required
 def email_settings():

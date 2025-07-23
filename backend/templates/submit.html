@@ -55,8 +55,16 @@
         </div>
         
         <div class="form-group">
-            <label for="team">Your Team Name <span style="color: red;">*</span></label>
-            <input type="text" id="team" name="team" class="form-control" required>
+            <label>Your Team <span style="color: red;">*</span></label>
+            <div class="team-input-group">
+                <select id="team-select" class="form-control">
+                    <option value="">Select a team...</option>
+                </select>
+                <input type="text" id="team-input" name="team" class="form-control" placeholder="Or enter a custom team">
+            </div>
+            <div style="margin-top: 5px;">
+                <small style="color: #6c757d;">Your team will be saved for future submissions.</small>
+            </div>
         </div>
         
         <div class="form-group">

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from database import get_session
 from auth_utils import create_verification_code, verify_code, get_user_profile, update_user_profile
 from decorators import update_session_from_db
-from models import Skill
+from models import Skill, Team
 
 auth = Blueprint('auth', __name__)
 
@@ -106,7 +106,10 @@ def profile():
         # Get all available skills
         skills = db.query(Skill).order_by(Skill.name).all()
         
-        return render_template('auth/profile.html', user=user, skills=skills)
+        # Get all approved teams
+        teams = db.query(Team).filter(Team.is_approved == True).order_by(Team.name).all()
+        
+        return render_template('auth/profile.html', user=user, skills=skills, teams=teams)
     finally:
         db.close()
 
@@ -118,6 +121,8 @@ def update_profile():
     
     name = request.form.get('name', '').strip()
     role = request.form.get('role', '').strip()
+    team_id = request.form.get('team')
+    custom_team = request.form.get('custom_team', '').strip()
     skill_ids = request.form.getlist('skills[]')
     
     if not name:
@@ -126,12 +131,27 @@ def update_profile():
     if not role:
         return jsonify({'success': False, 'error': 'Role is required.'}), 400
     
+    if not team_id and not custom_team:
+        return jsonify({'success': False, 'error': 'Please select or enter a team.'}), 400
+    
     # Only require skills for developers
     if role in ['citizen_developer', 'developer'] and not skill_ids:
         return jsonify({'success': False, 'error': 'Please select at least one skill.'}), 400
     
     db = get_session()
     try:
+        # Handle team selection
+        if custom_team:
+            # Create new team if custom team is provided
+            existing_team = db.query(Team).filter_by(name=custom_team).first()
+            if not existing_team:
+                new_team = Team(name=custom_team, is_approved=False)  # Needs admin approval
+                db.add(new_team)
+                db.commit()
+                team_id = new_team.id
+            else:
+                team_id = existing_team.id
+        
         # Convert skill IDs to integers
         skill_ids = [int(sid) for sid in skill_ids if sid.isdigit()] if skill_ids else []
         
@@ -139,7 +159,7 @@ def update_profile():
         if role not in ['citizen_developer', 'developer']:
             skill_ids = []
         
-        user = update_user_profile(db, session['user_email'], name=name, role=role, skill_ids=skill_ids)
+        user = update_user_profile(db, session['user_email'], name=name, role=role, team_id=int(team_id) if team_id else None, skill_ids=skill_ids)
         
         if user:
             # Update session data
