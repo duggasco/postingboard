@@ -7,13 +7,37 @@
     const addSkillBtn = document.getElementById('add-skill-btn');
     const selectedSkillsDiv = document.getElementById('selected-skills');
     const submitForm = document.getElementById('submit-form');
+    const teamInput = document.getElementById('team');
     
     // State
     const selectedSkills = new Map(); // Map of skill id/name to skill object
     
+    // Storage keys
+    const STORAGE_KEYS = {
+        team: 'submitForm_team',
+        skills: 'submitForm_skills'
+    };
+    
     // Initialize
     async function init() {
+        console.log('Initializing submit form...');
+        
+        // Check if elements exist
+        if (!skillSelect || !skillInput || !addSkillBtn || !selectedSkillsDiv || !submitForm) {
+            console.error('Required elements not found:', {
+                skillSelect: !!skillSelect,
+                skillInput: !!skillInput,
+                addSkillBtn: !!addSkillBtn,
+                selectedSkillsDiv: !!selectedSkillsDiv,
+                submitForm: !!submitForm
+            });
+            return;
+        }
+        
         await loadSkills();
+        
+        // Load persisted data
+        loadPersistedData();
         
         // Event listeners
         addSkillBtn.addEventListener('click', handleAddSkill);
@@ -38,12 +62,33 @@
                 handleAddSkill();
             }
         });
+        
+        // Save team name when it changes
+        teamInput.addEventListener('change', function() {
+            localStorage.setItem(STORAGE_KEYS.team, this.value);
+        });
+        
+        // Add clear saved data functionality
+        const clearLink = document.getElementById('clear-saved-data');
+        if (clearLink) {
+            clearLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm('Clear all saved team name and skills?')) {
+                    clearPersistedData();
+                }
+            });
+        }
+        
+        console.log('Submit form initialized successfully');
     }
     
     // Load skills for dropdown
     async function loadSkills() {
         try {
+            console.log('Loading skills...');
             const skills = await utils.fetchJson('/api/skills');
+            console.log('Loaded skills:', skills.length);
+            
             skillSelect.innerHTML = '<option value="">Select a skill...</option>';
             skills.forEach(skill => {
                 const option = document.createElement('option');
@@ -52,13 +97,17 @@
                 option.dataset.name = skill.name;
                 skillSelect.appendChild(option);
             });
+            
+            console.log('Skills dropdown populated');
         } catch (error) {
             console.error('Error loading skills:', error);
+            alert('Error loading skills. Please refresh the page and try again.');
         }
     }
     
     // Handle adding a skill
     function handleAddSkill() {
+        console.log('Add skill clicked');
         let skillId, skillName;
         
         if (skillSelect.value) {
@@ -66,11 +115,15 @@
             const selectedOption = skillSelect.options[skillSelect.selectedIndex];
             skillId = skillSelect.value;
             skillName = selectedOption.dataset.name;
+            console.log('Adding skill from dropdown:', skillName, 'ID:', skillId);
         } else if (skillInput.value.trim()) {
             // Custom skill
             skillName = skillInput.value.trim();
             skillId = skillName; // Use name as ID for custom skills
+            console.log('Adding custom skill:', skillName);
         } else {
+            console.log('No skill selected');
+            alert('Please select a skill from the dropdown or enter a custom skill');
             return; // Nothing selected
         }
         
@@ -82,11 +135,62 @@
         
         // Add to selected skills
         selectedSkills.set(skillId, { id: skillId, name: skillName });
+        console.log('Current selected skills:', Array.from(selectedSkills.values()));
         updateSelectedSkillsDisplay();
         
         // Clear inputs
         skillSelect.value = '';
         skillInput.value = '';
+        
+        // Save skills to localStorage
+        saveSkillsToStorage();
+    }
+    
+    // Save skills to localStorage
+    function saveSkillsToStorage() {
+        const skillsArray = Array.from(selectedSkills.values());
+        localStorage.setItem(STORAGE_KEYS.skills, JSON.stringify(skillsArray));
+    }
+    
+    // Load persisted data from localStorage
+    function loadPersistedData() {
+        // Load team name
+        const savedTeam = localStorage.getItem(STORAGE_KEYS.team);
+        if (savedTeam && teamInput) {
+            teamInput.value = savedTeam;
+        }
+        
+        // Load skills
+        const savedSkills = localStorage.getItem(STORAGE_KEYS.skills);
+        if (savedSkills) {
+            try {
+                const skillsArray = JSON.parse(savedSkills);
+                skillsArray.forEach(skill => {
+                    selectedSkills.set(skill.id, skill);
+                });
+                updateSelectedSkillsDisplay();
+            } catch (error) {
+                console.error('Error loading saved skills:', error);
+            }
+        }
+    }
+    
+    // Clear persisted data from localStorage
+    function clearPersistedData() {
+        // Clear localStorage
+        localStorage.removeItem(STORAGE_KEYS.team);
+        localStorage.removeItem(STORAGE_KEYS.skills);
+        
+        // Clear form fields
+        if (teamInput) {
+            teamInput.value = '';
+        }
+        
+        // Clear selected skills
+        selectedSkills.clear();
+        updateSelectedSkillsDisplay();
+        
+        alert('Saved data has been cleared.');
     }
     
     // Update the display of selected skills
@@ -109,6 +213,7 @@
                 const skillId = this.dataset.skillId;
                 selectedSkills.delete(skillId);
                 updateSelectedSkillsDisplay();
+                saveSkillsToStorage(); // Update localStorage
             });
         });
     }
@@ -138,5 +243,9 @@
     }
     
     // Initialize on page load
-    init();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

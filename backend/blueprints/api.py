@@ -271,6 +271,10 @@ def get_my_ideas():
             user_email = session.get('user_email')
             claimed_idea_ids = session.get('claimed_ideas', [])
             
+            # For admin, show all their activities
+            if session.get('is_admin'):
+                user_email = 'admin@system.local'
+            
             if idea_ids or user_email:
                 query = db.query(Idea)
                 conditions = []

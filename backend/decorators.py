@@ -7,6 +7,10 @@ def require_verified_email(f):
     """Decorator to require email verification for a route."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Admin users bypass verification
+        if session.get('is_admin'):
+            return f(*args, **kwargs)
+            
         user_email = session.get('user_email')
         
         if not user_email:
@@ -37,6 +41,10 @@ def require_profile_complete(f):
     """Decorator to require a complete profile (name and skills)."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Admin users bypass profile requirements
+        if session.get('is_admin'):
+            return f(*args, **kwargs)
+            
         user_email = session.get('user_email')
         
         if not user_email:

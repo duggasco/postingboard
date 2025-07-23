@@ -29,6 +29,11 @@ def login():
         if password == Config.ADMIN_PASSWORD:
             session['is_admin'] = True
             session.permanent = True
+            # Set admin user credentials for regular features
+            session['user_email'] = 'admin@system.local'
+            session['user_name'] = 'Admin'
+            session['user_verified'] = True
+            session['user_skills'] = []  # Admin has access to all skills
             flash('Successfully logged in as admin', 'success')
             return redirect(url_for('admin.dashboard'))
         else:
@@ -40,6 +45,11 @@ def login():
 def logout():
     """Admin logout."""
     session.pop('is_admin', None)
+    # Clear admin user credentials
+    session.pop('user_email', None)
+    session.pop('user_name', None)
+    session.pop('user_verified', None)
+    session.pop('user_skills', None)
     flash('Successfully logged out', 'success')
     return redirect(url_for('main.home'))
 
