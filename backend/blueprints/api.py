@@ -210,6 +210,35 @@ def delete_idea(idea_id):
     finally:
         db.close()
 
+@api_bp.route('/ideas/<int:idea_id>/unclaim', methods=['POST'])
+def unclaim_idea(idea_id):
+    """Unclaim an idea by removing all claims (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        idea = db.query(Idea).get(idea_id)
+        if not idea:
+            return jsonify({'success': False, 'message': 'Idea not found'}), 404
+        
+        # Delete all claims for this idea
+        claims_deleted = db.query(Claim).filter(Claim.idea_id == idea_id).delete()
+        
+        # Reset idea status to open
+        idea.status = IdeaStatus.open
+        
+        db.commit()
+        return jsonify({
+            'success': True,
+            'message': f'Unclaimed idea and removed {claims_deleted} claim(s)'
+        })
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
 @api_bp.route('/stats')
 def get_stats():
     """Get dashboard statistics."""

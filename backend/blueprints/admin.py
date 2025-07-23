@@ -62,8 +62,8 @@ def dashboard():
 @admin_bp.route('/ideas')
 @admin_required
 def ideas():
-    """Redirect to dashboard (ideas management is now integrated there)."""
-    return redirect(url_for('admin.dashboard'))
+    """Manage ideas page."""
+    return render_template('admin/ideas.html')
 
 @admin_bp.route('/skills')
 @admin_required

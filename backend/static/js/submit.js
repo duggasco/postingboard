@@ -14,8 +14,7 @@
     
     // Storage keys
     const STORAGE_KEYS = {
-        team: 'submitForm_team',
-        skills: 'submitForm_skills'
+        team: 'submitForm_team'
     };
     
     // Initialize
@@ -141,16 +140,8 @@
         // Clear inputs
         skillSelect.value = '';
         skillInput.value = '';
-        
-        // Save skills to localStorage
-        saveSkillsToStorage();
     }
     
-    // Save skills to localStorage
-    function saveSkillsToStorage() {
-        const skillsArray = Array.from(selectedSkills.values());
-        localStorage.setItem(STORAGE_KEYS.skills, JSON.stringify(skillsArray));
-    }
     
     // Load persisted data from localStorage
     function loadPersistedData() {
@@ -160,37 +151,19 @@
             teamInput.value = savedTeam;
         }
         
-        // Load skills
-        const savedSkills = localStorage.getItem(STORAGE_KEYS.skills);
-        if (savedSkills) {
-            try {
-                const skillsArray = JSON.parse(savedSkills);
-                skillsArray.forEach(skill => {
-                    selectedSkills.set(skill.id, skill);
-                });
-                updateSelectedSkillsDisplay();
-            } catch (error) {
-                console.error('Error loading saved skills:', error);
-            }
-        }
     }
     
     // Clear persisted data from localStorage
     function clearPersistedData() {
         // Clear localStorage
         localStorage.removeItem(STORAGE_KEYS.team);
-        localStorage.removeItem(STORAGE_KEYS.skills);
         
         // Clear form fields
         if (teamInput) {
             teamInput.value = '';
         }
         
-        // Clear selected skills
-        selectedSkills.clear();
-        updateSelectedSkillsDisplay();
-        
-        alert('Saved data has been cleared.');
+        alert('Saved team name has been cleared.');
     }
     
     // Update the display of selected skills
@@ -213,7 +186,6 @@
                 const skillId = this.dataset.skillId;
                 selectedSkills.delete(skillId);
                 updateSelectedSkillsDisplay();
-                saveSkillsToStorage(); // Update localStorage
             });
         });
     }

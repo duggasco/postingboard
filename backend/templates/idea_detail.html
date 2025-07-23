@@ -87,7 +87,7 @@
             
             <div class="form-group">
                 <label for="claim-skills">Your Skills</label>
-                <textarea id="claim-skills" class="form-control" rows="3" placeholder="List your relevant skills..."></textarea>
+                <textarea id="claim-skills" class="form-control" rows="3" placeholder="List your relevant skills...">{% if session.get('user_skills') %}{{ session.get('user_skills') | join(', ') }}{% endif %}</textarea>
             </div>
             
             <div style="margin-top: 20px;">

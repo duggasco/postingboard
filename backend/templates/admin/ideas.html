@@ -64,6 +64,7 @@ function displayIdeas() {
                     <th>Size</th>
                     <th>Status</th>
                     <th>Submitted By</th>
+                    <th>Claimed By</th>
                     <th>Date</th>
                     <th>Actions</th>
                 </tr>
@@ -101,8 +102,12 @@ function displayIdeas() {
                     </select>
                 </td>
                 <td>${idea.submitter_name ? utils.escapeHtml(idea.submitter_name) + ' (' + utils.escapeHtml(idea.email) + ')' : utils.escapeHtml(idea.email)}</td>
+                <td>${idea.claims && idea.claims.length > 0 ? idea.claims.map(c => utils.escapeHtml(c.name || c.email)).join(', ') : '-'}</td>
                 <td>${utils.formatDate(idea.date_submitted)}</td>
                 <td>
+                    ${idea.status === 'claimed' || idea.status === 'complete' ? 
+                        `<button class="btn btn-warning btn-sm" onclick="unclaimIdea(${idea.id})">Unclaim</button> ` : 
+                        ''}
                     <button class="btn btn-danger btn-sm" onclick="deleteIdea(${idea.id})">Delete</button>
                 </td>
             </tr>
@@ -199,6 +204,23 @@ async function deleteIdea(ideaId) {
     } catch (error) {
         console.error('Error deleting idea:', error);
         alert('Error deleting idea. Please try again.');
+    }
+}
+
+async function unclaimIdea(ideaId) {
+    if (!confirm('Are you sure you want to unclaim this idea? This will remove all claims and set status to open.')) return;
+    
+    try {
+        const response = await utils.fetchJson(`/api/ideas/${ideaId}/unclaim`, {
+            method: 'POST'
+        });
+        if (response.message) {
+            alert(response.message);
+        }
+        loadIdeas();
+    } catch (error) {
+        console.error('Error unclaiming idea:', error);
+        alert('Error unclaiming idea. Please try again.');
     }
 }
 
