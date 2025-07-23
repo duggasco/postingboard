@@ -968,3 +968,59 @@ The admin user management portal allows administrators to view, edit, and delete
   - `DELETE /api/admin/users/<email>` - Delete user and related data
 - Pagination: 20 users per page with navigation controls
 - Real-time filtering without page reload
+
+### Admin Portal Styling Guidelines
+
+#### Consistent Styling Practices
+To maintain consistency across all admin pages, follow these guidelines:
+
+1. **Use Global CSS Classes** - Never embed custom CSS in admin templates
+   - Tables: Use `data-table` class, not custom table styling
+   - Buttons: Use `btn`, `btn-primary`, `btn-secondary`, `btn-danger`, `btn-sm`
+   - Forms: Use `form-control` for inputs and selects
+   - Status indicators: Use `status-badge` with status-specific classes
+
+2. **Modal Structure**
+   ```html
+   <div id="modal-id" class="modal-overlay">
+       <div class="modal-content">
+           <div class="modal-header">
+               <h3>Modal Title</h3>
+               <button class="modal-close" onclick="closeModal()">&times;</button>
+           </div>
+           <!-- Modal body content -->
+       </div>
+   </div>
+   ```
+   - Use `classList.add('active')` to show, `classList.remove('active')` to hide
+   - Never use `style.display` directly
+
+3. **Page Structure**
+   - Title format: "Page Name - Admin - Citizen Developer Posting Board"
+   - Use `{% block extra_js %}` for page-specific JavaScript
+   - Navigation: Admin nav links should be consistent across all pages
+
+4. **Form Styling**
+   - Skills grid: Use inline style for consistency
+   ```html
+   style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;"
+   ```
+   - Checkbox labels: Wrap in flex container for proper alignment
+   - Form groups: Use `.form-group` with consistent margin-bottom
+
+5. **Status Badges**
+   - Verified: `status-badge status-complete` (green)
+   - Unverified: `status-badge status-pending` (amber)
+   - Open: `status-badge status-open`
+   - Claimed: `status-badge status-claimed`
+   - Denied: `status-badge status-denied`
+
+6. **Avoid Custom Styling**
+   - If additional styling is needed, add it to `/static/css/styles.css`
+   - Never add `<style>` tags in templates unless absolutely necessary
+   - Use existing utility classes and design system components
+
+7. **Testing Consistency**
+   - Always compare new admin pages with existing ones (Skills, Teams)
+   - Ensure hover states, transitions, and animations match
+   - Verify responsive behavior at different screen sizes
