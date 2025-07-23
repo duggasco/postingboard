@@ -117,20 +117,29 @@ def update_profile():
         return jsonify({'success': False, 'error': 'Authentication required.'}), 401
     
     name = request.form.get('name', '').strip()
+    role = request.form.get('role', '').strip()
     skill_ids = request.form.getlist('skills[]')
     
     if not name:
         return jsonify({'success': False, 'error': 'Name is required.'}), 400
     
-    if not skill_ids:
+    if not role:
+        return jsonify({'success': False, 'error': 'Role is required.'}), 400
+    
+    # Only require skills for developers
+    if role in ['citizen_developer', 'developer'] and not skill_ids:
         return jsonify({'success': False, 'error': 'Please select at least one skill.'}), 400
     
     db = get_session()
     try:
         # Convert skill IDs to integers
-        skill_ids = [int(sid) for sid in skill_ids if sid.isdigit()]
+        skill_ids = [int(sid) for sid in skill_ids if sid.isdigit()] if skill_ids else []
         
-        user = update_user_profile(db, session['user_email'], name=name, skill_ids=skill_ids)
+        # Clear skills for non-developer roles
+        if role not in ['citizen_developer', 'developer']:
+            skill_ids = []
+        
+        user = update_user_profile(db, session['user_email'], name=name, role=role, skill_ids=skill_ids)
         
         if user:
             # Update session data

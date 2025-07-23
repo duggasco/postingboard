@@ -59,9 +59,14 @@
     </div>
     {% endif %}
     
-    {% if idea.status.value == 'open' %}
+    {% if idea.status.value == 'open' and session.get('user_role') in ['citizen_developer', 'developer'] %}
     <div style="margin-top: 30px;">
         <button id="claim-btn" class="btn btn-primary">Claim This Idea</button>
+    </div>
+    {% elif idea.status.value == 'open' and session.get('user_email') %}
+    <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+        <p style="margin: 0; color: #6c757d;">Only developers and citizen developers can claim ideas. 
+        <a href="{{ url_for('auth.profile') }}">Update your profile</a> if you'd like to claim ideas.</p>
     </div>
     {% endif %}
 </div>

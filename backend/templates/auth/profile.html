@@ -23,6 +23,33 @@
         </div>
         
         <div class="form-group">
+            <label>Role <span class="required">*</span></label>
+            <p class="help-text">Select your primary role:</p>
+            <div class="role-options">
+                <div class="role-option">
+                    <input type="radio" id="role-manager" name="role" value="manager" 
+                           {% if user.role == 'manager' %}checked{% endif %} required>
+                    <label for="role-manager">I'm a manager</label>
+                </div>
+                <div class="role-option">
+                    <input type="radio" id="role-idea-submitter" name="role" value="idea_submitter"
+                           {% if user.role == 'idea_submitter' %}checked{% endif %} required>
+                    <label for="role-idea-submitter">I've got an idea to submit</label>
+                </div>
+                <div class="role-option">
+                    <input type="radio" id="role-citizen-developer" name="role" value="citizen_developer"
+                           {% if user.role == 'citizen_developer' %}checked{% endif %} required>
+                    <label for="role-citizen-developer">I'm a citizen developer</label>
+                </div>
+                <div class="role-option">
+                    <input type="radio" id="role-developer" name="role" value="developer"
+                           {% if user.role == 'developer' %}checked{% endif %} required>
+                    <label for="role-developer">I'm a developer</label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group" id="skills-section" style="display: none;">
             <label>Skills <span class="required">*</span></label>
             <p class="help-text">Select all skills that apply to you:</p>
             <div class="skills-grid">
@@ -158,6 +185,26 @@
     background-color: #ffc107;
     color: #212529;
 }
+
+.role-options {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.role-option {
+    margin-bottom: 10px;
+}
+
+.role-option input[type="radio"] {
+    margin-right: 8px;
+}
+
+.role-option label {
+    margin-bottom: 0;
+    cursor: pointer;
+    font-weight: normal;
+}
 </style>
 
 <script>
@@ -166,16 +213,56 @@ document.addEventListener('DOMContentLoaded', function() {
     const loading = document.getElementById('loading');
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
+    const skillsSection = document.getElementById('skills-section');
+    const roleInputs = document.querySelectorAll('input[name="role"]');
+    
+    // Function to toggle skills section based on role
+    function toggleSkillsSection() {
+        const selectedRole = document.querySelector('input[name="role"]:checked');
+        if (selectedRole) {
+            const role = selectedRole.value;
+            if (role === 'citizen_developer' || role === 'developer') {
+                skillsSection.style.display = 'block';
+                // Make skills required
+                document.querySelectorAll('input[name="skills[]"]').forEach(checkbox => {
+                    checkbox.required = true;
+                });
+            } else {
+                skillsSection.style.display = 'none';
+                // Make skills not required and uncheck all
+                document.querySelectorAll('input[name="skills[]"]').forEach(checkbox => {
+                    checkbox.required = false;
+                });
+            }
+        }
+    }
+    
+    // Add event listeners to role inputs
+    roleInputs.forEach(input => {
+        input.addEventListener('change', toggleSkillsSection);
+    });
+    
+    // Initial toggle based on current selection
+    toggleSkillsSection();
     
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         // Get form data
         const formData = new FormData(form);
+        const selectedRole = formData.get('role');
         
-        // Validate at least one skill is selected
+        // Validate role selection
+        if (!selectedRole) {
+            errorMessage.textContent = 'Please select a role.';
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+            return;
+        }
+        
+        // Validate skills only for developers
         const selectedSkills = formData.getAll('skills[]');
-        if (selectedSkills.length === 0) {
+        if ((selectedRole === 'citizen_developer' || selectedRole === 'developer') && selectedSkills.length === 0) {
             errorMessage.textContent = 'Please select at least one skill.';
             errorMessage.style.display = 'block';
             successMessage.style.display = 'none';

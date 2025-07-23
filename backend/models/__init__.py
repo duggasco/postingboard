@@ -79,6 +79,7 @@ class UserProfile(Base):
     id = Column(Integer, primary_key=True)
     email = Column(String(120), unique=True, nullable=False)
     name = Column(String(100))
+    role = Column(String(50))  # 'manager', 'idea_submitter', 'citizen_developer', 'developer'
     is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_verified_at = Column(DateTime)
@@ -86,6 +87,10 @@ class UserProfile(Base):
     # Relationships
     skills = relationship('Skill', secondary=user_skills, backref='users')
     verification_codes = relationship('VerificationCode', back_populates='user', cascade='all, delete-orphan')
+    
+    def can_claim_ideas(self):
+        """Check if user can claim ideas based on their role."""
+        return self.role in ['citizen_developer', 'developer']
 
 class VerificationCode(Base):
     __tablename__ = 'verification_codes'

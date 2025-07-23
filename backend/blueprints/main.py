@@ -99,6 +99,11 @@ def idea_detail(idea_id):
 @require_profile_complete
 def claim_idea(idea_id):
     """Claim an idea."""
+    # Check if user has permission to claim based on role
+    user_role = session.get('user_role')
+    if user_role not in ['citizen_developer', 'developer']:
+        return jsonify({'success': False, 'message': 'Only developers can claim ideas'}), 403
+    
     db = get_session()
     try:
         idea = db.query(Idea).get(idea_id)

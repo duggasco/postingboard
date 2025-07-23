@@ -116,14 +116,17 @@ def get_user_profile(db: Session, email: str):
     """Get user profile by email."""
     return db.query(UserProfile).filter_by(email=email).first()
 
-def update_user_profile(db: Session, email: str, name: str = None, skill_ids: list = None):
-    """Update user profile with name and skills."""
+def update_user_profile(db: Session, email: str, name: str = None, role: str = None, skill_ids: list = None):
+    """Update user profile with name, role, and skills."""
     user = db.query(UserProfile).filter_by(email=email).first()
     if not user:
         return None
     
     if name is not None:
         user.name = name
+    
+    if role is not None:
+        user.role = role
     
     if skill_ids is not None:
         # Clear existing skills

@@ -67,12 +67,20 @@ def require_profile_complete(f):
                     flash('Please verify your email first.', 'warning')
                     return redirect(url_for('auth.verify_email'))
             
-            if not user.name or not user.skills:
+            if not user.name:
                 if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'error': 'Please complete your profile with name and skills.'}), 401
+                    return jsonify({'error': 'Please complete your profile with your name.'}), 401
                 else:
                     flash('Please complete your profile before proceeding.', 'info')
-                    return redirect(url_for('main.profile'))
+                    return redirect(url_for('auth.profile'))
+            
+            # Only check for skills if user is a developer
+            if user.role in ['citizen_developer', 'developer'] and not user.skills:
+                if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'error': 'Please add your skills to your profile.'}), 401
+                else:
+                    flash('Please add your skills to your profile.', 'info')
+                    return redirect(url_for('auth.profile'))
         finally:
             db.close()
         
@@ -89,6 +97,7 @@ def update_session_from_db(email):
         if user:
             session['user_email'] = user.email
             session['user_name'] = user.name
+            session['user_role'] = user.role
             session['user_verified'] = user.is_verified
             session['user_skills'] = [skill.name for skill in user.skills]
             session.permanent = True
