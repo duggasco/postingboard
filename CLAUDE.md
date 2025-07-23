@@ -937,3 +937,34 @@ class Idea(Base):
 - **Forms**: 6px radius inputs with focus shadows
 - **Tables**: Alternating row colors, uppercase headers
 - **Modals**: 12px radius, backdrop shadow
+
+### Admin User Management Portal
+
+#### Overview
+The admin user management portal allows administrators to view, edit, and delete user profiles with comprehensive filtering and search capabilities.
+
+#### Features
+- **User List**: Paginated table showing all users with key information
+- **Filtering**: Search by name/email, filter by role and team
+- **Edit Users**: Modal form to update user details including:
+  - Name, role, team, managed team (for managers)
+  - Skills (for developers/citizen developers)
+  - Email verification status
+- **Delete Users**: Remove users with cascading deletion of related data
+- **Statistics**: Shows submitted and claimed idea counts per user
+
+#### Known Issues and Fixes (Fixed in commit b589163)
+- **Null Handling**: JavaScript now properly handles users with null names or roles
+- **Search Filter**: Updated to handle null values gracefully, checking both name and email
+- **Role Display**: Shows "Not Set" for users without roles instead of crashing
+- **Edit Form**: Defaults to 'idea_submitter' role for users without roles
+- **Skills Array**: Ensures skills array is never null when populating checkboxes
+
+#### Implementation Details
+- Template: `/templates/admin/users.html`
+- API Endpoints:
+  - `GET /api/admin/users` - List all users with statistics
+  - `PUT /api/admin/users/<email>` - Update user profile
+  - `DELETE /api/admin/users/<email>` - Delete user and related data
+- Pagination: 20 users per page with navigation controls
+- Real-time filtering without page reload
