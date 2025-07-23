@@ -62,7 +62,7 @@ class Team(Base):
     is_approved = Column(Boolean, default=True)  # Pre-defined teams are approved by default
     
     # Relationships
-    users = relationship('UserProfile', back_populates='team')
+    users = relationship('UserProfile', foreign_keys='UserProfile.team_id', back_populates='team')
 
 class Claim(Base):
     __tablename__ = 'claims'
@@ -91,13 +91,15 @@ class UserProfile(Base):
     name = Column(String(100))
     role = Column(String(50))  # 'manager', 'idea_submitter', 'citizen_developer', 'developer'
     team_id = Column(Integer, ForeignKey('teams.id'))
+    managed_team_id = Column(Integer, ForeignKey('teams.id'))  # Team that manager oversees
     is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_verified_at = Column(DateTime)
     
     # Relationships
     skills = relationship('Skill', secondary=user_skills, backref='users')
-    team = relationship('Team', back_populates='users')
+    team = relationship('Team', foreign_keys=[team_id], back_populates='users')
+    managed_team = relationship('Team', foreign_keys=[managed_team_id])
     verification_codes = relationship('VerificationCode', back_populates='user', cascade='all, delete-orphan')
     
     def can_claim_ideas(self):
@@ -123,6 +125,21 @@ class VerificationCode(Base):
     
     def is_valid(self):
         return not self.is_used and not self.is_expired()
+
+class ManagerRequest(Base):
+    __tablename__ = 'manager_requests'
+    
+    id = Column(Integer, primary_key=True)
+    user_email = Column(String(120), ForeignKey('user_profiles.email'), nullable=False)
+    requested_team_id = Column(Integer, ForeignKey('teams.id'), nullable=False)
+    status = Column(String(20), default='pending')  # pending, approved, denied
+    requested_at = Column(DateTime, default=datetime.utcnow)
+    processed_at = Column(DateTime)
+    processed_by = Column(String(120))  # admin who processed the request
+    
+    # Relationships
+    user = relationship('UserProfile', foreign_keys=[user_email])
+    team = relationship('Team', foreign_keys=[requested_team_id])
 
 class EmailSettings(Base):
     __tablename__ = 'email_settings'

@@ -3,17 +3,22 @@
 {% block title %}Email Settings - Admin{% endblock %}
 
 {% block content %}
-<div class="admin-header">
-    <h1>Email Settings</h1>
-    <div class="admin-nav">
-        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('admin.skills') }}">Skills</a>
-        <a href="{{ url_for('admin.email_settings') }}" class="active">Email Settings</a>
-        <a href="{{ url_for('admin.logout') }}">Logout</a>
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Email Settings</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
     </div>
-</div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+        <a href="{{ url_for('admin.teams') }}" class="admin-nav-link">Manage Teams</a>
+        <a href="{{ url_for('admin.manager_requests') }}" class="admin-nav-link">Manager Requests</a>
+        <a href="{{ url_for('admin.email_settings') }}" class="admin-nav-link active">Email Settings</a>
+    </div>
 
-<div class="email-settings-container">
+    <div class="email-settings-container">
     <div class="settings-info">
         <p>Configure SMTP settings for sending verification emails. Leave fields empty to disable email sending (verification codes will be displayed in console).</p>
     </div>
@@ -86,8 +91,11 @@
             </form>
         </div>
     </div>
+    </div>
 </div>
+{% endblock %}
 
+{% block extra_css %}
 <style>
 .email-settings-container {
     max-width: 800px;
@@ -221,7 +229,9 @@
     justify-content: flex-end;
 }
 </style>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     loadEmailSettings();

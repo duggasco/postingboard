@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile
 from sqlalchemy import desc, asc, func
 from datetime import datetime
 from decorators import require_verified_email
@@ -457,10 +457,58 @@ def get_my_ideas():
                                 'relationship': 'claimed'
                             }
         
+        # Get team members' ideas if user is a manager
+        team_ideas_dict = {}
+        if session.get('user_role') == 'manager' and session.get('user_managed_team_id'):
+            managed_team_id = session.get('user_managed_team_id')
+            
+            # Get all users in the managed team
+            from models import UserProfile
+            team_members = db.query(UserProfile).filter(
+                UserProfile.team_id == managed_team_id,
+                UserProfile.email != session.get('user_email')  # Exclude the manager
+            ).all()
+            
+            for member in team_members:
+                # Get ideas submitted by team members
+                member_submitted = db.query(Idea).filter(
+                    Idea.email == member.email
+                ).all()
+                
+                for idea in member_submitted:
+                    team_ideas_dict[idea.id] = {
+                        'idea': idea,
+                        'relationship': 'team_submitted',
+                        'member_name': member.name,
+                        'member_email': member.email
+                    }
+                
+                # Get ideas claimed by team members
+                member_claimed = db.query(Idea).join(Claim).filter(
+                    Claim.claimer_email == member.email
+                ).all()
+                
+                for idea in member_claimed:
+                    if idea.id in team_ideas_dict:
+                        team_ideas_dict[idea.id]['relationship'] = 'team_both'
+                    else:
+                        team_ideas_dict[idea.id] = {
+                            'idea': idea,
+                            'relationship': 'team_claimed',
+                            'member_name': member.name,
+                            'member_email': member.email
+                        }
+        
         # Sort ideas by date (newest first)
         sorted_items = sorted(
             ideas_dict.values(), 
             key=lambda x: x['idea'].date_submitted, 
+            reverse=True
+        )
+        
+        sorted_team_items = sorted(
+            team_ideas_dict.values(),
+            key=lambda x: x['idea'].date_submitted,
             reverse=True
         )
         
@@ -500,7 +548,49 @@ def get_my_ideas():
             }
             ideas_data.append(idea_dict)
         
-        return jsonify(ideas_data)
+        # Serialize team ideas
+        team_ideas_data = []
+        for item in sorted_team_items:
+            idea = item['idea']
+            
+            # Get claim info for team member claims
+            claim_info = None
+            if item['relationship'] in ['team_claimed', 'team_both']:
+                claim = db.query(Claim).filter(
+                    Claim.idea_id == idea.id,
+                    Claim.claimer_email == item.get('member_email')
+                ).first()
+                if claim:
+                    claim_info = {
+                        'claim_date': claim.claim_date.strftime('%Y-%m-%d'),
+                        'claimer_team': claim.claimer_team
+                    }
+            
+            idea_dict = {
+                'id': idea.id,
+                'title': idea.title,
+                'description': idea.description,
+                'email': idea.email,
+                'submitter_name': idea.submitter.name if idea.submitter else None,
+                'priority': idea.priority.value,
+                'size': idea.size.value,
+                'status': idea.status.value,
+                'benefactor_team': idea.benefactor_team,
+                'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
+                'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],
+                'claims': [{'name': c.claimer_name, 'email': c.claimer_email, 'date': c.claim_date.strftime('%Y-%m-%d')} for c in idea.claims],
+                'relationship': item['relationship'],
+                'member_name': item.get('member_name'),
+                'member_email': item.get('member_email'),
+                'claim_info': claim_info
+            }
+            team_ideas_data.append(idea_dict)
+        
+        return jsonify({
+            'user_ideas': ideas_data,
+            'team_ideas': team_ideas_data,
+            'managed_team': session.get('user_managed_team')
+        })
     finally:
         db.close()
 
@@ -573,6 +663,148 @@ def save_email_settings():
     except Exception as e:
         db.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/admin/manager-requests')
+def get_manager_requests():
+    """Get pending manager requests and current managers (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        from models import ManagerRequest
+        
+        # Get pending requests
+        pending_requests = db.query(ManagerRequest).filter_by(status='pending').order_by(ManagerRequest.requested_at.desc()).all()
+        
+        # Get current managers
+        current_managers = db.query(UserProfile).filter(
+            UserProfile.managed_team_id != None,
+            UserProfile.role == 'manager'
+        ).all()
+        
+        # Serialize pending requests
+        pending_data = []
+        for req in pending_requests:
+            pending_data.append({
+                'id': req.id,
+                'user_name': req.user.name if req.user else 'N/A',
+                'user_email': req.user_email,
+                'team_name': req.team.name if req.team else 'N/A',
+                'requested_at': req.requested_at.strftime('%Y-%m-%d %H:%M:%S') if req.requested_at else None
+            })
+        
+        # Serialize current managers
+        managers_data = []
+        for manager in current_managers:
+            managers_data.append({
+                'name': manager.name,
+                'email': manager.email,
+                'managed_team': manager.managed_team.name if manager.managed_team else 'N/A',
+                'last_updated': manager.last_verified_at.strftime('%Y-%m-%d') if manager.last_verified_at else None
+            })
+        
+        return jsonify({
+            'pending': pending_data,
+            'managers': managers_data
+        })
+    finally:
+        db.close()
+
+@api_bp.route('/admin/manager-requests/<int:request_id>/approve', methods=['POST'])
+def approve_manager_request(request_id):
+    """Approve a manager request (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        from models import ManagerRequest
+        
+        manager_request = db.query(ManagerRequest).get(request_id)
+        if not manager_request:
+            return jsonify({'success': False, 'message': 'Request not found'}), 404
+        
+        if manager_request.status != 'pending':
+            return jsonify({'success': False, 'message': 'Request already processed'}), 400
+        
+        # Update the request
+        manager_request.status = 'approved'
+        manager_request.processed_at = datetime.now()
+        manager_request.processed_by = session.get('user_email', 'admin@system.local')
+        
+        # Update the user's managed_team_id
+        user = db.query(UserProfile).filter_by(email=manager_request.user_email).first()
+        if user:
+            user.managed_team_id = manager_request.requested_team_id
+        
+        db.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/admin/manager-requests/<int:request_id>/deny', methods=['POST'])
+def deny_manager_request(request_id):
+    """Deny a manager request (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        from models import ManagerRequest
+        
+        manager_request = db.query(ManagerRequest).get(request_id)
+        if not manager_request:
+            return jsonify({'success': False, 'message': 'Request not found'}), 404
+        
+        if manager_request.status != 'pending':
+            return jsonify({'success': False, 'message': 'Request already processed'}), 400
+        
+        # Update the request
+        manager_request.status = 'denied'
+        manager_request.processed_at = datetime.now()
+        manager_request.processed_by = session.get('user_email', 'admin@system.local')
+        
+        db.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/admin/remove-manager', methods=['POST'])
+def remove_manager():
+    """Remove a manager from their team (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        email = request.json.get('email')
+        if not email:
+            return jsonify({'success': False, 'message': 'Email is required'}), 400
+        
+        user = db.query(UserProfile).filter_by(email=email).first()
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        # Remove managed team
+        user.managed_team_id = None
+        
+        db.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         db.close()
 

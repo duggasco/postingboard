@@ -65,8 +65,9 @@ templates/
 - **Skill**: Many-to-many relationship with ideas and users
 - **Team**: Stores team names with approval status (predefined teams are auto-approved)
 - **Claim**: Tracks who claimed which idea
-- **UserProfile**: Stores user email, name, verification status, role, team, and skills
+- **UserProfile**: Stores user email, name, verification status, role, team, managed team, and skills
 - **VerificationCode**: Tracks email verification codes with expiry and rate limiting
+- **ManagerRequest**: Tracks requests from users to manage teams, requiring admin approval
 - **Enums**: PriorityLevel, IdeaSize, IdeaStatus
 
 ### Flask-Specific Features
@@ -95,6 +96,8 @@ templates/
 - Stores verification status in `session['user_verified']`
 - Stores user role in `session['user_role']` (manager, idea_submitter, citizen_developer, developer)
 - Stores user team in `session['user_team']` (team name)
+- Stores user managed team in `session['user_managed_team']` (team name) and `session['user_managed_team_id']`
+- Stores pending manager request status in `session['pending_manager_request']` and `session['pending_team']`
 - Stores user skills in `session['user_skills']` as list of skill names
 - Admin authentication with `session['is_admin']`
 - Session data provides immediate access within same browser session
@@ -120,6 +123,7 @@ templates/
 - Idea management with inline editing (shows ALL ideas, not just open ones)
 - Skill management (add/edit/delete)
 - Team management (add/edit/delete/approve)
+- Manager requests approval workflow
 - Real-time updates
 
 ### Styling & UI Design
@@ -288,6 +292,10 @@ docker compose -f docker-compose-flask.yml up -d
 - `POST /api/skills` - Add new skill (admin only)
 - `PUT /api/skills/<id>` - Update skill (admin only)
 - `DELETE /api/skills/<id>` - Delete skill (admin only)
+- `GET /api/admin/manager-requests` - Get pending manager requests and current managers
+- `POST /api/admin/manager-requests/<id>/approve` - Approve a manager request
+- `POST /api/admin/manager-requests/<id>/deny` - Deny a manager request
+- `POST /api/admin/remove-manager` - Remove a manager from their team
 - Requires admin session authentication
 
 ## Common Issues and Solutions
@@ -403,6 +411,11 @@ This issue affects all enum-based filters (priority, status, size) throughout th
   - Add/edit/delete teams
   - Approve custom teams submitted by users
   - Separate sections for approved and pending teams
+- **Manager Requests**: 
+  - View pending manager requests
+  - Approve or deny requests to manage teams
+  - Remove existing managers from their teams
+  - Track request history
 - **Email Settings**: Configure SMTP settings for verification emails
 
 ### Admin Dashboard Statistics Fix
@@ -486,6 +499,8 @@ The Flask implementation provides a traditional web application architecture wit
 ### Role-Based Profiles
 The application supports four user roles with different capabilities:
 - **Manager**: Can submit ideas but cannot claim ideas or specify skills
+  - Can request to manage a team (requires admin approval)
+  - Once approved, can view team members' submitted and claimed ideas in My Ideas
 - **Idea Submitter**: Can submit ideas but cannot claim ideas or specify skills  
 - **Citizen Developer**: Can submit and claim ideas, must specify skills
 - **Developer**: Can submit and claim ideas, must specify skills
@@ -546,6 +561,10 @@ The application includes a "My Ideas" feature that allows users to track both su
 - Across different sessions: Email lookup retrieves full history from database
 - No login required - completely session/email based
 - Data is never lost - emails are permanently stored in database
+- **Manager View**: Managers with approved team assignments see a separate "Team Ideas" section showing:
+  - Ideas submitted by their team members
+  - Ideas claimed by their team members
+  - Team member names and emails for each idea
 
 
 ### Docker Deployment Notes
@@ -640,6 +659,53 @@ curl -X POST http://localhost:9094/verify-code -d "code=123456" -b cookies.txt -
 curl -X POST http://localhost:9094/idea/1/claim -H "X-Requested-With: XMLHttpRequest" -d "name=Test&team=Team"
 # Returns: {"error":"Authentication required."} with 401 status
 ```
+
+### Manager Approval Workflow
+
+#### Overview
+When users select the "Manager" role in their profile, they can request to manage a team. This request requires admin approval before the manager gains access to view their team members' ideas.
+
+#### User Flow
+1. **Request Submission**: 
+   - User selects "Manager" role in profile
+   - Selects a team from "Team to Manage" dropdown
+   - On save, a `ManagerRequest` is created with `pending` status
+   - User sees notification: "Your request to manage [Team] is pending admin approval"
+
+2. **Admin Review**:
+   - Admin navigates to `/admin/manager-requests`
+   - Sees list of pending requests with user name, email, team, and request date
+   - Can approve or deny each request
+
+3. **Approval Process**:
+   - **Approve**: Updates request status to `approved`, assigns `managed_team_id` to user
+   - **Deny**: Updates request status to `denied`, user must submit new request if desired
+   - Admin can also remove existing managers from their teams
+
+4. **Manager Access**:
+   - Approved managers see "Team Ideas" section in My Ideas page
+   - Shows all ideas submitted or claimed by their team members
+   - Excludes the manager's own ideas from team view
+
+#### Database Schema
+```python
+class ManagerRequest(Base):
+    __tablename__ = 'manager_requests'
+    
+    id = Column(Integer, primary_key=True)
+    user_email = Column(String(120), ForeignKey('user_profiles.email'), nullable=False)
+    requested_team_id = Column(Integer, ForeignKey('teams.id'), nullable=False)
+    status = Column(String(20), default='pending')  # pending, approved, denied
+    requested_at = Column(DateTime, default=datetime.utcnow)
+    processed_at = Column(DateTime)
+    processed_by = Column(String(120))  # admin who processed the request
+```
+
+#### Admin API Endpoints
+- `GET /api/admin/manager-requests` - Returns pending requests and current managers
+- `POST /api/admin/manager-requests/<id>/approve` - Approve a request
+- `POST /api/admin/manager-requests/<id>/deny` - Deny a request
+- `POST /api/admin/remove-manager` - Remove manager (body: `{"email": "manager@example.com"}`)
 
 ### Submitter/Claimer Implementation Details
 

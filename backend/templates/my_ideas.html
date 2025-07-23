@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="page-container">
-    <h2 class="page-title">My Submitted Ideas</h2>
+    <h2 class="page-title">My Ideas</h2>
     
     <!-- Email lookup section (hidden by default) -->
     <div id="email-lookup-section" style="display: none; margin-bottom: 30px; text-align: center;">
@@ -79,7 +79,13 @@
             if (email) {
                 url += `?email=${encodeURIComponent(email)}`;
             }
-            const ideas = await utils.fetchJson(url);
+            const response = await utils.fetchJson(url);
+            
+            // Check if response is an object with user_ideas and team_ideas
+            const isManagerResponse = response && typeof response === 'object' && 'user_ideas' in response;
+            const ideas = isManagerResponse ? response.user_ideas : response;
+            const teamIdeas = isManagerResponse ? response.team_ideas : [];
+            const managedTeam = isManagerResponse ? response.managed_team : null;
             
             if (ideas.length === 0 && !email) {
                 // Show email lookup option when no session ideas found
@@ -148,7 +154,21 @@
             completeCount.textContent = stats.complete;
             
             // Display ideas
-            ideasContainer.innerHTML = ideas.map(idea => createIdeaCard(idea)).join('');
+            let html = '';
+            
+            // User's own ideas
+            if (ideas.length > 0) {
+                html += '<h3 style="margin-bottom: 20px;">My Ideas</h3>';
+                html += '<div class="ideas-grid">' + ideas.map(idea => createIdeaCard(idea)).join('') + '</div>';
+            }
+            
+            // Team members' ideas (for managers)
+            if (teamIdeas && teamIdeas.length > 0 && managedTeam) {
+                html += '<h3 style="margin-top: 40px; margin-bottom: 20px;">Team Members\' Ideas (' + utils.escapeHtml(managedTeam) + ')</h3>';
+                html += '<div class="ideas-grid">' + teamIdeas.map(idea => createTeamIdeaCard(idea)).join('') + '</div>';
+            }
+            
+            ideasContainer.innerHTML = html;
             
         } catch (error) {
             console.error('Error loading ideas:', error);
@@ -181,6 +201,58 @@
         } else if (idea.relationship === 'both') {
             relationshipBadge = '<span class="relationship-badge" style="background-color: #6c757d;">Submitted & Claimed by Me</span>';
             borderColor = '#6c757d';
+        }
+        
+        return `
+            <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'" style="border-left: 4px solid ${borderColor};">
+                <div class="idea-header">
+                    <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
+                    <span class="status-badge ${statusClass}">${idea.status.toUpperCase()}</span>
+                </div>
+                
+                ${relationshipBadge}
+                
+                <div class="idea-meta" style="margin-top: 10px;">
+                    <span class="priority-badge ${priorityClass}">Priority: ${idea.priority}</span>
+                    <span>Size: ${idea.size.replace('_', ' ')}</span>
+                    <span>Team: ${utils.escapeHtml(idea.benefactor_team)}</span>
+                </div>
+                
+                ${skillsHtml ? `<div class="skills-tags">${skillsHtml}</div>` : ''}
+                
+                <p class="idea-description">
+                    ${utils.escapeHtml(idea.description.substring(0, 150))}${idea.description.length > 150 ? '...' : ''}
+                </p>
+                
+                <div class="idea-footer">
+                    <span>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</span>
+                    ${idea.claims && idea.claims.length > 0 ? `<span>Claimed by: ${utils.escapeHtml(idea.claims[0].name)}</span>` : ''}
+                    ${idea.claim_info && idea.claim_info.claimer_team ? `<span>Team: ${utils.escapeHtml(idea.claim_info.claimer_team)}</span>` : ''}
+                </div>
+                
+                <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        `;
+    }
+    
+    // Create team idea card HTML
+    function createTeamIdeaCard(idea) {
+        const statusClass = `status-${idea.status}`;
+        const priorityClass = `priority-${idea.priority}`;
+        
+        const skillsHtml = idea.skills.map(skill => 
+            `<span class="skill-tag">${utils.escapeHtml(skill.name)}</span>`
+        ).join('');
+        
+        // Relationship indicator for team member
+        let relationshipBadge = '';
+        let borderColor = '#28a745'; // Green for team ideas
+        if (idea.relationship === 'team_submitted') {
+            relationshipBadge = `<span class="relationship-badge" style="background-color: #28a745;">Submitted by ${utils.escapeHtml(idea.member_name)}</span>`;
+        } else if (idea.relationship === 'team_claimed') {
+            relationshipBadge = `<span class="relationship-badge" style="background-color: #ffc107; color: #212529;">Claimed by ${utils.escapeHtml(idea.member_name)}</span>`;
+        } else if (idea.relationship === 'team_both') {
+            relationshipBadge = `<span class="relationship-badge" style="background-color: #17a2b8;">Submitted & Claimed by ${utils.escapeHtml(idea.member_name)}</span>`;
         }
         
         return `

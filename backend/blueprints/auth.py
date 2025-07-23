@@ -123,6 +123,7 @@ def update_profile():
     role = request.form.get('role', '').strip()
     team_id = request.form.get('team')
     custom_team = request.form.get('custom_team', '').strip()
+    managed_team_id = request.form.get('managed_team')
     skill_ids = request.form.getlist('skills[]')
     
     if not name:
@@ -137,6 +138,10 @@ def update_profile():
     # Only require skills for developers
     if role in ['citizen_developer', 'developer'] and not skill_ids:
         return jsonify({'success': False, 'error': 'Please select at least one skill.'}), 400
+    
+    # Require managed team for managers
+    if role == 'manager' and not managed_team_id:
+        return jsonify({'success': False, 'error': 'Please select a team to manage.'}), 400
     
     db = get_session()
     try:
@@ -159,7 +164,20 @@ def update_profile():
         if role not in ['citizen_developer', 'developer']:
             skill_ids = []
         
-        user = update_user_profile(db, session['user_email'], name=name, role=role, team_id=int(team_id) if team_id else None, skill_ids=skill_ids)
+        # Clear managed team for non-manager roles
+        if role != 'manager':
+            managed_team_id = None
+        
+        user = update_user_profile(
+            db, 
+            session['user_email'], 
+            name=name, 
+            role=role, 
+            team_id=int(team_id) if team_id else None, 
+            managed_team_id=int(managed_team_id) if managed_team_id else None,
+            skill_ids=skill_ids,
+            create_manager_request=(role == 'manager' and managed_team_id is not None)
+        )
         
         if user:
             # Update session data

@@ -15,6 +15,18 @@
         </p>
     </div>
     
+    {% if session.get('pending_manager_request') %}
+    <div class="alert alert-info" style="margin-bottom: 20px;">
+        <strong>Pending Request:</strong> Your request to manage {{ session.get('pending_team') }} is pending admin approval.
+    </div>
+    {% endif %}
+    
+    {% if session.get('user_managed_team') %}
+    <div class="alert alert-success" style="margin-bottom: 20px;">
+        <strong>Team Manager:</strong> You are currently managing {{ session.get('user_managed_team') }}.
+    </div>
+    {% endif %}
+    
     <form id="profile-form">
         <div class="form-group">
             <label for="name">Name <span class="required">*</span></label>
@@ -64,6 +76,20 @@
                 <input type="text" id="custom-team" name="custom_team" class="form-control" 
                        placeholder="Or enter a custom team name">
             </div>
+        </div>
+        
+        <div class="form-group" id="managed-team-section" style="display: none;">
+            <label>Team to Manage <span class="required">*</span></label>
+            <p class="help-text">Select the team you have managerial oversight over:</p>
+            <select id="managed-team" name="managed_team" class="form-control">
+                <option value="">Select a team to manage...</option>
+                {% for team in teams %}
+                <option value="{{ team.id }}" 
+                    {% if user.managed_team_id == team.id %}selected{% endif %}>
+                    {{ team.name }}
+                </option>
+                {% endfor %}
+            </select>
         </div>
         
         <div class="form-group" id="skills-section" style="display: none;">
@@ -245,9 +271,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const teamSelect = document.getElementById('team-select');
     const customTeam = document.getElementById('custom-team');
     
-    // Function to toggle skills section based on role
+    // Function to toggle skills and managed team sections based on role
     function toggleSkillsSection() {
         const selectedRole = document.querySelector('input[name="role"]:checked');
+        const managedTeamSection = document.getElementById('managed-team-section');
+        
         if (selectedRole) {
             const role = selectedRole.value;
             if (role === 'citizen_developer' || role === 'developer') {
@@ -262,6 +290,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('input[name="skills[]"]').forEach(checkbox => {
                     checkbox.required = false;
                 });
+            }
+            
+            // Show managed team section for managers
+            if (managedTeamSection) {
+                if (role === 'manager') {
+                    managedTeamSection.style.display = 'block';
+                    document.getElementById('managed-team').required = true;
+                } else {
+                    managedTeamSection.style.display = 'none';
+                    document.getElementById('managed-team').required = false;
+                    document.getElementById('managed-team').value = '';
+                }
             }
         }
     }
@@ -306,6 +346,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedSkills = formData.getAll('skills[]');
         if ((selectedRole === 'citizen_developer' || selectedRole === 'developer') && selectedSkills.length === 0) {
             errorMessage.textContent = 'Please select at least one skill.';
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+            return;
+        }
+        
+        // Validate managed team for managers
+        const managedTeam = formData.get('managed_team');
+        if (selectedRole === 'manager' && !managedTeam) {
+            errorMessage.textContent = 'Please select a team to manage.';
             errorMessage.style.display = 'block';
             successMessage.style.display = 'none';
             return;

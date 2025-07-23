@@ -116,8 +116,8 @@ def get_user_profile(db: Session, email: str):
     """Get user profile by email."""
     return db.query(UserProfile).filter_by(email=email).first()
 
-def update_user_profile(db: Session, email: str, name: str = None, role: str = None, team_id: int = None, skill_ids: list = None):
-    """Update user profile with name, role, team, and skills."""
+def update_user_profile(db: Session, email: str, name: str = None, role: str = None, team_id: int = None, managed_team_id: int = None, skill_ids: list = None, create_manager_request: bool = False):
+    """Update user profile with name, role, team, managed team, and skills."""
     user = db.query(UserProfile).filter_by(email=email).first()
     if not user:
         return None
@@ -130,6 +130,31 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
         
     if team_id is not None:
         user.team_id = team_id
+    
+    # Handle manager team assignment
+    if managed_team_id is not None and create_manager_request:
+        # Create a manager request instead of direct assignment
+        from models import ManagerRequest
+        
+        # Check if there's already a pending request
+        existing_request = db.query(ManagerRequest).filter_by(
+            user_email=email,
+            requested_team_id=managed_team_id,
+            status='pending'
+        ).first()
+        
+        if not existing_request:
+            manager_request = ManagerRequest(
+                user_email=email,
+                requested_team_id=managed_team_id,
+                status='pending'
+            )
+            db.add(manager_request)
+        
+        # Don't set managed_team_id directly when creating request
+    elif managed_team_id is not None and not create_manager_request:
+        # Direct assignment (from admin approval)
+        user.managed_team_id = managed_team_id
     
     if skill_ids is not None:
         # Clear existing skills

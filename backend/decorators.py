@@ -100,8 +100,25 @@ def update_session_from_db(email):
             session['user_role'] = user.role
             session['user_team'] = user.team.name if user.team else None
             session['user_team_id'] = user.team_id
+            session['user_managed_team'] = user.managed_team.name if user.managed_team else None
+            session['user_managed_team_id'] = user.managed_team_id
             session['user_verified'] = user.is_verified
             session['user_skills'] = [skill.name for skill in user.skills]
+            
+            # Check for pending manager request
+            from models import ManagerRequest
+            pending_request = db.query(ManagerRequest).filter_by(
+                user_email=user.email,
+                status='pending'
+            ).first()
+            
+            if pending_request:
+                session['pending_manager_request'] = True
+                session['pending_team'] = pending_request.team.name
+            else:
+                session['pending_manager_request'] = False
+                session['pending_team'] = None
+            
             session.permanent = True
             return True
         return False

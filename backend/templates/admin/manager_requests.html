@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Manager Requests - Admin - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Manager Requests</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+        <a href="{{ url_for('admin.teams') }}" class="admin-nav-link">Manage Teams</a>
+        <a href="{{ url_for('admin.manager_requests') }}" class="admin-nav-link active">Manager Requests</a>
+        <a href="{{ url_for('admin.email_settings') }}" class="admin-nav-link">Email Settings</a>
+    </div>
+    
+    <div style="margin-bottom: 30px;">
+        <h3>Pending Manager Requests</h3>
+        <div id="pending-requests">
+            <div class="loading">Loading pending requests...</div>
+        </div>
+    </div>
+    
+    <div>
+        <h3>Current Team Managers</h3>
+        <div id="current-managers">
+            <div class="loading">Loading current managers...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Manager requests management
+let pendingRequests = [];
+let currentManagers = [];
+
+async function loadManagerRequests() {
+    try {
+        const response = await fetch('/api/admin/manager-requests');
+        const data = await response.json();
+        pendingRequests = data.pending || [];
+        currentManagers = data.managers || [];
+        displayPendingRequests();
+        displayCurrentManagers();
+    } catch (error) {
+        console.error('Error loading manager requests:', error);
+        document.getElementById('pending-requests').innerHTML = '<div class="error">Error loading requests</div>';
+        document.getElementById('current-managers').innerHTML = '<div class="error">Error loading managers</div>';
+    }
+}
+
+function displayPendingRequests() {
+    const container = document.getElementById('pending-requests');
+    
+    if (pendingRequests.length === 0) {
+        container.innerHTML = '<div class="empty-state">No pending manager requests</div>';
+        return;
+    }
+    
+    let html = '<table class="admin-table">';
+    html += '<thead><tr><th>User</th><th>Email</th><th>Requested Team</th><th>Date</th><th>Actions</th></tr></thead>';
+    html += '<tbody>';
+    
+    pendingRequests.forEach(request => {
+        html += `
+            <tr>
+                <td>${utils.escapeHtml(request.user_name || 'N/A')}</td>
+                <td>${utils.escapeHtml(request.user_email)}</td>
+                <td>${utils.escapeHtml(request.team_name)}</td>
+                <td>${utils.formatDate(request.requested_at)}</td>
+                <td>
+                    <button onclick="approveRequest(${request.id})" class="btn btn-success btn-sm">Approve</button>
+                    <button onclick="denyRequest(${request.id})" class="btn btn-danger btn-sm">Deny</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function displayCurrentManagers() {
+    const container = document.getElementById('current-managers');
+    
+    if (currentManagers.length === 0) {
+        container.innerHTML = '<div class="empty-state">No team managers assigned</div>';
+        return;
+    }
+    
+    let html = '<table class="admin-table">';
+    html += '<thead><tr><th>Manager</th><th>Email</th><th>Team Managing</th><th>Assigned Date</th><th>Actions</th></tr></thead>';
+    html += '<tbody>';
+    
+    currentManagers.forEach(manager => {
+        html += `
+            <tr>
+                <td>${utils.escapeHtml(manager.name)}</td>
+                <td>${utils.escapeHtml(manager.email)}</td>
+                <td>${utils.escapeHtml(manager.managed_team)}</td>
+                <td>${manager.last_updated ? utils.formatDate(manager.last_updated) : 'N/A'}</td>
+                <td>
+                    <button onclick="removeManager('${manager.email}')" class="btn btn-danger btn-sm">Remove</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function approveRequest(requestId) {
+    if (!confirm('Approve this manager request?')) return;
+    
+    try {
+        await utils.fetchJson(`/api/admin/manager-requests/${requestId}/approve`, {
+            method: 'POST'
+        });
+        
+        loadManagerRequests();
+    } catch (error) {
+        console.error('Error approving request:', error);
+        alert('Error approving request. Please try again.');
+    }
+}
+
+async function denyRequest(requestId) {
+    if (!confirm('Deny this manager request?')) return;
+    
+    try {
+        await utils.fetchJson(`/api/admin/manager-requests/${requestId}/deny`, {
+            method: 'POST'
+        });
+        
+        loadManagerRequests();
+    } catch (error) {
+        console.error('Error denying request:', error);
+        alert('Error denying request. Please try again.');
+    }
+}
+
+async function removeManager(email) {
+    if (!confirm('Remove this manager from their team?')) return;
+    
+    try {
+        await utils.fetchJson('/api/admin/remove-manager', {
+            method: 'POST',
+            body: JSON.stringify({ email })
+        });
+        
+        loadManagerRequests();
+    } catch (error) {
+        console.error('Error removing manager:', error);
+        alert('Error removing manager. Please try again.');
+    }
+}
+
+// Initialize
+loadManagerRequests();
+
+// Auto-refresh every 5 seconds
+setInterval(loadManagerRequests, 5000);
+</script>
+{% endblock %}
