@@ -61,10 +61,11 @@ templates/
 ```
 
 #### Database Models
-- **Idea**: Main entity with title, description, priority, size, status
+- **Idea**: Main entity with title, description, priority, size, status, and assignment fields
 - **Skill**: Many-to-many relationship with ideas and users
 - **Team**: Stores team names with approval status (predefined teams are auto-approved)
-- **Claim**: Tracks who claimed which idea
+- **Claim**: Tracks who claimed which idea (created after approvals)
+- **ClaimApproval**: Tracks claim requests requiring dual approval before claims are created
 - **UserProfile**: Stores user email, name, verification status, role, team, managed team, and skills
 - **VerificationCode**: Tracks email verification codes with expiry and rate limiting
 - **ManagerRequest**: Tracks requests from users to manage teams, requiring admin approval
@@ -199,6 +200,20 @@ The application will be accessible at http://localhost:9094
 
 ## Key Features
 
+### Claim Approval Process
+- **Dual Approval System**: Claims require approval from both idea owner and claimer's manager
+- **Pending Status**: Claims show as "PENDING CLAIM" while awaiting approvals
+- **Denial Handling**: Denied claims show as "CLAIM DENIED" with red styling
+- **Auto-Approval**: Manager approval auto-granted if claimer has no manager
+- **Private Workflow**: Approval states only visible to involved parties, not on public pages
+- **Approval Interface**: Integrated into My Ideas page with approve/deny buttons
+
+### Manager Capabilities
+- **Team Oversight**: View all team members' submitted and claimed ideas
+- **Claim Approvals**: Approve/deny team members' claim requests
+- **Idea Assignment**: Assign open ideas to specific team members
+- **Assignment Tracking**: Ideas track who assigned them and when
+
 ### Submitter and Claimer Display
 - **Submitter Names**: Ideas display the name of the person who submitted them
   - Shows user profile name if available
@@ -277,12 +292,17 @@ docker compose -f docker-compose-flask.yml up -d
   - Query params: `email` (optional for email-based lookup)
   - Returns: Array of ideas with `relationship` field (submitted/claimed/both)
   - Includes `claim_info` for claimed ideas
+  - Includes `pending_claims` and `pending_approvals` for claim workflow
 - `GET /api/skills` - List all available skills
 - `GET /api/teams` - List teams (all with approval status for admin, approved only for others)
-- `POST /idea/<id>/claim` - Claim an idea (requires complete profile)
-  - Uses session email and name
-  - Stores claimer information in database
+- `GET /api/teams/<id>/members` - Get team members (manager only for their team)
+- `POST /idea/<id>/claim` - Request to claim an idea (requires complete profile)
+  - Creates ClaimApproval record requiring dual approval
   - Only developers and citizen developers can claim
+- `GET /api/claim-approvals/pending` - Get pending claim approvals
+- `POST /api/claim-approvals/<id>/approve` - Approve a claim request
+- `POST /api/claim-approvals/<id>/deny` - Deny a claim request
+- `POST /api/ideas/<id>/assign` - Assign idea to team member (manager only)
 
 ### Admin Endpoints
 - `GET /api/admin/stats` - Dashboard statistics
@@ -326,7 +346,7 @@ docker compose -f docker-compose-flask.yml up -d
 7. Audit logging
 8. Performance monitoring
 9. OAuth integration (Google, GitHub)
-10. Team management features
+10. Notification system for approvals and assignments
 
 ## Debug Tips
 - Enable Flask debug mode in `dash_app.py`
@@ -706,6 +726,76 @@ class ManagerRequest(Base):
 - `POST /api/admin/manager-requests/<id>/approve` - Approve a request
 - `POST /api/admin/manager-requests/<id>/deny` - Deny a request
 - `POST /api/admin/remove-manager` - Remove manager (body: `{"email": "manager@example.com"}`)
+
+### Claim Approval Workflow
+
+#### Overview
+Claims now require approval from both the idea owner and the claimer's manager before being finalized. This ensures proper oversight and resource allocation.
+
+#### Workflow Steps
+1. **Claim Request**: Developer/citizen developer requests to claim an idea
+2. **Approval Request Created**: System creates a `ClaimApproval` record with pending status
+3. **Dual Approval Required**:
+   - **Idea Owner**: Must approve that the claimer can work on their idea
+   - **Claimer's Manager**: Must approve their team member taking on the work
+   - If claimer has no manager, manager approval is auto-granted
+4. **Claim Finalized**: Once both approve, actual claim is created and idea status changes to "claimed"
+5. **Denial**: If either party denies, the request is marked as denied
+
+#### Database Schema
+```python
+class ClaimApproval(Base):
+    __tablename__ = 'claim_approvals'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    claimer_email = Column(String(120), nullable=False)
+    claimer_name = Column(String(100), nullable=False)
+    claimer_team = Column(String(100))
+    claimer_skills = Column(Text)
+    
+    # Approval tracking
+    idea_owner_approved = Column(Boolean, default=None)  # None = pending
+    manager_approved = Column(Boolean, default=None)
+    idea_owner_approved_at = Column(DateTime)
+    manager_approved_at = Column(DateTime)
+    idea_owner_denied_at = Column(DateTime)
+    manager_denied_at = Column(DateTime)
+    
+    # Who processed the approvals
+    idea_owner_approved_by = Column(String(120))
+    manager_approved_by = Column(String(120))
+    
+    # Overall status
+    status = Column(String(20), default='pending')  # pending, approved, denied
+    created_at = Column(DateTime, default=datetime.utcnow)
+```
+
+#### API Endpoints
+- `GET /api/claim-approvals/pending` - Get pending approvals for current user
+- `POST /api/claim-approvals/<id>/approve` - Approve a claim request
+- `POST /api/claim-approvals/<id>/deny` - Deny a claim request
+
+#### UI Changes
+- **My Ideas Page**: 
+  - Shows "Pending Approvals" section for idea owners
+  - Shows "My Pending Claims" section with approval status
+  - Denied claims show as "CLAIM DENIED" with red styling
+- **Status Display**: Only visible to involved parties (not on public pages)
+
+### Manager Assignment Feature
+
+#### Overview
+Managers can assign open ideas to team members, streamlining task distribution within teams.
+
+#### Implementation
+- Added fields to Idea model: `assigned_to_email`, `assigned_at`, `assigned_by`
+- Managers see "Assign to Team Member" button on open team ideas
+- Assignment modal shows dropdown of eligible team members
+
+#### API Endpoints
+- `POST /api/ideas/<id>/assign` - Assign idea to team member
+- `GET /api/teams/<id>/members` - Get team members for assignment dropdown
 
 ### Submitter/Claimer Implementation Details
 

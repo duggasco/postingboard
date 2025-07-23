@@ -86,6 +86,8 @@
             const ideas = isManagerResponse ? response.user_ideas : response;
             const teamIdeas = isManagerResponse ? response.team_ideas : [];
             const managedTeam = isManagerResponse ? response.managed_team : null;
+            const pendingClaims = isManagerResponse ? response.pending_claims : [];
+            const pendingApprovals = isManagerResponse ? response.pending_approvals : [];
             
             if (ideas.length === 0 && !email) {
                 // Show email lookup option when no session ideas found
@@ -155,6 +157,26 @@
             
             // Display ideas
             let html = '';
+            
+            // Pending approvals section (for idea owners)
+            if (pendingApprovals && pendingApprovals.length > 0) {
+                html += '<div class="approval-section" style="margin-bottom: 40px;">';
+                html += '<h3 style="margin-bottom: 20px; color: #f0ad4e;">Pending Approvals</h3>';
+                html += '<div class="approval-cards">';
+                pendingApprovals.forEach(approval => {
+                    html += createApprovalCard(approval);
+                });
+                html += '</div>';
+                html += '</div>';
+            }
+            
+            // Pending claims section
+            if (pendingClaims && pendingClaims.length > 0) {
+                html += '<div class="pending-claims-section" style="margin-bottom: 40px;">';
+                html += '<h3 style="margin-bottom: 20px; color: #17a2b8;">My Pending Claims</h3>';
+                html += '<div class="ideas-grid">' + pendingClaims.map(idea => createPendingClaimCard(idea)).join('') + '</div>';
+                html += '</div>';
+            }
             
             // User's own ideas
             if (ideas.length > 0) {
@@ -255,6 +277,16 @@
             relationshipBadge = `<span class="relationship-badge" style="background-color: #17a2b8;">Submitted & Claimed by ${utils.escapeHtml(idea.member_name)}</span>`;
         }
         
+        // Add assignment button for open ideas
+        let assignmentButton = '';
+        if (idea.status === 'open') {
+            assignmentButton = `
+                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); showAssignmentModal(${idea.id}, '${utils.escapeHtml(idea.title).replace(/'/g, "\\'")}')" style="margin-top: 10px;">
+                    Assign to Team Member
+                </button>
+            `;
+        }
+        
         return `
             <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'" style="border-left: 4px solid ${borderColor};">
                 <div class="idea-header">
@@ -280,6 +312,109 @@
                     <span>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</span>
                     ${idea.claims && idea.claims.length > 0 ? `<span>Claimed by: ${utils.escapeHtml(idea.claims[0].name)}</span>` : ''}
                     ${idea.claim_info && idea.claim_info.claimer_team ? `<span>Team: ${utils.escapeHtml(idea.claim_info.claimer_team)}</span>` : ''}
+                </div>
+                
+                ${assignmentButton}
+                
+                <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        `;
+    }
+    
+    // Create approval card HTML
+    function createApprovalCard(approval) {
+        return `
+            <div class="approval-card" style="border: 1px solid #f0ad4e; border-radius: 8px; padding: 20px; margin-bottom: 15px; background-color: #fff;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 10px 0; color: #333;">
+                            <a href="/idea/${approval.idea_id}" style="color: #4a90e2; text-decoration: none;">${utils.escapeHtml(approval.idea_title)}</a>
+                        </h4>
+                        <p style="margin: 5px 0; color: #666;">
+                            <strong>Requested by:</strong> ${utils.escapeHtml(approval.claimer_name)} (${utils.escapeHtml(approval.claimer_email)})
+                        </p>
+                        <p style="margin: 5px 0; color: #666;">
+                            <strong>Team:</strong> ${utils.escapeHtml(approval.claimer_team || 'N/A')}
+                        </p>
+                        <p style="margin: 5px 0; color: #666; font-size: 0.9em;">
+                            <strong>Submitted:</strong> ${utils.escapeHtml(approval.created_at)}
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-success" onclick="approveClaimRequest(${approval.id})" style="padding: 8px 16px;">
+                            Approve
+                        </button>
+                        <button class="btn btn-danger" onclick="denyClaimRequest(${approval.id})" style="padding: 8px 16px;">
+                            Deny
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Create pending claim card HTML
+    function createPendingClaimCard(idea) {
+        const isDenied = idea.pending_approval && idea.pending_approval.status === 'denied';
+        const statusClass = isDenied ? 'status-denied' : 'status-pending';
+        const borderColor = isDenied ? '#dc3545' : '#17a2b8';
+        const statusText = isDenied ? 'CLAIM DENIED' : 'PENDING CLAIM';
+        const priorityClass = `priority-${idea.priority}`;
+        
+        const skillsHtml = idea.skills.map(skill => 
+            `<span class="skill-tag">${utils.escapeHtml(skill.name)}</span>`
+        ).join('');
+        
+        // Show approval status
+        let approvalStatus = '';
+        if (idea.pending_approval) {
+            const ownerStatus = idea.pending_approval.owner_approved === null ? 'Pending' : 
+                               idea.pending_approval.owner_approved ? 'Approved' : 'Denied';
+            const managerStatus = idea.pending_approval.manager_approved === null ? 'Pending' : 
+                                 idea.pending_approval.manager_approved ? 'Approved' : 'Denied';
+            
+            approvalStatus = `
+                <div style="margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 0.9em;">
+                    <p style="margin: 3px 0;"><strong>Idea Owner:</strong> 
+                        <span style="color: ${ownerStatus === 'Approved' ? '#28a745' : ownerStatus === 'Denied' ? '#dc3545' : '#f0ad4e'}">
+                            ${ownerStatus}
+                        </span>
+                    </p>
+                    <p style="margin: 3px 0;"><strong>Your Manager:</strong> 
+                        <span style="color: ${managerStatus === 'Approved' ? '#28a745' : managerStatus === 'Denied' ? '#dc3545' : '#f0ad4e'}">
+                            ${managerStatus}
+                        </span>
+                    </p>
+                    ${isDenied && idea.pending_approval.denied_at ? 
+                        `<p style="margin: 3px 0; color: #dc3545;"><strong>Denied on:</strong> ${utils.formatDate(idea.pending_approval.denied_at)}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        return `
+            <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'" style="border-left: 4px solid ${borderColor};">
+                <div class="idea-header">
+                    <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <span class="priority-badge ${priorityClass}">Priority: ${idea.priority}</span>
+                    <span>Size: ${idea.size.replace('_', ' ')}</span>
+                    <span>Team: ${utils.escapeHtml(idea.benefactor_team)}</span>
+                </div>
+                
+                ${approvalStatus}
+                
+                ${skillsHtml ? `<div class="skills-tags">${skillsHtml}</div>` : ''}
+                
+                <p class="idea-description">
+                    ${utils.escapeHtml(idea.description.substring(0, 150))}${idea.description.length > 150 ? '...' : ''}
+                </p>
+                
+                <div class="idea-footer">
+                    <span>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</span>
+                    <span>Claim requested: ${utils.formatDate(idea.pending_approval.created_at)}</span>
                 </div>
                 
                 <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
@@ -320,6 +455,148 @@
     
     // Initialize
     loadMyIdeas();
+    
+    // Approve claim request
+    window.approveClaimRequest = async function(approvalId) {
+        try {
+            const response = await fetch(`/api/claim-approvals/${approvalId}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('Claim approved successfully!');
+                loadMyIdeas(currentEmail);  // Refresh the page
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error approving claim:', error);
+            alert('Failed to approve claim request');
+        }
+    };
+    
+    // Deny claim request
+    window.denyClaimRequest = async function(approvalId) {
+        if (!confirm('Are you sure you want to deny this claim request?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/claim-approvals/${approvalId}/deny`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('Claim denied');
+                loadMyIdeas(currentEmail);  // Refresh the page
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error denying claim:', error);
+            alert('Failed to deny claim request');
+        }
+    };
+    
+    // Show assignment modal
+    window.showAssignmentModal = function(ideaId, ideaTitle) {
+        // Get team members for assignment
+        fetchTeamMembers().then(members => {
+            const memberOptions = members.map(m => 
+                `<option value="${m.email}">${utils.escapeHtml(m.name)} (${utils.escapeHtml(m.email)})</option>`
+            ).join('');
+            
+            const modalHtml = `
+                <div id="assignmentModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+                    <div style="background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%;">
+                        <h3 style="margin-top: 0;">Assign Idea</h3>
+                        <p style="color: #666; margin-bottom: 20px;">Assign "${utils.escapeHtml(ideaTitle)}" to a team member</p>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label for="assignee" style="display: block; margin-bottom: 5px; font-weight: 600;">Select Team Member:</label>
+                            <select id="assignee" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">-- Select a team member --</option>
+                                ${memberOptions}
+                            </select>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button onclick="closeAssignmentModal()" style="padding: 8px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                            <button onclick="assignIdea(${ideaId})" style="padding: 8px 20px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;">Assign</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        });
+    };
+    
+    // Close assignment modal
+    window.closeAssignmentModal = function() {
+        const modal = document.getElementById('assignmentModal');
+        if (modal) {
+            modal.remove();
+        }
+    };
+    
+    // Assign idea to team member
+    window.assignIdea = async function(ideaId) {
+        const assigneeEmail = document.getElementById('assignee').value;
+        if (!assigneeEmail) {
+            alert('Please select a team member');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/ideas/${ideaId}/assign`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ assignee_email: assigneeEmail })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert(data.message);
+                closeAssignmentModal();
+                loadMyIdeas(currentEmail);  // Refresh
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error assigning idea:', error);
+            alert('Failed to assign idea');
+        }
+    };
+    
+    // Fetch team members for assignment
+    async function fetchTeamMembers() {
+        const managedTeamId = {{ session.get('user_managed_team_id', 'null') }};
+        if (!managedTeamId) {
+            return [];
+        }
+        
+        try {
+            const response = await fetch(`/api/teams/${managedTeamId}/members`);
+            if (response.ok) {
+                return await response.json();
+            }
+            return [];
+        } catch (error) {
+            console.error('Error fetching team members:', error);
+            return [];
+        }
+    }
     
     // Auto-refresh every 30 seconds (only if not using email lookup)
     setInterval(() => {

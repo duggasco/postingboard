@@ -41,10 +41,14 @@ class Idea(Base):
     priority = Column(Enum(PriorityLevel), nullable=False)
     status = Column(Enum(IdeaStatus), default=IdeaStatus.open)
     date_submitted = Column(DateTime, default=datetime.utcnow)
+    assigned_to_email = Column(String(120))  # Manager can assign to team member
+    assigned_at = Column(DateTime)
+    assigned_by = Column(String(120))  # Manager who made the assignment
     
     skills = relationship('Skill', secondary=idea_skills, back_populates='ideas')
     claims = relationship('Claim', back_populates='idea')
     submitter = relationship('UserProfile', foreign_keys=[email], primaryjoin="Idea.email==UserProfile.email", viewonly=True)
+    assigned_to = relationship('UserProfile', foreign_keys=[assigned_to_email], primaryjoin="Idea.assigned_to_email==UserProfile.email", viewonly=True)
 
 class Skill(Base):
     __tablename__ = 'skills'
@@ -140,6 +144,35 @@ class ManagerRequest(Base):
     # Relationships
     user = relationship('UserProfile', foreign_keys=[user_email])
     team = relationship('Team', foreign_keys=[requested_team_id])
+
+class ClaimApproval(Base):
+    __tablename__ = 'claim_approvals'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    claimer_email = Column(String(120), nullable=False)
+    claimer_name = Column(String(100), nullable=False)
+    claimer_team = Column(String(100))
+    claimer_skills = Column(Text)
+    
+    # Approval tracking
+    idea_owner_approved = Column(Boolean, default=None)  # None = pending, True = approved, False = denied
+    manager_approved = Column(Boolean, default=None)
+    idea_owner_approved_at = Column(DateTime)
+    manager_approved_at = Column(DateTime)
+    idea_owner_denied_at = Column(DateTime)
+    manager_denied_at = Column(DateTime)
+    
+    # Who processed the approvals
+    idea_owner_approved_by = Column(String(120))
+    manager_approved_by = Column(String(120))
+    
+    # Overall status
+    status = Column(String(20), default='pending')  # pending, approved, denied, expired
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    idea = relationship('Idea', backref='claim_approvals')
 
 class EmailSettings(Base):
     __tablename__ = 'email_settings'

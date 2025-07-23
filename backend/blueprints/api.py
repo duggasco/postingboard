@@ -155,6 +155,32 @@ def delete_skill(skill_id):
     finally:
         db.close()
 
+@api_bp.route('/teams/<int:team_id>/members')
+def get_team_members(team_id):
+    """Get members of a team (manager only for their own team)."""
+    if session.get('user_role') != 'manager' or session.get('user_managed_team_id') != team_id:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    db = get_session()
+    try:
+        members = db.query(UserProfile).filter(
+            UserProfile.team_id == team_id,
+            UserProfile.role.in_(['developer', 'citizen_developer'])  # Only developers can be assigned
+        ).all()
+        
+        members_data = []
+        for member in members:
+            members_data.append({
+                'email': member.email,
+                'name': member.name,
+                'role': member.role,
+                'skills': [skill.name for skill in member.skills]
+            })
+        
+        return jsonify(members_data)
+    finally:
+        db.close()
+
 @api_bp.route('/teams')
 def get_teams():
     """Get teams - all for admin, approved only for others."""
@@ -586,9 +612,68 @@ def get_my_ideas():
             }
             team_ideas_data.append(idea_dict)
         
+        # Get pending claim approvals for the user
+        from models import ClaimApproval
+        
+        # Pending and denied claims by the user
+        pending_claims = db.query(ClaimApproval).filter(
+            ClaimApproval.claimer_email == user_email,
+            ClaimApproval.status.in_(['pending', 'denied'])
+        ).all()
+        
+        # Pending approvals where user is the idea owner
+        pending_owner_approvals = db.query(ClaimApproval).join(Idea).filter(
+            Idea.email == user_email,
+            ClaimApproval.status == 'pending'
+        ).all()
+        
+        # Serialize pending claims
+        pending_claims_data = []
+        for approval in pending_claims:
+            idea = approval.idea
+            pending_claims_data.append({
+                'id': idea.id,
+                'title': idea.title,
+                'description': idea.description,
+                'email': idea.email,
+                'submitter_name': idea.submitter.name if idea.submitter else None,
+                'priority': idea.priority.value,
+                'size': idea.size.value,
+                'status': 'pending_claim',  # Special status for UI
+                'benefactor_team': idea.benefactor_team,
+                'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
+                'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],
+                'pending_approval': {
+                    'id': approval.id,
+                    'status': approval.status,
+                    'owner_approved': approval.idea_owner_approved,
+                    'manager_approved': approval.manager_approved,
+                    'created_at': approval.created_at.strftime('%Y-%m-%d'),
+                    'denied_at': approval.idea_owner_denied_at.strftime('%Y-%m-%d') if approval.idea_owner_denied_at else 
+                                approval.manager_denied_at.strftime('%Y-%m-%d') if approval.manager_denied_at else None
+                }
+            })
+        
+        # Serialize pending approvals
+        pending_approvals_data = []
+        for approval in pending_owner_approvals:
+            pending_approvals_data.append({
+                'id': approval.id,
+                'idea_id': approval.idea_id,
+                'idea_title': approval.idea.title,
+                'claimer_name': approval.claimer_name,
+                'claimer_email': approval.claimer_email,
+                'claimer_team': approval.claimer_team,
+                'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'owner_approved': approval.idea_owner_approved,
+                'manager_approved': approval.manager_approved
+            })
+        
         return jsonify({
             'user_ideas': ideas_data,
             'team_ideas': team_ideas_data,
+            'pending_claims': pending_claims_data,
+            'pending_approvals': pending_approvals_data,
             'managed_team': session.get('user_managed_team')
         })
     finally:
@@ -802,6 +887,246 @@ def remove_manager():
         db.commit()
         
         return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/claim-approvals/pending')
+def get_pending_claim_approvals():
+    """Get pending claim approvals for the current user (as idea owner or manager)."""
+    if not session.get('user_verified'):
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    db = get_session()
+    try:
+        from models import ClaimApproval, Idea
+        user_email = session.get('user_email')
+        
+        # Get approvals where user is the idea owner
+        owner_approvals = db.query(ClaimApproval).join(Idea).filter(
+            Idea.email == user_email,
+            ClaimApproval.status == 'pending',
+            ClaimApproval.idea_owner_approved == None
+        ).all()
+        
+        # Get approvals where user is a manager of the claimer's team
+        manager_approvals = []
+        if session.get('user_role') == 'manager' and session.get('user_managed_team_id'):
+            managed_team_id = session.get('user_managed_team_id')
+            
+            # Get team members' emails
+            team_members = db.query(UserProfile).filter(
+                UserProfile.team_id == managed_team_id
+            ).all()
+            team_emails = [member.email for member in team_members]
+            
+            if team_emails:
+                manager_approvals = db.query(ClaimApproval).filter(
+                    ClaimApproval.claimer_email.in_(team_emails),
+                    ClaimApproval.status == 'pending',
+                    ClaimApproval.manager_approved == None
+                ).all()
+        
+        # Serialize approvals
+        owner_data = []
+        for approval in owner_approvals:
+            owner_data.append({
+                'id': approval.id,
+                'idea_id': approval.idea_id,
+                'idea_title': approval.idea.title,
+                'claimer_name': approval.claimer_name,
+                'claimer_email': approval.claimer_email,
+                'claimer_team': approval.claimer_team,
+                'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        manager_data = []
+        for approval in manager_approvals:
+            manager_data.append({
+                'id': approval.id,
+                'idea_id': approval.idea_id,
+                'idea_title': approval.idea.title,
+                'claimer_name': approval.claimer_name,
+                'claimer_email': approval.claimer_email,
+                'claimer_team': approval.claimer_team,
+                'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        return jsonify({
+            'as_owner': owner_data,
+            'as_manager': manager_data
+        })
+    finally:
+        db.close()
+
+@api_bp.route('/claim-approvals/<int:approval_id>/approve', methods=['POST'])
+def approve_claim(approval_id):
+    """Approve a claim request (as idea owner or manager)."""
+    if not session.get('user_verified'):
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    db = get_session()
+    try:
+        from models import ClaimApproval, Idea, Claim, IdeaStatus
+        
+        approval = db.query(ClaimApproval).get(approval_id)
+        if not approval:
+            return jsonify({'success': False, 'message': 'Approval request not found'}), 404
+        
+        if approval.status != 'pending':
+            return jsonify({'success': False, 'message': 'This request has already been processed'}), 400
+        
+        user_email = session.get('user_email')
+        idea = approval.idea
+        
+        # Check if user is the idea owner
+        if idea.email == user_email and approval.idea_owner_approved is None:
+            approval.idea_owner_approved = True
+            approval.idea_owner_approved_at = datetime.now()
+            approval.idea_owner_approved_by = user_email
+        
+        # Check if user is the claimer's manager
+        elif session.get('user_role') == 'manager' and approval.manager_approved is None:
+            # Verify user manages the claimer's team
+            claimer = db.query(UserProfile).filter_by(email=approval.claimer_email).first()
+            if claimer and claimer.team_id == session.get('user_managed_team_id'):
+                approval.manager_approved = True
+                approval.manager_approved_at = datetime.now()
+                approval.manager_approved_by = user_email
+            else:
+                return jsonify({'success': False, 'message': 'You are not authorized to approve this claim'}), 403
+        else:
+            return jsonify({'success': False, 'message': 'You are not authorized to approve this claim'}), 403
+        
+        # Check if both approvals are complete
+        if approval.idea_owner_approved and approval.manager_approved:
+            # Create the actual claim
+            claim = Claim(
+                idea_id=approval.idea_id,
+                claimer_name=approval.claimer_name,
+                claimer_email=approval.claimer_email,
+                claimer_team=approval.claimer_team,
+                claimer_skills=approval.claimer_skills,
+                claim_date=datetime.now()
+            )
+            
+            # Update idea status
+            idea.status = IdeaStatus.claimed
+            
+            # Update approval status
+            approval.status = 'approved'
+            
+            db.add(claim)
+            
+            # Update claimer's session if they're the current user
+            if approval.claimer_email == session.get('user_email'):
+                if 'claimed_ideas' not in session:
+                    session['claimed_ideas'] = []
+                if approval.idea_id not in session['claimed_ideas']:
+                    session['claimed_ideas'].append(approval.idea_id)
+                    
+                # Remove from pending claims
+                if 'pending_claims' in session and approval.idea_id in session['pending_claims']:
+                    session['pending_claims'].remove(approval.idea_id)
+                
+                session.permanent = True
+        
+        db.commit()
+        
+        return jsonify({'success': True, 'message': 'Approval recorded successfully'})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/claim-approvals/<int:approval_id>/deny', methods=['POST'])
+def deny_claim(approval_id):
+    """Deny a claim request (as idea owner or manager)."""
+    if not session.get('user_verified'):
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    db = get_session()
+    try:
+        from models import ClaimApproval, Idea
+        
+        approval = db.query(ClaimApproval).get(approval_id)
+        if not approval:
+            return jsonify({'success': False, 'message': 'Approval request not found'}), 404
+        
+        if approval.status != 'pending':
+            return jsonify({'success': False, 'message': 'This request has already been processed'}), 400
+        
+        user_email = session.get('user_email')
+        idea = approval.idea
+        
+        # Check if user is the idea owner
+        if idea.email == user_email and approval.idea_owner_approved is None:
+            approval.idea_owner_approved = False
+            approval.idea_owner_denied_at = datetime.now()
+            approval.idea_owner_approved_by = user_email
+            approval.status = 'denied'
+        
+        # Check if user is the claimer's manager
+        elif session.get('user_role') == 'manager' and approval.manager_approved is None:
+            # Verify user manages the claimer's team
+            claimer = db.query(UserProfile).filter_by(email=approval.claimer_email).first()
+            if claimer and claimer.team_id == session.get('user_managed_team_id'):
+                approval.manager_approved = False
+                approval.manager_denied_at = datetime.now()
+                approval.manager_approved_by = user_email
+                approval.status = 'denied'
+            else:
+                return jsonify({'success': False, 'message': 'You are not authorized to deny this claim'}), 403
+        else:
+            return jsonify({'success': False, 'message': 'You are not authorized to deny this claim'}), 403
+        
+        db.commit()
+        
+        return jsonify({'success': True, 'message': 'Claim request denied'})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/ideas/<int:idea_id>/assign', methods=['POST'])
+def assign_idea(idea_id):
+    """Assign an idea to a team member (manager only)."""
+    if session.get('user_role') != 'manager' or not session.get('user_managed_team_id'):
+        return jsonify({'success': False, 'message': 'Only managers can assign ideas'}), 403
+    
+    db = get_session()
+    try:
+        from models import Idea
+        
+        idea = db.query(Idea).get(idea_id)
+        if not idea:
+            return jsonify({'success': False, 'message': 'Idea not found'}), 404
+        
+        # Verify the idea belongs to the manager's team
+        if idea.benefactor_team != session.get('user_managed_team'):
+            return jsonify({'success': False, 'message': 'You can only assign ideas for your team'}), 403
+        
+        assignee_email = request.json.get('assignee_email')
+        if not assignee_email:
+            return jsonify({'success': False, 'message': 'Assignee email is required'}), 400
+        
+        # Verify assignee is in the manager's team
+        assignee = db.query(UserProfile).filter_by(email=assignee_email).first()
+        if not assignee or assignee.team_id != session.get('user_managed_team_id'):
+            return jsonify({'success': False, 'message': 'Assignee must be a member of your team'}), 400
+        
+        # Update assignment
+        idea.assigned_to_email = assignee_email
+        idea.assigned_at = datetime.now()
+        idea.assigned_by = session.get('user_email')
+        
+        db.commit()
+        
+        return jsonify({'success': True, 'message': f'Idea assigned to {assignee.name}'})
     except Exception as e:
         db.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500

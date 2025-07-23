@@ -98,7 +98,7 @@ def idea_detail(idea_id):
 @main_bp.route('/idea/<int:idea_id>/claim', methods=['POST'])
 @require_profile_complete
 def claim_idea(idea_id):
-    """Claim an idea."""
+    """Request to claim an idea - requires approvals."""
     # Check if user has permission to claim based on role
     user_role = session.get('user_role')
     if user_role not in ['citizen_developer', 'developer']:
@@ -113,37 +113,63 @@ def claim_idea(idea_id):
         if idea.status != IdeaStatus.open:
             return jsonify({'success': False, 'message': 'Idea is not available for claiming'}), 400
         
-        # Create claim
-        claim = Claim(
+        # Check if user already has a pending claim approval for this idea
+        from models import ClaimApproval
+        existing_approval = db.query(ClaimApproval).filter_by(
             idea_id=idea_id,
-            claimer_name=session.get('user_name') or request.form.get('name'),  # Use session name if available
-            claimer_email=session.get('user_email'),  # Use session email
+            claimer_email=session.get('user_email'),
+            status='pending'
+        ).first()
+        
+        if existing_approval:
+            return jsonify({'success': False, 'message': 'You already have a pending claim request for this idea'}), 400
+        
+        # Get user profile to check if they have a manager
+        from models import UserProfile
+        user_profile = db.query(UserProfile).filter_by(email=session.get('user_email')).first()
+        
+        # Create claim approval request
+        claim_approval = ClaimApproval(
+            idea_id=idea_id,
+            claimer_name=session.get('user_name') or request.form.get('name'),
+            claimer_email=session.get('user_email'),
             claimer_team=request.form.get('team'),
             claimer_skills=request.form.get('skills'),
-            claim_date=datetime.now()
+            status='pending'
         )
         
-        # Update idea status
-        idea.status = IdeaStatus.claimed
+        # If claimer's team doesn't have a manager, auto-approve manager approval
+        if not user_profile or not user_profile.team_id:
+            # No team, auto-approve manager
+            claim_approval.manager_approved = True
+            claim_approval.manager_approved_at = datetime.now()
+            claim_approval.manager_approved_by = 'system_auto'
+        else:
+            # Check if the team has a manager
+            team_manager = db.query(UserProfile).filter_by(
+                managed_team_id=user_profile.team_id,
+                role='manager'
+            ).first()
+            if not team_manager:
+                # Team has no manager, auto-approve
+                claim_approval.manager_approved = True
+                claim_approval.manager_approved_at = datetime.now()
+                claim_approval.manager_approved_by = 'system_auto'
         
-        db.add(claim)
+        db.add(claim_approval)
         db.commit()
         
-        # Update session with claimed idea
-        if 'claimed_ideas' not in session:
-            session['claimed_ideas'] = []
-        if idea_id not in session['claimed_ideas']:
-            session['claimed_ideas'].append(idea_id)
+        # Update session with pending claim
+        if 'pending_claims' not in session:
+            session['pending_claims'] = []
+        if idea_id not in session['pending_claims']:
+            session['pending_claims'].append(idea_id)
         
         session.permanent = True
         
-        # Send email notification
-        try:
-            send_claim_notification(idea, claim)
-        except:
-            pass  # Don't fail if email doesn't work
+        # TODO: Send notification emails to idea owner and manager
         
-        return jsonify({'success': True, 'message': 'Idea claimed successfully!'})
+        return jsonify({'success': True, 'message': 'Claim request submitted! Waiting for approvals.'})
         
     except Exception as e:
         db.rollback()
