@@ -33,7 +33,8 @@ let allIdeas = [];
 
 async function loadIdeas() {
     try {
-        const ideas = await utils.fetchJson('/api/ideas');
+        // Explicitly request all ideas without status filter
+        const ideas = await utils.fetchJson('/api/ideas?status=');
         allIdeas = ideas;
         displayIdeas();
     } catch (error) {
@@ -62,7 +63,7 @@ function displayIdeas() {
                     <th>Priority</th>
                     <th>Size</th>
                     <th>Status</th>
-                    <th>Email</th>
+                    <th>Submitted By</th>
                     <th>Date</th>
                     <th>Actions</th>
                 </tr>
@@ -99,7 +100,7 @@ function displayIdeas() {
                         <option value="complete" ${idea.status === 'complete' ? 'selected' : ''}>Complete</option>
                     </select>
                 </td>
-                <td class="editable-cell" data-field="email">${utils.escapeHtml(idea.email)}</td>
+                <td>${idea.submitter_name ? utils.escapeHtml(idea.submitter_name) + ' (' + utils.escapeHtml(idea.email) + ')' : utils.escapeHtml(idea.email)}</td>
                 <td>${utils.formatDate(idea.date_submitted)}</td>
                 <td>
                     <button class="btn btn-danger btn-sm" onclick="deleteIdea(${idea.id})">Delete</button>

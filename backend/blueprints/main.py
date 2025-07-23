@@ -4,6 +4,7 @@ from models import Idea, Skill, Claim, IdeaStatus, PriorityLevel, IdeaSize
 from sqlalchemy import desc, asc
 from datetime import datetime
 from email_utils import send_claim_notification
+from decorators import require_verified_email, require_profile_complete
 
 main_bp = Blueprint('main', __name__)
 
@@ -13,6 +14,7 @@ def home():
     return render_template('home.html')
 
 @main_bp.route('/submit', methods=['GET', 'POST'])
+@require_verified_email
 def submit():
     """Submit a new idea."""
     if request.method == 'POST':
@@ -22,7 +24,7 @@ def submit():
             idea = Idea(
                 title=request.form.get('title'),
                 description=request.form.get('description'),
-                email=request.form.get('email'),
+                email=session.get('user_email'),  # Use session email
                 benefactor_team=request.form.get('team'),
                 priority=PriorityLevel(request.form.get('priority')),
                 size=IdeaSize(request.form.get('size')),
@@ -61,7 +63,6 @@ def submit():
             if 'submitted_ideas' not in session:
                 session['submitted_ideas'] = []
             session['submitted_ideas'].append(idea.id)
-            session['user_email'] = request.form.get('email')
             session.permanent = True
             
             flash('Idea submitted successfully!', 'success')
@@ -76,6 +77,7 @@ def submit():
     return render_template('submit.html')
 
 @main_bp.route('/my-ideas')
+@require_verified_email
 def my_ideas():
     """Show ideas submitted by the current user."""
     return render_template('my_ideas.html')
@@ -94,6 +96,7 @@ def idea_detail(idea_id):
         db.close()
 
 @main_bp.route('/idea/<int:idea_id>/claim', methods=['POST'])
+@require_profile_complete
 def claim_idea(idea_id):
     """Claim an idea."""
     db = get_session()
@@ -108,8 +111,8 @@ def claim_idea(idea_id):
         # Create claim
         claim = Claim(
             idea_id=idea_id,
-            claimer_name=request.form.get('name'),
-            claimer_email=request.form.get('email'),
+            claimer_name=session.get('user_name') or request.form.get('name'),  # Use session name if available
+            claimer_email=session.get('user_email'),  # Use session email
             claimer_team=request.form.get('team'),
             claimer_skills=request.form.get('skills'),
             claim_date=datetime.now()
@@ -121,16 +124,12 @@ def claim_idea(idea_id):
         db.add(claim)
         db.commit()
         
-        # Update session with claimed idea and email
+        # Update session with claimed idea
         if 'claimed_ideas' not in session:
             session['claimed_ideas'] = []
         if idea_id not in session['claimed_ideas']:
             session['claimed_ideas'].append(idea_id)
         
-        # Store claimer's email in session (same as user_email for consistency)
-        claimer_email = request.form.get('email')
-        if claimer_email:
-            session['user_email'] = claimer_email
         session.permanent = True
         
         # Send email notification

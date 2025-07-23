@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, Skill
+from models import Base, Skill, UserProfile, VerificationCode, EmailSettings
 
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///posting_board.db')
 engine = create_engine(DATABASE_URL, echo=True)

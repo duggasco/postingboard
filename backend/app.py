@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, session
+from flask import Flask, render_template, redirect, url_for, session, request
 from flask_session import Session
 from dotenv import load_dotenv
 import os
@@ -11,6 +11,7 @@ load_dotenv()
 from blueprints.main import main_bp
 from blueprints.admin import admin_bp
 from blueprints.api import api_bp
+from blueprints.auth import auth
 
 def create_app():
     app = Flask(__name__)
@@ -25,6 +26,17 @@ def create_app():
     app.register_blueprint(main_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(auth)
+    
+    # Add cache control headers for admin pages
+    @app.after_request
+    def after_request(response):
+        # Prevent caching for admin pages
+        if request.path.startswith('/admin'):
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+        return response
     
     # Error handlers
     @app.errorhandler(404)

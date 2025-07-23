@@ -16,6 +16,15 @@
                 <li><a href="{{ url_for('main.my_ideas') }}" class="{% if request.endpoint == 'main.my_ideas' %}active{% endif %}">My Ideas</a></li>
                 <li><a href="{{ url_for('main.submit') }}" class="{% if request.endpoint == 'main.submit' %}active{% endif %}">Submit Idea</a></li>
                 <li><a href="{{ url_for('admin.index') }}" class="{% if request.endpoint and request.endpoint.startswith('admin.') %}active{% endif %}">Admin</a></li>
+                {% if session.get('user_email') %}
+                    <li class="nav-user-info">
+                        <span class="user-email">{{ session.get('user_name') or session.get('user_email') }}</span>
+                        <a href="{{ url_for('auth.profile') }}" class="{% if request.endpoint == 'auth.profile' %}active{% endif %}">Profile</a>
+                        <a href="{{ url_for('auth.logout') }}">Logout</a>
+                    </li>
+                {% else %}
+                    <li><a href="{{ url_for('auth.verify_email') }}" class="{% if request.endpoint == 'auth.verify_email' %}active{% endif %}">Login</a></li>
+                {% endif %}
             </ul>
         </div>
     </nav>

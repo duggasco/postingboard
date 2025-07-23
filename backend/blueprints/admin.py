@@ -52,11 +52,17 @@ def dashboard():
 @admin_bp.route('/ideas')
 @admin_required
 def ideas():
-    """Manage ideas page."""
-    return render_template('admin/ideas.html')
+    """Redirect to dashboard (ideas management is now integrated there)."""
+    return redirect(url_for('admin.dashboard'))
 
 @admin_bp.route('/skills')
 @admin_required
 def skills():
     """Manage skills page."""
     return render_template('admin/skills.html')
+
+@admin_bp.route('/email-settings')
+@admin_required
+def email_settings():
+    """Manage email settings page."""
+    return render_template('admin/email_settings.html')

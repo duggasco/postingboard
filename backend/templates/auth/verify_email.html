@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Email - Posting Board{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 500px; margin: 50px auto;">
+    <h1>Email Verification</h1>
+    
+    <div id="email-step" class="verification-step">
+        <p>Please enter your email address to receive a verification code.</p>
+        
+        <form id="request-code-form">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-control" required 
+                       placeholder="your.email@example.com">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Send Verification Code</button>
+        </form>
+    </div>
+    
+    <div id="code-step" class="verification-step" style="display: none;">
+        <p>A verification code has been sent to <strong id="email-display"></strong></p>
+        <p>Please enter the 6-digit code below. The code will expire in 3 minutes.</p>
+        
+        <form id="verify-code-form">
+            <div class="form-group">
+                <label for="code">Verification Code</label>
+                <input type="text" id="code" name="code" class="form-control verification-code-input" 
+                       maxlength="6" pattern="[0-9]{6}" required 
+                       placeholder="000000"
+                       style="font-size: 24px; text-align: center; letter-spacing: 10px;">
+            </div>
+            
+            <button type="submit" class="btn btn-success">Verify Code</button>
+            <button type="button" id="resend-code" class="btn btn-secondary">Request New Code</button>
+        </form>
+    </div>
+    
+    <div id="loading" class="text-center" style="display: none;">
+        <div class="spinner-border" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+    
+    <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+    <div id="success-message" class="alert alert-success" style="display: none;"></div>
+</div>
+
+<style>
+.verification-step {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-control {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    width: 100%;
+}
+
+.btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.verification-code-input {
+    width: 200px;
+    margin: 0 auto;
+    display: block;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const emailStep = document.getElementById('email-step');
+    const codeStep = document.getElementById('code-step');
+    const loading = document.getElementById('loading');
+    const errorMessage = document.getElementById('error-message');
+    const successMessage = document.getElementById('success-message');
+    const emailInput = document.getElementById('email');
+    const emailDisplay = document.getElementById('email-display');
+    
+    // Request code form
+    document.getElementById('request-code-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const email = emailInput.value.trim();
+        if (!email) return;
+        
+        // Show loading
+        loading.style.display = 'block';
+        errorMessage.style.display = 'none';
+        successMessage.style.display = 'none';
+        
+        try {
+            const response = await fetch('/request-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `email=${encodeURIComponent(email)}`
+            });
+            
+            const data = await response.json();
+            loading.style.display = 'none';
+            
+            if (data.success) {
+                // Show code step
+                emailDisplay.textContent = email;
+                emailStep.style.display = 'none';
+                codeStep.style.display = 'block';
+                document.getElementById('code').focus();
+                
+                successMessage.textContent = data.message;
+                successMessage.style.display = 'block';
+            } else {
+                errorMessage.textContent = data.error;
+                errorMessage.style.display = 'block';
+            }
+        } catch (error) {
+            loading.style.display = 'none';
+            errorMessage.textContent = 'Failed to send verification code. Please try again.';
+            errorMessage.style.display = 'block';
+        }
+    });
+    
+    // Verify code form
+    document.getElementById('verify-code-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const code = document.getElementById('code').value.trim();
+        if (!code) return;
+        
+        // Show loading
+        loading.style.display = 'block';
+        errorMessage.style.display = 'none';
+        successMessage.style.display = 'none';
+        
+        try {
+            const response = await fetch('/verify-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `code=${encodeURIComponent(code)}`
+            });
+            
+            const data = await response.json();
+            loading.style.display = 'none';
+            
+            if (data.success) {
+                successMessage.textContent = data.message;
+                successMessage.style.display = 'block';
+                
+                // Redirect after a short delay
+                setTimeout(() => {
+                    window.location.href = data.redirect;
+                }, 1000);
+            } else {
+                errorMessage.textContent = data.error;
+                errorMessage.style.display = 'block';
+            }
+        } catch (error) {
+            loading.style.display = 'none';
+            errorMessage.textContent = 'Failed to verify code. Please try again.';
+            errorMessage.style.display = 'block';
+        }
+    });
+    
+    // Resend code button
+    document.getElementById('resend-code').addEventListener('click', function() {
+        // Go back to email step
+        codeStep.style.display = 'none';
+        emailStep.style.display = 'block';
+        document.getElementById('code').value = '';
+        errorMessage.style.display = 'none';
+        successMessage.style.display = 'none';
+    });
+    
+    // Auto-focus on code input and handle paste
+    const codeInput = document.getElementById('code');
+    codeInput.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text');
+        const numbers = paste.replace(/\D/g, '').slice(0, 6);
+        this.value = numbers;
+    });
+});
+</script>
+{% endblock %}

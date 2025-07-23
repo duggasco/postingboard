@@ -1,5 +1,5 @@
-from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Table, Text, Enum
+from datetime import datetime, timedelta
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Table, Text, Enum, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 import enum
@@ -44,6 +44,7 @@ class Idea(Base):
     
     skills = relationship('Skill', secondary=idea_skills, back_populates='ideas')
     claims = relationship('Claim', back_populates='idea')
+    submitter = relationship('UserProfile', foreign_keys=[email], primaryjoin="Idea.email==UserProfile.email", viewonly=True)
 
 class Skill(Base):
     __tablename__ = 'skills'
@@ -65,3 +66,57 @@ class Claim(Base):
     claim_date = Column(DateTime, default=datetime.utcnow)
     
     idea = relationship('Idea', back_populates='claims')
+
+# Many-to-many relationship between UserProfile and Skill
+user_skills = Table('user_skills', Base.metadata,
+    Column('user_id', Integer, ForeignKey('user_profiles.id'), primary_key=True),
+    Column('skill_id', Integer, ForeignKey('skills.id'), primary_key=True)
+)
+
+class UserProfile(Base):
+    __tablename__ = 'user_profiles'
+    
+    id = Column(Integer, primary_key=True)
+    email = Column(String(120), unique=True, nullable=False)
+    name = Column(String(100))
+    is_verified = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_verified_at = Column(DateTime)
+    
+    # Relationships
+    skills = relationship('Skill', secondary=user_skills, backref='users')
+    verification_codes = relationship('VerificationCode', back_populates='user', cascade='all, delete-orphan')
+
+class VerificationCode(Base):
+    __tablename__ = 'verification_codes'
+    
+    id = Column(Integer, primary_key=True)
+    user_email = Column(String(120), ForeignKey('user_profiles.email'), nullable=False)
+    code = Column(String(6), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    is_used = Column(Boolean, default=False)
+    attempts = Column(Integer, default=0)
+    
+    # Relationship
+    user = relationship('UserProfile', back_populates='verification_codes')
+    
+    def is_expired(self):
+        return datetime.utcnow() > self.expires_at
+    
+    def is_valid(self):
+        return not self.is_used and not self.is_expired()
+
+class EmailSettings(Base):
+    __tablename__ = 'email_settings'
+    
+    id = Column(Integer, primary_key=True)
+    smtp_server = Column(String(255))
+    smtp_port = Column(Integer, default=587)
+    smtp_username = Column(String(255))
+    smtp_password = Column(String(255))
+    smtp_use_tls = Column(Boolean, default=True)
+    from_email = Column(String(255))
+    from_name = Column(String(255), default='Posting Board')
+    is_active = Column(Boolean, default=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

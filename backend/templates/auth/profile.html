@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - Posting Board{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 600px; margin: 50px auto;">
+    <h1>My Profile</h1>
+    
+    <div class="profile-info">
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Verified:</strong> 
+            <span class="badge {% if user.is_verified %}badge-success{% else %}badge-warning{% endif %}">
+                {% if user.is_verified %}Yes{% else %}No{% endif %}
+            </span>
+        </p>
+    </div>
+    
+    <form id="profile-form">
+        <div class="form-group">
+            <label for="name">Name <span class="required">*</span></label>
+            <input type="text" id="name" name="name" class="form-control" required 
+                   value="{{ user.name or '' }}" placeholder="Enter your full name">
+        </div>
+        
+        <div class="form-group">
+            <label>Skills <span class="required">*</span></label>
+            <p class="help-text">Select all skills that apply to you:</p>
+            <div class="skills-grid">
+                {% for skill in skills %}
+                <div class="skill-checkbox">
+                    <input type="checkbox" id="skill-{{ skill.id }}" name="skills[]" 
+                           value="{{ skill.id }}"
+                           {% if skill in user.skills %}checked{% endif %}>
+                    <label for="skill-{{ skill.id }}">{{ skill.name }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Profile</button>
+            <a href="{{ url_for('main.home') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+    
+    <div id="loading" class="text-center" style="display: none;">
+        <div class="spinner-border" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+    
+    <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+    <div id="success-message" class="alert alert-success" style="display: none;"></div>
+</div>
+
+<style>
+.profile-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.profile-info p {
+    margin-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-control {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    width: 100%;
+}
+
+.required {
+    color: #dc3545;
+}
+
+.help-text {
+    color: #6c757d;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.skill-checkbox {
+    display: flex;
+    align-items: center;
+}
+
+.skill-checkbox input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.skill-checkbox label {
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.form-actions {
+    margin-top: 30px;
+}
+
+.btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('profile-form');
+    const loading = document.getElementById('loading');
+    const errorMessage = document.getElementById('error-message');
+    const successMessage = document.getElementById('success-message');
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const formData = new FormData(form);
+        
+        // Validate at least one skill is selected
+        const selectedSkills = formData.getAll('skills[]');
+        if (selectedSkills.length === 0) {
+            errorMessage.textContent = 'Please select at least one skill.';
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+            return;
+        }
+        
+        // Show loading
+        loading.style.display = 'block';
+        errorMessage.style.display = 'none';
+        successMessage.style.display = 'none';
+        
+        try {
+            const response = await fetch('/profile/update', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            loading.style.display = 'none';
+            
+            if (data.success) {
+                successMessage.textContent = data.message;
+                successMessage.style.display = 'block';
+                
+                // Redirect to home after a short delay
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("main.home") }}';
+                }, 1000);
+            } else {
+                errorMessage.textContent = data.error;
+                errorMessage.style.display = 'block';
+            }
+        } catch (error) {
+            loading.style.display = 'none';
+            errorMessage.textContent = 'Failed to update profile. Please try again.';
+            errorMessage.style.display = 'block';
+        }
+    });
+});
+</script>
+{% endblock %}

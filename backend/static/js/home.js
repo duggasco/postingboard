@@ -109,7 +109,7 @@
                 ${idea.reward ? `<div class="reward">Reward: ${utils.escapeHtml(idea.reward)}</div>` : ''}
                 
                 <div class="idea-footer">
-                    <span>Submitted: ${utils.formatDate(idea.date_submitted)}</span>
+                    <span>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</span>
                     ${idea.needed_by ? `<span>Needed by: ${utils.formatDate(idea.needed_by)}</span>` : ''}
                 </div>
                 

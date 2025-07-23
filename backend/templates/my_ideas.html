@@ -205,8 +205,9 @@
                 </p>
                 
                 <div class="idea-footer">
-                    <span>Submitted: ${utils.formatDate(idea.date_submitted)}</span>
-                    ${idea.claim_info && idea.claim_info.claimer_team ? `<span>Claimed for: ${utils.escapeHtml(idea.claim_info.claimer_team)}</span>` : ''}
+                    <span>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</span>
+                    ${idea.claims && idea.claims.length > 0 ? `<span>Claimed by: ${utils.escapeHtml(idea.claims[0].name)}</span>` : ''}
+                    ${idea.claim_info && idea.claim_info.claimer_team ? `<span>Team: ${utils.escapeHtml(idea.claim_info.claimer_team)}</span>` : ''}
                 </div>
                 
                 <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>

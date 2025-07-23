@@ -39,8 +39,8 @@ The `start-flask.sh` script handles Python version detection and virtual environ
 blueprints/
 ├── main.py          # Main routes (home, submit, claim, etc.)
 ├── api.py           # REST API endpoints for AJAX calls
-└── admin.py         # Admin panel routes
-```
+├── admin.py         # Admin panel routes
+└── auth.py          # Authentication routes (verify email, profile)
 
 #### Templates Structure
 ```
@@ -50,32 +50,48 @@ templates/
 ├── submit.html      # Submit new ideas
 ├── my_ideas.html    # View submitted and claimed ideas
 ├── idea_detail.html # Individual idea view
-└── admin/           # Admin panel templates
-    ├── login.html
-    ├── dashboard.html
-    ├── ideas.html
-    └── skills.html
+├── admin/           # Admin panel templates
+│   ├── login.html
+│   ├── dashboard.html
+│   ├── ideas.html
+│   └── skills.html
+└── auth/            # Authentication templates
+    ├── verify_email.html  # Email verification page
+    └── profile.html       # User profile management
 ```
 
-#### Database Models (unchanged from original)
+#### Database Models
 - **Idea**: Main entity with title, description, priority, size, status
-- **Skill**: Many-to-many relationship with ideas
+- **Skill**: Many-to-many relationship with ideas and users
 - **Claim**: Tracks who claimed which idea
+- **UserProfile**: Stores user email, name, verification status, and skills
+- **VerificationCode**: Tracks email verification codes with expiry and rate limiting
 - **Enums**: PriorityLevel, IdeaSize, IdeaStatus
 
 ### Flask-Specific Features
 
 #### API Endpoints
 - `/api/ideas` - Get filtered ideas list
-- `/api/my-ideas` - Get user's submitted and claimed ideas
+- `/api/my-ideas` - Get user's submitted and claimed ideas (requires authentication)
 - `/api/skills` - Get all available skills
 - `/api/admin/stats` - Get dashboard statistics
 - RESTful design with JSON responses
+
+#### Authentication Endpoints
+- `/verify-email` - Email verification page
+- `/request-code` - Request verification code (POST)
+- `/verify-code` - Verify submitted code (POST)
+- `/profile` - User profile page (requires authentication)
+- `/profile/update` - Update user profile (POST, requires authentication)
+- `/logout` - Clear session and logout
 
 #### Session Management
 - Tracks submitted idea IDs in `session['submitted_ideas']`
 - Tracks claimed idea IDs in `session['claimed_ideas']`
 - Stores user email in `session['user_email']` for persistence
+- Stores user name in `session['user_name']` after profile completion
+- Stores verification status in `session['user_verified']`
+- Stores user skills in `session['user_skills']` as list of skill names
 - Admin authentication with `session['is_admin']`
 - Session data provides immediate access within same browser session
 - Database persistence ensures data is never lost
@@ -97,16 +113,38 @@ templates/
 #### Admin Features
 - Password authentication (password: "2929arch")
 - Dashboard with charts and statistics
-- Idea management with inline editing
+- Idea management with inline editing (shows ALL ideas, not just open ones)
 - Skill management (add/edit/delete)
 - Real-time updates
 
-### Styling
+### Styling & UI Design
 - Custom CSS in `static/css/styles.css`
-- Responsive design with CSS Grid and Flexbox
-- Hover effects for interactive elements
-- Modal dialogs for claims
-- Consistent color scheme for priorities/statuses
+- **Modern Professional Design**: 
+  - Smaller, consistent typography (base 14px)
+  - Refined color palette with subtle backgrounds
+  - Enhanced shadows and transitions
+- **Typography Scale**:
+  - Body text: 14px
+  - Navigation: 13px
+  - Metadata: 12px
+  - Labels/badges: 11px uppercase
+  - Page titles: 1.75rem
+- **Visual Improvements**:
+  - Navigation bar: Dark #1a1d23 background
+  - Primary color: #4a90e2 (professional blue)
+  - Status badges: Soft backgrounds instead of solid colors
+  - Border radius: 10-12px for modern appearance
+  - Subtle hover effects with translateY animations
+- **Layout**:
+  - Responsive CSS Grid (320px min card width)
+  - Consistent spacing (16px gaps)
+  - Proper flex alignment in cards
+  - Professional table styling with uppercase headers
+- **Interactive Elements**:
+  - Form inputs with focus shadows
+  - Buttons with hover transforms
+  - Modal dialogs with backdrop blur
+  - Smooth 0.2s ease transitions
 
 ## Docker Configuration
 
@@ -152,18 +190,46 @@ The application will be accessible at http://localhost:9094
 
 ## Key Features
 
+### Submitter and Claimer Display
+- **Submitter Names**: Ideas display the name of the person who submitted them
+  - Shows user profile name if available
+  - Falls back to email address for legacy ideas
+  - Displayed on: home page, idea details, my ideas, admin panel
+- **Claimer Information**: Claimed ideas show who claimed them
+  - Displays claimer name and email
+  - Shows claim date
+  - Visible on all idea views
+- **Database Relationship**: `Idea.submitter` relationship links to `UserProfile` via email
+- **API Response**: Both `/api/ideas` and `/api/my-ideas` include:
+  - `submitter_name`: Name from user profile (null if no profile)
+  - `claims`: Array with name, email, and date for each claim
+
+### Email-Based Authentication System
+- **Email Verification**: Users verify their email with a 6-digit code
+- **No Passwords**: Authentication is purely email-based for simplicity
+- **Verification Codes**: 
+  - 6-digit numeric codes sent via email
+  - Expire after 3 minutes
+  - Maximum 3 active codes per email
+  - 15-minute cooldown after rate limit
+- **Profile System**: Users create profiles with name and skills
+- **Protected Routes**: Submit and claim features require authentication
+- **Claim Authentication**: Users must be logged in with a complete profile to claim ideas
+
 ### Session-Based Tracking
 - Ideas submitted by users tracked in session
 - Claims tracked separately in session
+- User profile data stored in session after authentication
 - Email stored for cross-session persistence
-- No user accounts required
 
 ### Database Persistence
 - **Ideas table**: Stores submitter's email in `email` column (required field)
 - **Claims table**: Stores claimer's email in `claimer_email` column (required field)
+- **UserProfile table**: Stores user email, name, verification status, and skills
+- **VerificationCode table**: Tracks verification attempts with timestamps
 - All submitted ideas permanently associated with submitter's email
 - All claims permanently associated with claimer's email
-- Enables cross-session access without user accounts
+- User profiles enable consistent identity across sessions
 
 ### Email Lookup
 - My Ideas page shows email lookup when no session data
@@ -195,14 +261,15 @@ docker compose -f docker-compose-flask.yml up -d
 ### Public Endpoints
 - `GET /api/ideas` - List ideas with filters
   - Query params: `skill`, `priority`, `status`, `sort`
-- `GET /api/my-ideas` - Get user's submitted and claimed ideas
+  - Note: If no status param provided, returns ALL ideas (changed from defaulting to 'open')
+- `GET /api/my-ideas` - Get user's submitted and claimed ideas (requires authentication)
   - Query params: `email` (optional for email-based lookup)
   - Returns: Array of ideas with `relationship` field (submitted/claimed/both)
   - Includes `claim_info` for claimed ideas
 - `GET /api/skills` - List all available skills
-- `POST /idea/<id>/claim` - Claim an idea
-  - Updates session with claimed idea ID and email
-  - Stores claimer email in database
+- `POST /idea/<id>/claim` - Claim an idea (requires complete profile)
+  - Uses session email and name
+  - Stores claimer information in database
 
 ### Admin Endpoints
 - `GET /api/admin/stats` - Dashboard statistics
@@ -231,10 +298,12 @@ docker compose -f docker-compose-flask.yml up -d
 2. File upload capabilities
 3. Export functionality (CSV/Excel)
 4. Advanced filtering with date ranges
-5. User authentication system
-6. Email templates
+5. Password-based authentication option
+6. Custom email templates
 7. Audit logging
 8. Performance monitoring
+9. OAuth integration (Google, GitHub)
+10. Team management features
 
 ## Debug Tips
 - Enable Flask debug mode in `dash_app.py`
@@ -310,6 +379,80 @@ This issue affects all enum-based filters (priority, status, size) throughout th
 - Navigate to `/admin/login`
 - Password: `2929arch`
 - After login, redirects to `/admin/dashboard`
+
+### Admin Dashboard Statistics Fix
+The admin dashboard statistics may show blank values on page refresh due to timing issues. This was fixed by implementing a robust retry mechanism with multiple loading strategies:
+
+1. **Retry Logic**: Up to 5 retries with 200ms delays to ensure DOM elements are rendered
+2. **Multiple Loading Strategies**: Uses window.load, requestAnimationFrame, and delays
+3. **Chart Instance Management**: Prevents duplicate chart instances on refresh
+4. **Element Verification**: Checks all elements exist before proceeding
+
+**Implementation in `/templates/admin/dashboard.html`**:
+```javascript
+(function() {
+    let chartInstance = null; // Store chart instance to prevent duplicates
+    
+    async function loadStats() {
+        let retries = 0;
+        const maxRetries = 5;
+        
+        while (retries < maxRetries) {
+            const elements = {
+                totalIdeas: ensureElement('total-ideas'),
+                openIdeas: ensureElement('open-ideas'),
+                // ... other elements
+            };
+            
+            const allElementsExist = Object.values(elements).every(el => el !== null);
+            
+            if (allElementsExist) {
+                // Destroy existing chart if it exists
+                if (chartInstance) {
+                    chartInstance.destroy();
+                    chartInstance = null;
+                }
+                
+                // Load stats and create chart...
+                return; // Success
+            }
+            
+            // Retry after delay
+            retries++;
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+    }
+    
+    function initStats() {
+        // Strategy 1: If page complete, wait then load
+        if (document.readyState === 'complete') {
+            setTimeout(loadStats, 250);
+        }
+        
+        // Strategy 2: Window load event
+        window.addEventListener('load', () => setTimeout(loadStats, 250));
+        
+        // Strategy 3: RequestAnimationFrame for render completion
+        if (typeof requestAnimationFrame !== 'undefined') {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => loadStats());
+            });
+        }
+    }
+})();
+```
+
+This multi-layered approach ensures statistics load reliably even on fast page refreshes by:
+- Retrying up to 5 times if elements aren't found
+- Using multiple browser APIs to detect when rendering is complete
+- Properly managing Chart.js instances to prevent memory leaks
+- Providing clear console logging for debugging
+
+### Admin Ideas Management
+The admin ideas management page (`/admin/ideas`) displays ALL ideas in the system, not just open ones. This was achieved by:
+- Removing the default `status='open'` filter from the `/api/ideas` endpoint
+- Explicitly passing an empty status parameter in the admin JavaScript: `/api/ideas?status=`
+- The home page continues to default to showing only open ideas via the HTML select default
 
 The Flask implementation provides a traditional web application architecture with server-side rendering and REST APIs for dynamic functionality.
 
@@ -403,3 +546,117 @@ Updated for Python 3.12 compatibility:
 ### Known Issues and Solutions
 1. **"Failed to import site module" error**: This occurs when trying to use a locally built Python with missing dependencies. Solution: Use system Python (3.8+) instead.
 2. **numpy/pandas compatibility**: Earlier versions (numpy 1.24.3, pandas 2.0.3) don't support Python 3.12. Solution: Use the updated flexible version ranges.
+
+## Authentication System Details
+
+### User Flow
+1. **First Visit**: User accesses the site anonymously and can browse ideas
+2. **Authentication Required**: When trying to submit/claim, redirected to `/verify-email`
+3. **Email Verification**: 
+   - User enters email address
+   - System sends 6-digit code (console output if no SMTP configured)
+   - User enters code within 3 minutes
+4. **Profile Creation**: After verification, user completes profile with name and skills
+5. **Full Access**: User can now submit ideas and claim others' ideas
+6. **Session Persistence**: User remains logged in for 7 days (session timeout)
+
+### Security Features
+- **No Password Storage**: System doesn't store or manage passwords
+- **Rate Limiting**: Prevents brute force attempts on verification codes
+- **Code Expiry**: Verification codes expire after 3 minutes
+- **Session Security**: HTTPOnly cookies prevent XSS attacks
+- **Email Validation**: Basic validation on both client and server side
+
+### Authentication Decorators
+- `@require_verified_email`: Ensures user has verified their email
+- `@require_profile_complete`: Ensures user has name and skills in profile
+- Applied to routes: `/submit`, `/my-ideas`, `/api/my-ideas`, `/idea/<id>/claim`
+- AJAX Detection: Decorators check for `X-Requested-With: XMLHttpRequest` header or JSON content type
+- Returns JSON with 401 status for AJAX requests, redirects to `/verify-email` for regular requests
+
+### Frontend Authentication Handling
+- Claim button in `idea_detail.html` checks for 401 responses
+- On authentication error, shows alert and redirects to `/verify-email`
+- Modal form pre-fills user name from session if available
+
+### Testing Authentication
+```bash
+# Test with curl
+curl -X POST http://localhost:9094/request-code -d "email=test@example.com"
+
+# Check Docker logs for verification code
+docker logs postingboard-flask-app-1 | grep -A3 "Verification code"
+
+# Verify code
+curl -X POST http://localhost:9094/verify-code -d "code=123456" -b cookies.txt -c cookies.txt
+
+# Test claiming without authentication
+curl -X POST http://localhost:9094/idea/1/claim -H "X-Requested-With: XMLHttpRequest" -d "name=Test&team=Team"
+# Returns: {"error":"Authentication required."} with 401 status
+```
+
+### Submitter/Claimer Implementation Details
+
+#### Model Relationship
+```python
+# In models/__init__.py
+class Idea(Base):
+    # ... other fields ...
+    email = Column(String(120), nullable=False)
+    submitter = relationship('UserProfile', foreign_keys=[email], 
+                           primaryjoin="Idea.email==UserProfile.email", viewonly=True)
+```
+
+#### Frontend Display
+- **Home Page (`home.js`)**: Shows "Submitted by [Name]: [Date]"
+- **Idea Detail (`idea_detail.html`)**: Shows full submitter info with fallback to email
+- **My Ideas (`my_ideas.html`)**: Shows both submitter and claimer names
+- **Admin Panel (`admin/ideas.html`)**: Shows "Name (email)" format
+
+#### API Response Structure
+```json
+{
+  "id": 1,
+  "title": "Example Idea",
+  "submitter_name": "Jane Doe",  // null if no profile
+  "email": "jane@example.com",
+  "claims": [
+    {
+      "name": "John Developer",
+      "email": "john@example.com",
+      "date": "2025-07-23"
+    }
+  ]
+}
+```
+
+### UI Design System
+
+#### Color Palette
+- **Primary**: #4a90e2 (Professional blue)
+- **Navigation**: #1a1d23 (Dark navy)
+- **Background**: #f8f9fa (Light gray)
+- **Text**: #1a1d23 (titles), #6c757d (meta), #868e96 (secondary)
+- **Borders**: #e9ecef (light), #dee2e6 (medium)
+- **Status Colors**:
+  - Open: #e7f5ed bg, #28a745 text
+  - Claimed: #fff3cd bg, #856404 text
+  - Complete: #e9ecef bg, #495057 text
+- **Priority Colors**:
+  - High: #dc3545 (red)
+  - Medium: #f0ad4e (orange)
+  - Low: #28a745 (green)
+
+#### Design Principles
+1. **Minimalist**: Clean, uncluttered interface
+2. **Consistent**: Unified spacing, typography, and colors
+3. **Professional**: Enterprise-appropriate aesthetics
+4. **Accessible**: High contrast, clear hierarchy
+5. **Responsive**: Mobile-first design approach
+
+#### Component Styling
+- **Cards**: White background, subtle border, 10px radius
+- **Buttons**: 8px padding, 6px radius, hover transforms
+- **Forms**: 6px radius inputs with focus shadows
+- **Tables**: Alternating row colors, uppercase headers
+- **Modals**: 12px radius, backdrop shadow

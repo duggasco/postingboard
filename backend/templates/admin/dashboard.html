@@ -11,8 +11,8 @@
     
     <div class="admin-nav">
         <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
-        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
         <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+        <a href="{{ url_for('admin.email_settings') }}" class="admin-nav-link">Email Settings</a>
     </div>
     
     <div id="stats-container" class="stats-grid">
@@ -39,55 +39,331 @@
     </div>
     
     <div style="margin-top: 40px;">
-        <h3>Status Distribution</h3>
-        <canvas id="status-chart" width="400" height="200"></canvas>
+        <h3>Manage Ideas</h3>
+        <div id="ideas-table-container">
+            <div class="loading">Loading ideas...</div>
+        </div>
+        <div id="pagination-container" style="margin-top: 20px; text-align: center;"></div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Load dashboard statistics
-async function loadStats() {
-    try {
-        const stats = await utils.fetchJson('/api/stats');
+// Dashboard statistics loading
+(function() {
+    // Ensure DOM elements exist before accessing them
+    function ensureElement(id) {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.error(`Element with id '${id}' not found`);
+        }
+        return element;
+    }
+
+    // Load dashboard statistics
+    async function loadStats() {
+        console.log('Loading stats... readyState:', document.readyState);
         
-        // Update stat cards
-        document.getElementById('total-ideas').textContent = stats.total_ideas;
-        document.getElementById('open-ideas').textContent = stats.open_ideas;
-        document.getElementById('claimed-ideas').textContent = stats.claimed_ideas;
-        document.getElementById('complete-ideas').textContent = stats.complete_ideas;
-        document.getElementById('total-skills').textContent = stats.total_skills;
+        // Double-check elements exist with retry logic
+        let retries = 0;
+        const maxRetries = 5;
         
-        // Create pie chart
-        const ctx = document.getElementById('status-chart').getContext('2d');
-        new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['Open', 'Claimed', 'Complete'],
-                datasets: [{
-                    data: [stats.open_ideas, stats.claimed_ideas, stats.complete_ideas],
-                    backgroundColor: ['#28a745', '#ffc107', '#6c757d']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
+        while (retries < maxRetries) {
+            const elements = {
+                totalIdeas: ensureElement('total-ideas'),
+                openIdeas: ensureElement('open-ideas'),
+                claimedIdeas: ensureElement('claimed-ideas'),
+                completeIdeas: ensureElement('complete-ideas'),
+                totalSkills: ensureElement('total-skills')
+            };
+            
+            // Check if all elements exist
+            const allElementsExist = Object.values(elements).every(el => el !== null);
+            
+            if (allElementsExist) {
+                // All elements found, proceed with loading stats
+                try {
+                    const response = await fetch('/api/stats');
+                    console.log('Response status:', response.status);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
+                    
+                    const stats = await response.json();
+                    console.log('Stats data:', stats);
+                    
+                    // Update stat cards
+                    elements.totalIdeas.textContent = stats.total_ideas || 0;
+                    elements.openIdeas.textContent = stats.open_ideas || 0;
+                    elements.claimedIdeas.textContent = stats.claimed_ideas || 0;
+                    elements.completeIdeas.textContent = stats.complete_ideas || 0;
+                    elements.totalSkills.textContent = stats.total_skills || 0;
+                    
+                    console.log('Stats loaded successfully');
+                    return; // Success, exit the function
+                    
+                } catch (error) {
+                    console.error('Error loading statistics:', error);
+                    // Show error in UI
+                    if (elements.totalIdeas) elements.totalIdeas.textContent = 'Error';
+                    if (elements.openIdeas) elements.openIdeas.textContent = 'Error';
+                    if (elements.claimedIdeas) elements.claimedIdeas.textContent = 'Error';
+                    if (elements.completeIdeas) elements.completeIdeas.textContent = 'Error';
+                    if (elements.totalSkills) elements.totalSkills.textContent = 'Error';
+                    return; // Error occurred, exit
                 }
             }
+            
+            // Elements not found, retry after a delay
+            retries++;
+            console.log(`Elements not found, retry ${retries}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+        console.error('Failed to find all required DOM elements after retries');
+    }
+
+    // Initialize stats loading with multiple strategies
+    function initStats() {
+        // Strategy 1: If page is already complete, wait a bit then load
+        if (document.readyState === 'complete') {
+            console.log('Page already complete, loading stats after delay');
+            setTimeout(loadStats, 250);
+        }
+        
+        // Strategy 2: Wait for window load event (includes all resources)
+        window.addEventListener('load', function() {
+            console.log('Window load event fired');
+            setTimeout(loadStats, 250);
         });
         
+        // Strategy 3: Use requestAnimationFrame to ensure rendering is complete
+        if (typeof requestAnimationFrame !== 'undefined') {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    console.log('RequestAnimationFrame triggered');
+                    loadStats();
+                });
+            });
+        }
+    }
+
+    // Start initialization based on document state
+    if (document.readyState === 'loading') {
+        console.log('Document still loading, waiting for DOMContentLoaded');
+        document.addEventListener('DOMContentLoaded', initStats);
+    } else {
+        console.log('Document already loaded, initializing directly');
+        initStats();
+    }
+})();
+
+// Ideas management functionality
+let currentPage = 1;
+const itemsPerPage = 20;
+let allIdeas = [];
+
+async function loadIdeas() {
+    try {
+        // Explicitly request all ideas without status filter
+        const ideas = await utils.fetchJson('/api/ideas?status=');
+        allIdeas = ideas;
+        displayIdeas();
     } catch (error) {
-        console.error('Error loading statistics:', error);
+        console.error('Error loading ideas:', error);
+        document.getElementById('ideas-table-container').innerHTML = '<div class="error">Error loading ideas</div>';
     }
 }
 
-// Initialize
-loadStats();
+function displayIdeas() {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageIdeas = allIdeas.slice(start, end);
+    
+    if (pageIdeas.length === 0) {
+        document.getElementById('ideas-table-container').innerHTML = '<div class="empty-state">No ideas found</div>';
+        return;
+    }
+    
+    let tableHtml = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Team</th>
+                    <th>Priority</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Submitted By</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    pageIdeas.forEach(idea => {
+        const statusClass = `status-${idea.status}`;
+        tableHtml += `
+            <tr data-idea-id="${idea.id}">
+                <td>${idea.id}</td>
+                <td class="editable-cell" data-field="title">${utils.escapeHtml(idea.title)}</td>
+                <td class="editable-cell" data-field="team">${utils.escapeHtml(idea.benefactor_team)}</td>
+                <td class="editable-cell" data-field="priority">
+                    <select class="cell-select" data-field="priority">
+                        <option value="low" ${idea.priority === 'low' ? 'selected' : ''}>Low</option>
+                        <option value="medium" ${idea.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                        <option value="high" ${idea.priority === 'high' ? 'selected' : ''}>High</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="size">
+                    <select class="cell-select" data-field="size">
+                        <option value="small" ${idea.size === 'small' ? 'selected' : ''}>Small</option>
+                        <option value="medium" ${idea.size === 'medium' ? 'selected' : ''}>Medium</option>
+                        <option value="large" ${idea.size === 'large' ? 'selected' : ''}>Large</option>
+                        <option value="extra_large" ${idea.size === 'extra_large' ? 'selected' : ''}>Extra Large</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="status">
+                    <select class="cell-select ${statusClass}" data-field="status">
+                        <option value="open" ${idea.status === 'open' ? 'selected' : ''}>Open</option>
+                        <option value="claimed" ${idea.status === 'claimed' ? 'selected' : ''}>Claimed</option>
+                        <option value="complete" ${idea.status === 'complete' ? 'selected' : ''}>Complete</option>
+                    </select>
+                </td>
+                <td>${idea.submitter_name ? utils.escapeHtml(idea.submitter_name) + ' (' + utils.escapeHtml(idea.email) + ')' : utils.escapeHtml(idea.email)}</td>
+                <td>${utils.formatDate(idea.date_submitted)}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteIdea(${idea.id})">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableHtml += '</tbody></table>';
+    document.getElementById('ideas-table-container').innerHTML = tableHtml;
+    
+    // Add event listeners for editable cells
+    setupEditableCells();
+    
+    // Update pagination
+    updatePagination();
+}
+
+function setupEditableCells() {
+    // Text fields
+    document.querySelectorAll('.editable-cell[data-field]:not(:has(select))').forEach(cell => {
+        cell.addEventListener('click', function() {
+            if (this.querySelector('input')) return;
+            
+            const originalValue = this.textContent;
+            const field = this.dataset.field;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalValue;
+            input.className = 'cell-input';
+            
+            this.innerHTML = '';
+            this.appendChild(input);
+            input.focus();
+            input.select();
+            
+            const saveValue = async () => {
+                const newValue = input.value.trim();
+                if (newValue !== originalValue) {
+                    const ideaId = this.closest('tr').dataset.ideaId;
+                    await updateIdea(ideaId, field, newValue);
+                }
+                this.textContent = newValue || originalValue;
+            };
+            
+            input.addEventListener('blur', saveValue);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    input.blur();
+                }
+            });
+        });
+    });
+    
+    // Select fields
+    document.querySelectorAll('.cell-select').forEach(select => {
+        select.addEventListener('change', async function() {
+            const ideaId = this.closest('tr').dataset.ideaId;
+            const field = this.dataset.field;
+            const value = this.value;
+            
+            if (field === 'status') {
+                this.className = `cell-select status-${value}`;
+            }
+            
+            await updateIdea(ideaId, field, value);
+        });
+    });
+}
+
+async function updateIdea(ideaId, field, value) {
+    try {
+        const data = {};
+        data[field] = value;
+        
+        await utils.fetchJson(`/api/ideas/${ideaId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    } catch (error) {
+        console.error('Error updating idea:', error);
+        alert('Error updating idea. Please refresh and try again.');
+    }
+}
+
+async function deleteIdea(ideaId) {
+    if (!confirm('Are you sure you want to delete this idea?')) return;
+    
+    try {
+        await utils.fetchJson(`/api/ideas/${ideaId}`, {
+            method: 'DELETE'
+        });
+        loadIdeas();
+    } catch (error) {
+        console.error('Error deleting idea:', error);
+        alert('Error deleting idea. Please try again.');
+    }
+}
+
+function updatePagination() {
+    const totalPages = Math.ceil(allIdeas.length / itemsPerPage);
+    let paginationHtml = '';
+    
+    if (totalPages > 1) {
+        if (currentPage > 1) {
+            paginationHtml += `<button class="btn btn-secondary btn-sm" onclick="changePage(${currentPage - 1})">Previous</button> `;
+        }
+        
+        paginationHtml += `<span>Page ${currentPage} of ${totalPages}</span> `;
+        
+        if (currentPage < totalPages) {
+            paginationHtml += `<button class="btn btn-secondary btn-sm" onclick="changePage(${currentPage + 1})">Next</button>`;
+        }
+    }
+    
+    document.getElementById('pagination-container').innerHTML = paginationHtml;
+}
+
+function changePage(page) {
+    currentPage = page;
+    displayIdeas();
+}
+
+// Initialize ideas loading
+loadIdeas();
+
+// Auto-refresh every 5 seconds
+setInterval(loadIdeas, 5000);
 </script>
 {% endblock %}
