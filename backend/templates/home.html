@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Ideas - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <h2 class="page-title">Browse Ideas</h2>
+    
+    <div class="filters-section">
+        <div class="filter-group">
+            <label for="skill-filter">Filter by Skill:</label>
+            <select id="skill-filter" class="filter-select">
+                <option value="">All Skills</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="priority-filter">Filter by Priority:</label>
+            <select id="priority-filter" class="filter-select">
+                <option value="">All</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="status-filter">Filter by Status:</label>
+            <select id="status-filter" class="filter-select">
+                <option value="">All</option>
+                <option value="open" selected>Open</option>
+                <option value="claimed">Claimed</option>
+                <option value="complete">Complete</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="sort-by">Sort by:</label>
+            <select id="sort-by" class="filter-select">
+                <option value="date_desc">Date (Newest First)</option>
+                <option value="date_asc">Date (Oldest First)</option>
+                <option value="priority">Priority</option>
+                <option value="size">Size</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="ideas-container" class="ideas-grid">
+        <div class="loading">Loading ideas...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/home.js') }}"></script>
+{% endblock %}

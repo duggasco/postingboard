@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Skills - Admin - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Manage Skills</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+    </div>
+    
+    <div style="margin-bottom: 30px;">
+        <h3>Add New Skill</h3>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="new-skill-input" class="form-control" placeholder="Enter skill name" style="max-width: 300px;">
+            <button onclick="addSkill()" class="btn btn-primary">Add Skill</button>
+        </div>
+    </div>
+    
+    <div>
+        <h3>Existing Skills</h3>
+        <div id="skills-container">
+            <div class="loading">Loading skills...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Skills management
+let allSkills = [];
+
+async function loadSkills() {
+    try {
+        const skills = await utils.fetchJson('/api/skills');
+        allSkills = skills;
+        displaySkills();
+    } catch (error) {
+        console.error('Error loading skills:', error);
+        document.getElementById('skills-container').innerHTML = '<div class="error">Error loading skills</div>';
+    }
+}
+
+function displaySkills() {
+    if (allSkills.length === 0) {
+        document.getElementById('skills-container').innerHTML = '<div class="empty-state">No skills found</div>';
+        return;
+    }
+    
+    let html = '<div style="display: grid; gap: 10px; max-width: 600px;">';
+    
+    allSkills.forEach(skill => {
+        html += `
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
+                <input type="text" value="${utils.escapeHtml(skill.name)}" class="form-control" id="skill-${skill.id}" style="flex: 1;">
+                <button onclick="updateSkill(${skill.id})" class="btn btn-success btn-sm">Save</button>
+                <button onclick="deleteSkill(${skill.id})" class="btn btn-danger btn-sm">Delete</button>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    document.getElementById('skills-container').innerHTML = html;
+}
+
+async function addSkill() {
+    const input = document.getElementById('new-skill-input');
+    const name = input.value.trim();
+    
+    if (!name) {
+        alert('Please enter a skill name');
+        return;
+    }
+    
+    try {
+        await utils.fetchJson('/api/skills', {
+            method: 'POST',
+            body: JSON.stringify({ name })
+        });
+        
+        input.value = '';
+        loadSkills();
+    } catch (error) {
+        console.error('Error adding skill:', error);
+        alert('Error adding skill. It may already exist.');
+    }
+}
+
+async function updateSkill(skillId) {
+    const input = document.getElementById(`skill-${skillId}`);
+    const name = input.value.trim();
+    
+    if (!name) {
+        alert('Skill name cannot be empty');
+        loadSkills();
+        return;
+    }
+    
+    try {
+        await utils.fetchJson(`/api/skills/${skillId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name })
+        });
+        
+        alert('Skill updated successfully');
+    } catch (error) {
+        console.error('Error updating skill:', error);
+        alert('Error updating skill. Please try again.');
+        loadSkills();
+    }
+}
+
+async function deleteSkill(skillId) {
+    if (!confirm('Are you sure you want to delete this skill?')) return;
+    
+    try {
+        await utils.fetchJson(`/api/skills/${skillId}`, {
+            method: 'DELETE'
+        });
+        
+        loadSkills();
+    } catch (error) {
+        console.error('Error deleting skill:', error);
+        alert('Cannot delete skill. It may be in use by existing ideas.');
+    }
+}
+
+// Allow Enter key to add skill
+document.getElementById('new-skill-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        addSkill();
+    }
+});
+
+// Initialize
+loadSkills();
+
+// Auto-refresh every 2 seconds
+setInterval(loadSkills, 2000);
+</script>
+{% endblock %}

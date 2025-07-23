@@ -8,8 +8,11 @@ RUN pip install gunicorn
 
 COPY ./backend .
 
+# Create flask_session directory
+RUN mkdir -p flask_session
+
 RUN python database.py
 
 EXPOSE 9094
 
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:9094", "dash_app:server"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:9094", "app:create_app()"]

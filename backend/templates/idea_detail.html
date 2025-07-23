@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}{{ idea.title }} - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <a href="{{ url_for('main.home') }}" style="display: inline-block; margin-bottom: 20px;">← Back to All Ideas</a>
+    
+    <div class="idea-header" style="margin-bottom: 30px;">
+        <h2 class="page-title" style="margin-bottom: 10px;">{{ idea.title }}</h2>
+        <span class="status-badge status-{{ idea.status.value }}">{{ idea.status.value.upper() }}</span>
+    </div>
+    
+    <div class="idea-meta" style="margin-bottom: 20px;">
+        <span class="priority-badge priority-{{ idea.priority.value }}">Priority: {{ idea.priority.value }}</span>
+        <span>Size: {{ idea.size.value.replace('_', ' ') }}</span>
+        <span>Team: {{ idea.benefactor_team }}</span>
+    </div>
+    
+    {% if idea.skills %}
+    <div class="skills-tags" style="margin-bottom: 20px;">
+        {% for skill in idea.skills %}
+        <span class="skill-tag">{{ skill.name }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div style="margin-bottom: 20px;">
+        <strong>Submitted:</strong> {{ idea.date_submitted.strftime('%B %d, %Y') }}
+        {% if idea.needed_by %}
+        <br><strong>Needed by:</strong> {{ idea.needed_by.strftime('%B %d, %Y') }}
+        {% endif %}
+    </div>
+    
+    {% if idea.reward %}
+    <div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+        <strong>Reward:</strong> {{ idea.reward }}
+    </div>
+    {% endif %}
+    
+    <div style="margin-bottom: 30px;">
+        <h3>Description</h3>
+        <p style="white-space: pre-wrap;">{{ idea.description }}</p>
+    </div>
+    
+    {% if idea.claims %}
+    <div style="margin-bottom: 30px;">
+        <h3>Claim History</h3>
+        <ul>
+            {% for claim in idea.claims %}
+            <li>
+                Claimed by <strong>{{ claim.claimer_name }}</strong> 
+                {% if claim.claimer_team %}({{ claim.claimer_team }}){% endif %}
+                on {{ claim.claim_date.strftime('%B %d, %Y') }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    {% if idea.status.value == 'open' %}
+    <div style="margin-top: 30px;">
+        <button id="claim-btn" class="btn btn-primary">Claim This Idea</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Claim Modal -->
+<div id="claim-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Claim This Idea</h3>
+            <button class="modal-close" onclick="closeClaimModal()">&times;</button>
+        </div>
+        
+        <form id="claim-form">
+            <div class="form-group">
+                <label for="claim-name">Your Name <span style="color: red;">*</span></label>
+                <input type="text" id="claim-name" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="claim-email">Your Email <span style="color: red;">*</span></label>
+                <input type="email" id="claim-email" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="claim-team">Your Team</label>
+                <input type="text" id="claim-team" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="claim-skills">Your Skills</label>
+                <textarea id="claim-skills" class="form-control" rows="3" placeholder="List your relevant skills..."></textarea>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Submit Claim</button>
+                <button type="button" class="btn btn-secondary" onclick="closeClaimModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Claim functionality
+const claimBtn = document.getElementById('claim-btn');
+const claimModal = document.getElementById('claim-modal');
+const claimForm = document.getElementById('claim-form');
+
+if (claimBtn) {
+    claimBtn.addEventListener('click', function() {
+        claimModal.classList.add('active');
+    });
+}
+
+function closeClaimModal() {
+    claimModal.classList.remove('active');
+    claimForm.reset();
+}
+
+// Close modal on outside click
+claimModal.addEventListener('click', function(e) {
+    if (e.target === claimModal) {
+        closeClaimModal();
+    }
+});
+
+// Handle claim submission
+if (claimForm) {
+    claimForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append('name', document.getElementById('claim-name').value);
+        formData.append('email', document.getElementById('claim-email').value);
+        formData.append('team', document.getElementById('claim-team').value);
+        formData.append('skills', document.getElementById('claim-skills').value);
+        
+        try {
+            const response = await fetch(`/idea/{{ idea.id }}/claim`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Idea claimed successfully!');
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            alert('Error claiming idea. Please try again.');
+            console.error('Error:', error);
+        }
+    });
+}
+</script>
+{% endblock %}

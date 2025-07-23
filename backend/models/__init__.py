@@ -12,15 +12,15 @@ class PriorityLevel(enum.Enum):
     high = "high"
 
 class IdeaSize(enum.Enum):
-    SMALL = "small"
-    MEDIUM = "medium"
-    LARGE = "large"
-    EXTRA_LARGE = "extra_large"
+    small = "small"
+    medium = "medium"
+    large = "large"
+    extra_large = "extra_large"
 
 class IdeaStatus(enum.Enum):
-    OPEN = "open"
-    CLAIMED = "claimed"
-    COMPLETE = "complete"
+    open = "open"
+    claimed = "claimed"
+    complete = "complete"
 
 idea_skills = Table('idea_skills', Base.metadata,
     Column('idea_id', Integer, ForeignKey('ideas.id'), primary_key=True),
@@ -39,7 +39,7 @@ class Idea(Base):
     reward = Column(String(200))
     needed_by = Column(DateTime, nullable=False)
     priority = Column(Enum(PriorityLevel), nullable=False)
-    status = Column(Enum(IdeaStatus), default=IdeaStatus.OPEN)
+    status = Column(Enum(IdeaStatus), default=IdeaStatus.open)
     date_submitted = Column(DateTime, default=datetime.utcnow)
     
     skills = relationship('Skill', secondary=idea_skills, back_populates='ideas')

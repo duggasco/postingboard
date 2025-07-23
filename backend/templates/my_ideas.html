@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}My Ideas - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <h2 class="page-title">My Submitted Ideas</h2>
+    
+    <!-- Email lookup section (hidden by default) -->
+    <div id="email-lookup-section" style="display: none; margin-bottom: 30px; text-align: center;">
+        <p>Or lookup your ideas by email:</p>
+        <div style="display: flex; justify-content: center; gap: 10px; max-width: 500px; margin: 0 auto;">
+            <input type="email" id="email-lookup" placeholder="Enter your email address" style="flex: 1; padding: 8px;">
+            <button id="lookup-btn" class="btn btn-primary">Lookup Ideas</button>
+        </div>
+        <div id="lookup-error" style="color: red; margin-top: 10px; display: none;"></div>
+    </div>
+    
+    <div id="stats-container" class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <div class="stat-card">
+            <h3 id="submitted-count">0</h3>
+            <p>Submitted</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="claimed-by-me-count">0</h3>
+            <p>Claimed by Me</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="open-count">0</h3>
+            <p>Open</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="complete-count">0</h3>
+            <p>Complete</p>
+        </div>
+    </div>
+    
+    <div id="my-ideas-container" class="ideas-grid">
+        <div class="loading">Loading your ideas...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.relationship-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    // Elements
+    const ideasContainer = document.getElementById('my-ideas-container');
+    const submittedCount = document.getElementById('submitted-count');
+    const claimedByMeCount = document.getElementById('claimed-by-me-count');
+    const openCount = document.getElementById('open-count');
+    const completeCount = document.getElementById('complete-count');
+    const emailLookupSection = document.getElementById('email-lookup-section');
+    const emailInput = document.getElementById('email-lookup');
+    const lookupBtn = document.getElementById('lookup-btn');
+    const lookupError = document.getElementById('lookup-error');
+    
+    // Track current email for auto-refresh
+    let currentEmail = null;
+    
+    // Load user's ideas
+    async function loadMyIdeas(email = null) {
+        try {
+            let url = '/api/my-ideas';
+            if (email) {
+                url += `?email=${encodeURIComponent(email)}`;
+            }
+            const ideas = await utils.fetchJson(url);
+            
+            if (ideas.length === 0 && !email) {
+                // Show email lookup option when no session ideas found
+                emailLookupSection.style.display = 'block';
+                ideasContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No ideas found in your current session</h3>
+                        <p><a href="/submit" class="btn btn-primary">Submit your first idea</a></p>
+                    </div>
+                `;
+                submittedCount.textContent = '0';
+                claimedByMeCount.textContent = '0';
+                openCount.textContent = '0';
+                completeCount.textContent = '0';
+                return;
+            } else if (ideas.length === 0 && email) {
+                // No ideas found for this email
+                ideasContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No ideas found for email: ${utils.escapeHtml(email)}</h3>
+                        <p><a href="/submit" class="btn btn-primary">Submit your first idea</a></p>
+                    </div>
+                `;
+                submittedCount.textContent = '0';
+                claimedByMeCount.textContent = '0';
+                openCount.textContent = '0';
+                completeCount.textContent = '0';
+                return;
+            }
+            
+            // Hide email lookup section when ideas are found
+            if (ideas.length > 0) {
+                emailLookupSection.style.display = 'none';
+                currentEmail = email; // Track current email for auto-refresh
+            }
+            
+            // Calculate stats
+            const stats = {
+                submitted: 0,
+                claimedByMe: 0,
+                open: 0,
+                complete: 0
+            };
+            
+            ideas.forEach(idea => {
+                // Count by relationship
+                if (idea.relationship === 'submitted' || idea.relationship === 'both') {
+                    stats.submitted++;
+                }
+                if (idea.relationship === 'claimed' || idea.relationship === 'both') {
+                    stats.claimedByMe++;
+                }
+                
+                // Count by status
+                if (idea.status === 'open') {
+                    stats.open++;
+                } else if (idea.status === 'complete') {
+                    stats.complete++;
+                }
+            });
+            
+            // Update stats
+            submittedCount.textContent = stats.submitted;
+            claimedByMeCount.textContent = stats.claimedByMe;
+            openCount.textContent = stats.open;
+            completeCount.textContent = stats.complete;
+            
+            // Display ideas
+            ideasContainer.innerHTML = ideas.map(idea => createIdeaCard(idea)).join('');
+            
+        } catch (error) {
+            console.error('Error loading ideas:', error);
+            ideasContainer.innerHTML = '<div class="error">Error loading your ideas. Please try again.</div>';
+        }
+    }
+    
+    // Create idea card HTML (similar to home page)
+    function createIdeaCard(idea) {
+        const statusClass = `status-${idea.status}`;
+        const priorityClass = `priority-${idea.priority}`;
+        
+        const skillsHtml = idea.skills.map(skill => 
+            `<span class="skill-tag">${utils.escapeHtml(skill.name)}</span>`
+        ).join('');
+        
+        // Relationship indicator
+        let relationshipBadge = '';
+        let borderColor = '';
+        if (idea.relationship === 'submitted') {
+            relationshipBadge = '<span class="relationship-badge" style="background-color: #007bff;">Submitted by Me</span>';
+            borderColor = '#007bff';
+        } else if (idea.relationship === 'claimed') {
+            relationshipBadge = '<span class="relationship-badge" style="background-color: #28a745;">Claimed by Me</span>';
+            borderColor = '#28a745';
+            // Add claim date if available
+            if (idea.claim_info && idea.claim_info.claim_date) {
+                relationshipBadge += `<span style="font-size: 12px; color: #666; margin-left: 10px;">Claimed: ${utils.formatDate(idea.claim_info.claim_date)}</span>`;
+            }
+        } else if (idea.relationship === 'both') {
+            relationshipBadge = '<span class="relationship-badge" style="background-color: #6c757d;">Submitted & Claimed by Me</span>';
+            borderColor = '#6c757d';
+        }
+        
+        return `
+            <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'" style="border-left: 4px solid ${borderColor};">
+                <div class="idea-header">
+                    <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
+                    <span class="status-badge ${statusClass}">${idea.status.toUpperCase()}</span>
+                </div>
+                
+                ${relationshipBadge}
+                
+                <div class="idea-meta" style="margin-top: 10px;">
+                    <span class="priority-badge ${priorityClass}">Priority: ${idea.priority}</span>
+                    <span>Size: ${idea.size.replace('_', ' ')}</span>
+                    <span>Team: ${utils.escapeHtml(idea.benefactor_team)}</span>
+                </div>
+                
+                ${skillsHtml ? `<div class="skills-tags">${skillsHtml}</div>` : ''}
+                
+                <p class="idea-description">
+                    ${utils.escapeHtml(idea.description.substring(0, 150))}${idea.description.length > 150 ? '...' : ''}
+                </p>
+                
+                <div class="idea-footer">
+                    <span>Submitted: ${utils.formatDate(idea.date_submitted)}</span>
+                    ${idea.claim_info && idea.claim_info.claimer_team ? `<span>Claimed for: ${utils.escapeHtml(idea.claim_info.claimer_team)}</span>` : ''}
+                </div>
+                
+                <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        `;
+    }
+    
+    // Handle email lookup
+    lookupBtn.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        if (!email) {
+            lookupError.textContent = 'Please enter a valid email address';
+            lookupError.style.display = 'block';
+            return;
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            lookupError.textContent = 'Please enter a valid email address';
+            lookupError.style.display = 'block';
+            return;
+        }
+        
+        lookupError.style.display = 'none';
+        ideasContainer.innerHTML = '<div class="loading">Loading your ideas...</div>';
+        
+        // Load ideas for this email
+        await loadMyIdeas(email);
+    });
+    
+    // Handle enter key in email input
+    emailInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            lookupBtn.click();
+        }
+    });
+    
+    // Initialize
+    loadMyIdeas();
+    
+    // Auto-refresh every 30 seconds (only if not using email lookup)
+    setInterval(() => {
+        if (!currentEmail) {
+            loadMyIdeas();
+        } else {
+            loadMyIdeas(currentEmail);
+        }
+    }, 30000);
+})();
+</script>
+{% endblock %}

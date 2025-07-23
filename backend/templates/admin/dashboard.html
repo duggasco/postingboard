@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Admin Dashboard</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+    </div>
+    
+    <div id="stats-container" class="stats-grid">
+        <div class="stat-card">
+            <h3 id="total-ideas">-</h3>
+            <p>Total Ideas</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="open-ideas">-</h3>
+            <p>Open Ideas</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="claimed-ideas">-</h3>
+            <p>Claimed Ideas</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="complete-ideas">-</h3>
+            <p>Complete Ideas</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="total-skills">-</h3>
+            <p>Total Skills</p>
+        </div>
+    </div>
+    
+    <div style="margin-top: 40px;">
+        <h3>Status Distribution</h3>
+        <canvas id="status-chart" width="400" height="200"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Load dashboard statistics
+async function loadStats() {
+    try {
+        const stats = await utils.fetchJson('/api/stats');
+        
+        // Update stat cards
+        document.getElementById('total-ideas').textContent = stats.total_ideas;
+        document.getElementById('open-ideas').textContent = stats.open_ideas;
+        document.getElementById('claimed-ideas').textContent = stats.claimed_ideas;
+        document.getElementById('complete-ideas').textContent = stats.complete_ideas;
+        document.getElementById('total-skills').textContent = stats.total_skills;
+        
+        // Create pie chart
+        const ctx = document.getElementById('status-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Open', 'Claimed', 'Complete'],
+                datasets: [{
+                    data: [stats.open_ideas, stats.claimed_ideas, stats.complete_ideas],
+                    backgroundColor: ['#28a745', '#ffc107', '#6c757d']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+// Initialize
+loadStats();
+</script>
+{% endblock %}

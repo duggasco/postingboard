@@ -1,0 +1,17 @@
+services:
+  flask-app:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    ports:
+      - "9094:9094"
+    environment:
+      - DATABASE_URL=sqlite:///posting_board.db
+      - PYTHONUNBUFFERED=1
+      - FLASK_APP=app.py
+    volumes:
+      - ./backend/posting_board.db:/app/posting_board.db
+      - ./backend/flask_session:/app/flask_session
+      - ./backend/static:/app/static
+      - ./backend/templates:/app/templates
+    restart: unless-stopped
