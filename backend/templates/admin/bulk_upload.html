@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Upload - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Admin - Bulk Upload</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+        <a href="{{ url_for('admin.teams') }}" class="admin-nav-link">Manage Teams</a>
+        <a href="{{ url_for('admin.manager_requests') }}" class="admin-nav-link">Manager Requests</a>
+        <a href="{{ url_for('admin.email_settings') }}" class="admin-nav-link">Email Settings</a>
+        <a href="{{ url_for('admin.bulk_upload') }}" class="admin-nav-link active">Bulk Upload</a>
+    </div>
+    
+    <div class="admin-content">
+    <p class="subtitle">Import ideas and users from CSV files</p>
+    
+    <div class="bulk-upload-container">
+        <!-- Ideas Upload Section -->
+        <div class="upload-section">
+            <h3>Upload Ideas</h3>
+            <p>Import multiple ideas at once from a CSV file.</p>
+            
+            <div class="template-download">
+                <p>First, download the template and fill it with your data:</p>
+                <a href="{{ url_for('admin.download_template', template_type='ideas') }}" class="btn btn-secondary">
+                    Download Ideas Template
+                </a>
+            </div>
+            
+            <form id="ideas-upload-form" enctype="multipart/form-data" class="upload-form">
+                <div class="form-group">
+                    <label for="ideas-file">Select Ideas CSV File:</label>
+                    <input type="file" id="ideas-file" name="file" accept=".csv" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Upload Ideas</button>
+                </div>
+            </form>
+            
+            <div id="ideas-results" class="upload-results" style="display: none;">
+                <h4>Upload Results</h4>
+                <div class="results-content"></div>
+            </div>
+        </div>
+        
+        <!-- Users Upload Section -->
+        <div class="upload-section">
+            <h3>Upload Users</h3>
+            <p>Import multiple users at once from a CSV file.</p>
+            
+            <div class="template-download">
+                <p>First, download the template and fill it with your data:</p>
+                <a href="{{ url_for('admin.download_template', template_type='users') }}" class="btn btn-secondary">
+                    Download Users Template
+                </a>
+            </div>
+            
+            <form id="users-upload-form" enctype="multipart/form-data" class="upload-form">
+                <div class="form-group">
+                    <label for="users-file">Select Users CSV File:</label>
+                    <input type="file" id="users-file" name="file" accept=".csv" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Upload Users</button>
+                </div>
+            </form>
+            
+            <div id="users-results" class="upload-results" style="display: none;">
+                <h4>Upload Results</h4>
+                <div class="results-content"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Instructions -->
+    <div class="instructions-section">
+        <h3>Instructions</h3>
+        <div class="instruction-columns">
+            <div class="instruction-column">
+                <h4>Ideas CSV Format</h4>
+                <ul>
+                    <li><strong>title</strong>: Idea title (required)</li>
+                    <li><strong>description</strong>: Detailed description (required)</li>
+                    <li><strong>email</strong>: Submitter's email (required)</li>
+                    <li><strong>benefactor_team</strong>: Team name (required)</li>
+                    <li><strong>size</strong>: small, medium, large, or extra_large (required)</li>
+                    <li><strong>priority</strong>: low, medium, or high (required)</li>
+                    <li><strong>skills</strong>: Comma-separated skill names</li>
+                    <li><strong>reward</strong>: Reward description (optional)</li>
+                    <li><strong>needed_by</strong>: Date in YYYY-MM-DD format (required)</li>
+                    <li><strong>status</strong>: open, claimed, or complete (optional, defaults to open)</li>
+                </ul>
+            </div>
+            
+            <div class="instruction-column">
+                <h4>Users CSV Format</h4>
+                <ul>
+                    <li><strong>email</strong>: User's email address (required, unique)</li>
+                    <li><strong>name</strong>: Full name (required)</li>
+                    <li><strong>role</strong>: manager, idea_submitter, citizen_developer, or developer (required)</li>
+                    <li><strong>team</strong>: Team name (required, must exist)</li>
+                    <li><strong>skills</strong>: Comma-separated skill names (for developers/citizen developers)</li>
+                    <li><strong>is_verified</strong>: true or false (optional, defaults to true)</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="notes">
+            <h4>Important Notes</h4>
+            <ul>
+                <li>Ensure all required fields are filled in</li>
+                <li>Teams must already exist in the system before uploading users</li>
+                <li>Skills will be created automatically if they don't exist</li>
+                <li>Duplicate emails in users upload will be skipped</li>
+                <li>The system will validate all data before importing</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+.bulk-upload-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.upload-section {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.upload-section h3 {
+    margin-top: 0;
+    color: #1a1d23;
+}
+
+.template-download {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.upload-form {
+    margin-top: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.form-group input[type="file"] {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.form-group input[type="file"]:hover {
+    border-color: #4a90e2;
+}
+
+.upload-results {
+    margin-top: 25px;
+    padding: 20px;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.upload-results.success {
+    background: #e7f5ed;
+    border: 1px solid #28a745;
+}
+
+.upload-results.error {
+    background: #fdf0f0;
+    border: 1px solid #dc3545;
+}
+
+.results-content {
+    margin-top: 10px;
+}
+
+.instructions-section {
+    margin-top: 40px;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.instruction-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin: 20px 0;
+}
+
+.instruction-column h4 {
+    color: #4a90e2;
+    margin-bottom: 15px;
+}
+
+.instruction-column ul {
+    list-style: none;
+    padding: 0;
+}
+
+.instruction-column li {
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.notes {
+    margin-top: 30px;
+    padding: 20px;
+    background: #fff3cd;
+    border-radius: 8px;
+    border: 1px solid #ffeaa7;
+}
+
+.notes h4 {
+    margin-top: 0;
+    color: #856404;
+}
+
+.error-list {
+    margin: 10px 0;
+    padding: 0;
+    list-style: none;
+}
+
+.error-list li {
+    padding: 5px 10px;
+    margin: 5px 0;
+    background: #fee;
+    border-left: 3px solid #dc3545;
+    border-radius: 3px;
+}
+
+.success-summary {
+    padding: 15px;
+    background: #d4edda;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+@media (max-width: 768px) {
+    .bulk-upload-container,
+    .instruction-columns {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle Ideas Upload
+    document.getElementById('ideas-upload-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('ideas-file');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Please select a file');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const resultsDiv = document.getElementById('ideas-results');
+        const resultsContent = resultsDiv.querySelector('.results-content');
+        
+        resultsDiv.style.display = 'block';
+        resultsDiv.className = 'upload-results';
+        resultsContent.innerHTML = '<p>Uploading and processing...</p>';
+        
+        try {
+            const response = await fetch('/api/admin/bulk-upload/ideas', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                resultsDiv.className = 'upload-results success';
+                resultsContent.innerHTML = `
+                    <div class="success-summary">
+                        <strong>Success!</strong> Imported ${data.imported} ideas.
+                    </div>
+                    ${data.errors && data.errors.length > 0 ? `
+                        <div class="errors">
+                            <strong>Errors/Warnings:</strong>
+                            <ul class="error-list">
+                                ${data.errors.map(err => `<li>${err}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                `;
+                fileInput.value = ''; // Clear the file input
+            } else {
+                resultsDiv.className = 'upload-results error';
+                resultsContent.innerHTML = `
+                    <strong>Error:</strong> ${data.message}
+                    ${data.errors && data.errors.length > 0 ? `
+                        <ul class="error-list">
+                            ${data.errors.map(err => `<li>${err}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                `;
+            }
+        } catch (error) {
+            resultsDiv.className = 'upload-results error';
+            resultsContent.innerHTML = `<strong>Error:</strong> Failed to upload file. ${error.message}`;
+        }
+    });
+    
+    // Handle Users Upload
+    document.getElementById('users-upload-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('users-file');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Please select a file');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const resultsDiv = document.getElementById('users-results');
+        const resultsContent = resultsDiv.querySelector('.results-content');
+        
+        resultsDiv.style.display = 'block';
+        resultsDiv.className = 'upload-results';
+        resultsContent.innerHTML = '<p>Uploading and processing...</p>';
+        
+        try {
+            const response = await fetch('/api/admin/bulk-upload/users', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                resultsDiv.className = 'upload-results success';
+                resultsContent.innerHTML = `
+                    <div class="success-summary">
+                        <strong>Success!</strong> Imported ${data.imported} users.
+                    </div>
+                    ${data.errors && data.errors.length > 0 ? `
+                        <div class="errors">
+                            <strong>Errors/Warnings:</strong>
+                            <ul class="error-list">
+                                ${data.errors.map(err => `<li>${err}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                `;
+                fileInput.value = ''; // Clear the file input
+            } else {
+                resultsDiv.className = 'upload-results error';
+                resultsContent.innerHTML = `
+                    <strong>Error:</strong> ${data.message}
+                    ${data.errors && data.errors.length > 0 ? `
+                        <ul class="error-list">
+                            ${data.errors.map(err => `<li>${err}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                `;
+            }
+        } catch (error) {
+            resultsDiv.className = 'upload-results error';
+            resultsContent.innerHTML = `<strong>Error:</strong> Failed to upload file. ${error.message}`;
+        }
+    });
+});
+</script>
+</div>
+{% endblock %}

@@ -15,7 +15,10 @@ document.addEventListener('DOMContentLoaded', function() {
 const utils = {
     // Format date
     formatDate: function(dateString) {
-        const date = new Date(dateString);
+        // Parse date string as local date to avoid timezone issues
+        // When given 'YYYY-MM-DD', treat it as a local date, not UTC
+        const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+        const date = new Date(year, month - 1, day); // month is 0-indexed
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',

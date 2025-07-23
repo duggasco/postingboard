@@ -1,6 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
 from functools import wraps
 from config import Config
+import os
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -88,3 +89,23 @@ def manager_requests():
 def email_settings():
     """Manage email settings page."""
     return render_template('admin/email_settings.html')
+
+@admin_bp.route('/bulk-upload')
+@admin_required
+def bulk_upload():
+    """Bulk upload page for importing ideas and users."""
+    return render_template('admin/bulk_upload.html')
+
+@admin_bp.route('/download-template/<template_type>')
+@admin_required
+def download_template(template_type):
+    """Download CSV template for bulk upload."""
+    if template_type == 'ideas':
+        filepath = os.path.join(os.path.dirname(__file__), '..', 'templates', 'csv', 'ideas_template.csv')
+        return send_file(filepath, as_attachment=True, download_name='ideas_template.csv', mimetype='text/csv')
+    elif template_type == 'users':
+        filepath = os.path.join(os.path.dirname(__file__), '..', 'templates', 'csv', 'users_template.csv')
+        return send_file(filepath, as_attachment=True, download_name='users_template.csv', mimetype='text/csv')
+    else:
+        flash('Invalid template type', 'error')
+        return redirect(url_for('admin.bulk_upload'))

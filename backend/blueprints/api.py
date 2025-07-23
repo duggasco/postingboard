@@ -1,12 +1,15 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
 from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile
-from sqlalchemy import desc, asc, func
+from sqlalchemy import desc, asc, func, or_
 from datetime import datetime
 from decorators import require_verified_email
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import csv
+import io
+from werkzeug.datastructures import FileStorage
 
 api_bp = Blueprint('api', __name__)
 
@@ -373,6 +376,168 @@ def get_stats():
             'complete_ideas': db.query(Idea).filter(Idea.status == IdeaStatus.complete).count(),
             'total_skills': db.query(Skill).count()
         }
+        return jsonify(stats)
+    finally:
+        db.close()
+
+@api_bp.route('/team-stats')
+def get_team_stats():
+    """Get team statistics for managers."""
+    # Check if user is a manager with a team
+    if session.get('user_role') != 'manager' or not session.get('user_managed_team_id'):
+        return jsonify({'error': 'Unauthorized. Manager role required.'}), 403
+    
+    db = get_session()
+    try:
+        team_id = session.get('user_managed_team_id')
+        user_email = session.get('user_email')
+        
+        # Get team members
+        team_members = db.query(UserProfile).filter(
+            UserProfile.team_id == team_id,
+            UserProfile.email != user_email  # Exclude the manager
+        ).all()
+        
+        team_member_emails = [member.email for member in team_members]
+        
+        # Basic counts
+        team_submitted = db.query(Idea).filter(
+            Idea.email.in_(team_member_emails)
+        ).count()
+        
+        # Get claimed ideas by team members with proper join
+        from models import ClaimApproval
+        team_claimed = db.query(func.count(func.distinct(Claim.idea_id))).join(
+            Idea, Claim.idea_id == Idea.id
+        ).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).scalar() or 0
+        
+        # Status breakdown of team's claimed ideas
+        status_breakdown = {}
+        claimed_status_query = db.query(Idea.status, func.count(Idea.id)).join(
+            Claim, Claim.idea_id == Idea.id
+        ).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).group_by(Idea.status).all()
+        
+        for status, count in claimed_status_query:
+            status_breakdown[status.value] = count
+        
+        # Priority breakdown of team's ideas (both submitted and claimed)
+        priority_breakdown = {}
+        priority_query = db.query(Idea.priority, func.count(Idea.id)).filter(
+            db.or_(
+                Idea.email.in_(team_member_emails),
+                Idea.id.in_(
+                    db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
+                )
+            )
+        ).group_by(Idea.priority).all()
+        
+        for priority, count in priority_query:
+            priority_breakdown[priority.value] = count
+        
+        # Size breakdown
+        size_breakdown = {}
+        size_query = db.query(Idea.size, func.count(Idea.id)).filter(
+            db.or_(
+                Idea.email.in_(team_member_emails),
+                Idea.id.in_(
+                    db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
+                )
+            )
+        ).group_by(Idea.size).all()
+        
+        for size, count in size_query:
+            size_breakdown[size.value] = count
+        
+        # Skills distribution - what skills are most common in team's claimed ideas
+        skills_distribution = db.query(Skill.name, func.count(Skill.id)).join(
+            Idea.skills
+        ).join(
+            Claim, Claim.idea_id == Idea.id
+        ).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).group_by(Skill.name).order_by(func.count(Skill.id).desc()).limit(10).all()
+        
+        # Team member activity
+        member_activity = []
+        for member in team_members:
+            submitted_count = db.query(Idea).filter(Idea.email == member.email).count()
+            claimed_count = db.query(Claim).filter(Claim.claimer_email == member.email).count()
+            completed_count = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.status == IdeaStatus.complete
+            ).count()
+            
+            member_activity.append({
+                'name': member.name,
+                'email': member.email,
+                'submitted': submitted_count,
+                'claimed': claimed_count,
+                'completed': completed_count
+            })
+        
+        # Sort by total activity
+        member_activity.sort(key=lambda x: x['submitted'] + x['claimed'], reverse=True)
+        
+        # Pending approvals for team
+        pending_approvals = db.query(ClaimApproval).join(
+            Idea, ClaimApproval.idea_id == Idea.id
+        ).filter(
+            ClaimApproval.claimer_email.in_(team_member_emails),
+            ClaimApproval.status == 'pending',
+            ClaimApproval.manager_approved == None
+        ).count()
+        
+        # Calculate completion rate
+        total_claimed = db.query(Claim).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).count()
+        
+        completed_ideas = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.status == IdeaStatus.complete
+        ).count()
+        
+        completion_rate = round((completed_ideas / total_claimed * 100) if total_claimed > 0 else 0, 1)
+        
+        # Recent activity (last 30 days)
+        from datetime import datetime, timedelta
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        
+        recent_submissions = db.query(Idea).filter(
+            Idea.email.in_(team_member_emails),
+            Idea.date_submitted >= thirty_days_ago
+        ).count()
+        
+        recent_claims = db.query(Claim).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Claim.claim_date >= thirty_days_ago
+        ).count()
+        
+        stats = {
+            'overview': {
+                'total_members': len(team_members),
+                'ideas_submitted': team_submitted,
+                'ideas_claimed': team_claimed,
+                'completion_rate': completion_rate,
+                'pending_approvals': pending_approvals
+            },
+            'breakdowns': {
+                'status': status_breakdown,
+                'priority': priority_breakdown,
+                'size': size_breakdown,
+                'skills': [{'skill': skill, 'count': count} for skill, count in skills_distribution]
+            },
+            'member_activity': member_activity[:10],  # Top 10 members
+            'recent_activity': {
+                'submissions_30d': recent_submissions,
+                'claims_30d': recent_claims
+            }
+        }
+        
         return jsonify(stats)
     finally:
         db.close()
@@ -1178,5 +1343,256 @@ Posting Board Admin"""
             return jsonify({"success": True})
         except Exception as e:
             return jsonify({"success": False, "error": f"Failed to send email: {str(e)}"}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/admin/bulk-upload/ideas', methods=['POST'])
+def bulk_upload_ideas():
+    """Bulk upload ideas from CSV file (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file provided'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No file selected'}), 400
+    
+    if not file.filename.endswith('.csv'):
+        return jsonify({'success': False, 'message': 'File must be a CSV'}), 400
+    
+    db = get_session()
+    errors = []
+    imported_count = 0
+    
+    try:
+        # Read CSV file
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        csv_reader = csv.DictReader(stream)
+        
+        required_fields = ['title', 'description', 'email', 'benefactor_team', 'size', 'priority', 'needed_by']
+        
+        # Validate headers
+        if not all(field in csv_reader.fieldnames for field in required_fields):
+            missing = [f for f in required_fields if f not in csv_reader.fieldnames]
+            return jsonify({
+                'success': False, 
+                'message': f'Missing required columns: {", ".join(missing)}'
+            }), 400
+        
+        for row_num, row in enumerate(csv_reader, start=2):
+            try:
+                # Skip empty rows
+                if not any(row.values()):
+                    continue
+                
+                # Validate required fields
+                for field in required_fields:
+                    if not row.get(field, '').strip():
+                        errors.append(f"Row {row_num}: Missing required field '{field}'")
+                        continue
+                
+                # Parse enums
+                try:
+                    size = IdeaSize(row['size'].strip().lower().replace(' ', '_'))
+                except ValueError:
+                    errors.append(f"Row {row_num}: Invalid size '{row['size']}'. Must be: small, medium, large, or extra_large")
+                    continue
+                
+                try:
+                    priority = PriorityLevel(row['priority'].strip().lower())
+                except ValueError:
+                    errors.append(f"Row {row_num}: Invalid priority '{row['priority']}'. Must be: low, medium, or high")
+                    continue
+                
+                # Parse date
+                try:
+                    needed_by = datetime.strptime(row['needed_by'].strip(), '%Y-%m-%d')
+                except ValueError:
+                    errors.append(f"Row {row_num}: Invalid date format '{row['needed_by']}'. Use YYYY-MM-DD")
+                    continue
+                
+                # Check if team exists
+                team_name = row['benefactor_team'].strip()
+                team = db.query(Team).filter_by(name=team_name).first()
+                if not team:
+                    errors.append(f"Row {row_num}: Team '{team_name}' does not exist")
+                    continue
+                
+                # Parse status if provided
+                status = IdeaStatus.open  # default
+                if row.get('status', '').strip():
+                    try:
+                        status = IdeaStatus(row['status'].strip().lower())
+                    except ValueError:
+                        errors.append(f"Row {row_num}: Invalid status '{row['status']}'. Must be: open, claimed, or complete")
+                        continue
+                
+                # Create idea
+                idea = Idea(
+                    title=row['title'].strip(),
+                    description=row['description'].strip(),
+                    email=row['email'].strip().lower(),
+                    benefactor_team=team_name,
+                    size=size,
+                    priority=priority,
+                    needed_by=needed_by,
+                    status=status,
+                    reward=row.get('reward', '').strip() or None
+                )
+                
+                # Handle skills
+                if row.get('skills', '').strip():
+                    skill_names = [s.strip() for s in row['skills'].split(',') if s.strip()]
+                    for skill_name in skill_names:
+                        # Get or create skill
+                        skill = db.query(Skill).filter_by(name=skill_name).first()
+                        if not skill:
+                            skill = Skill(name=skill_name)
+                            db.add(skill)
+                            db.flush()  # Get skill ID
+                        idea.skills.append(skill)
+                
+                db.add(idea)
+                imported_count += 1
+                
+            except Exception as e:
+                errors.append(f"Row {row_num}: Error processing row - {str(e)}")
+                continue
+        
+        db.commit()
+        
+        return jsonify({
+            'success': True,
+            'imported': imported_count,
+            'errors': errors,
+            'message': f'Successfully imported {imported_count} ideas'
+        })
+        
+    except Exception as e:
+        db.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error processing file: {str(e)}',
+            'errors': errors
+        }), 500
+    finally:
+        db.close()
+
+@api_bp.route('/admin/bulk-upload/users', methods=['POST'])
+def bulk_upload_users():
+    """Bulk upload users from CSV file (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file provided'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No file selected'}), 400
+    
+    if not file.filename.endswith('.csv'):
+        return jsonify({'success': False, 'message': 'File must be a CSV'}), 400
+    
+    db = get_session()
+    errors = []
+    imported_count = 0
+    
+    try:
+        # Read CSV file
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        csv_reader = csv.DictReader(stream)
+        
+        required_fields = ['email', 'name', 'role', 'team']
+        
+        # Validate headers
+        if not all(field in csv_reader.fieldnames for field in required_fields):
+            missing = [f for f in required_fields if f not in csv_reader.fieldnames]
+            return jsonify({
+                'success': False, 
+                'message': f'Missing required columns: {", ".join(missing)}'
+            }), 400
+        
+        valid_roles = ['manager', 'idea_submitter', 'citizen_developer', 'developer']
+        
+        for row_num, row in enumerate(csv_reader, start=2):
+            try:
+                # Skip empty rows
+                if not any(row.values()):
+                    continue
+                
+                # Validate required fields
+                for field in required_fields:
+                    if not row.get(field, '').strip():
+                        errors.append(f"Row {row_num}: Missing required field '{field}'")
+                        continue
+                
+                email = row['email'].strip().lower()
+                
+                # Check if user already exists
+                existing_user = db.query(UserProfile).filter_by(email=email).first()
+                if existing_user:
+                    errors.append(f"Row {row_num}: User with email '{email}' already exists")
+                    continue
+                
+                # Validate role
+                role = row['role'].strip().lower()
+                if role not in valid_roles:
+                    errors.append(f"Row {row_num}: Invalid role '{role}'. Must be one of: {', '.join(valid_roles)}")
+                    continue
+                
+                # Check if team exists
+                team_name = row['team'].strip()
+                team = db.query(Team).filter_by(name=team_name).first()
+                if not team:
+                    errors.append(f"Row {row_num}: Team '{team_name}' does not exist")
+                    continue
+                
+                # Create user profile
+                user = UserProfile(
+                    email=email,
+                    name=row['name'].strip(),
+                    role=role,
+                    team_id=team.id,
+                    is_verified=row.get('is_verified', 'true').lower() == 'true'
+                )
+                
+                # Handle skills for developers and citizen developers
+                if role in ['developer', 'citizen_developer'] and row.get('skills', '').strip():
+                    skill_names = [s.strip() for s in row['skills'].split(',') if s.strip()]
+                    for skill_name in skill_names:
+                        # Get or create skill
+                        skill = db.query(Skill).filter_by(name=skill_name).first()
+                        if not skill:
+                            skill = Skill(name=skill_name)
+                            db.add(skill)
+                            db.flush()  # Get skill ID
+                        user.skills.append(skill)
+                
+                db.add(user)
+                imported_count += 1
+                
+            except Exception as e:
+                errors.append(f"Row {row_num}: Error processing row - {str(e)}")
+                continue
+        
+        db.commit()
+        
+        return jsonify({
+            'success': True,
+            'imported': imported_count,
+            'errors': errors,
+            'message': f'Successfully imported {imported_count} users'
+        })
+        
+    except Exception as e:
+        db.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error processing file: {str(e)}',
+            'errors': errors
+        }), 500
     finally:
         db.close()

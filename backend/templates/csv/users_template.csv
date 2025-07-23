@@ -1,0 +1,5 @@
+email,name,role,team,skills,is_verified
+"john.smith@example.com","John Smith","developer","Cash - GPP","Python,SQL/Databases,Frontend/UI - Web","true"
+"jane.manager@example.com","Jane Manager","manager","SL - Tech","","true"
+"bob.submitter@example.com","Bob Submitter","idea_submitter","COO - IDA","","true"
+"alice.dev@example.com","Alice Developer","citizen_developer","Cash - Sales","Frontend/UI - Streamlit,Python","true"

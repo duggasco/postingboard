@@ -126,6 +126,11 @@ templates/
 - Team management (add/edit/delete/approve)
 - Manager requests approval workflow
 - Real-time updates
+- **Bulk Upload**: Import ideas and users from CSV files
+  - Download template CSV files
+  - Validate data before import
+  - Detailed error reporting
+  - Automatic skill creation
 
 ### Styling & UI Design
 - Custom CSS in `static/css/styles.css`
@@ -213,6 +218,11 @@ The application will be accessible at http://localhost:9094
 - **Claim Approvals**: Approve/deny team members' claim requests
 - **Idea Assignment**: Assign open ideas to specific team members
 - **Assignment Tracking**: Ideas track who assigned them and when
+- **Team Performance Dashboard**: Comprehensive KPIs and analytics for team activity
+  - Overview metrics: team size, submissions, claims, completion rate, pending approvals
+  - Visual charts: priority/status/size distributions, top skills
+  - Team member activity table with individual performance metrics
+  - Recent activity tracking (last 30 days)
 
 ### Submitter and Claimer Display
 - **Submitter Names**: Ideas display the name of the person who submitted them
@@ -296,6 +306,9 @@ docker compose -f docker-compose-flask.yml up -d
 - `GET /api/skills` - List all available skills
 - `GET /api/teams` - List teams (all with approval status for admin, approved only for others)
 - `GET /api/teams/<id>/members` - Get team members (manager only for their team)
+- `GET /api/team-stats` - Get comprehensive team statistics (manager only)
+  - Returns overview metrics, breakdowns by priority/status/size/skills
+  - Includes team member activity and recent activity (30 days)
 - `POST /idea/<id>/claim` - Request to claim an idea (requires complete profile)
   - Creates ClaimApproval record requiring dual approval
   - Only developers and citizen developers can claim
@@ -330,6 +343,17 @@ docker compose -f docker-compose-flask.yml up -d
 - Flask-Session uses filesystem storage
 - Check `flask_session/` directory permissions
 - Set `session.permanent = True` after updates
+
+### Date Display Shows T-1 (Previous Day)
+- **Problem**: Dates showing one day earlier than actual submission date
+- **Cause**: Backend sends dates as 'YYYY-MM-DD' without timezone, JavaScript `new Date()` interprets as UTC
+- **Solution**: Fixed in `static/js/main.js` formatDate function to parse date components manually
+- **Implementation**: 
+  ```javascript
+  const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+  const date = new Date(year, month - 1, day); // Local timezone
+  ```
+- **Apply fix to Docker**: `docker cp backend/static/js/main.js postingboard-flask-app-1:/app/static/js/main.js`
 
 ### API Errors
 - Check Flask logs for detailed error messages
@@ -422,6 +446,48 @@ This issue affects all enum-based filters (priority, status, size) throughout th
 - Navigate to `/admin/login`
 - Password: `2929arch`
 - After login, redirects to `/admin/dashboard`
+
+### Bulk Upload Feature
+The admin portal includes a bulk upload feature for importing ideas and users via CSV files.
+
+#### Ideas CSV Format
+Required columns:
+- `title` - Idea title
+- `description` - Detailed description
+- `email` - Submitter's email address
+- `benefactor_team` - Team name (must exist in system)
+- `size` - small, medium, large, or extra_large
+- `priority` - low, medium, or high
+- `needed_by` - Date in YYYY-MM-DD format
+
+Optional columns:
+- `skills` - Comma-separated list of skill names
+- `reward` - Reward description
+- `status` - open, claimed, or complete (defaults to open)
+
+#### Users CSV Format
+Required columns:
+- `email` - User's email address (must be unique)
+- `name` - Full name
+- `role` - manager, idea_submitter, citizen_developer, or developer
+- `team` - Team name (must exist in system)
+
+Optional columns:
+- `skills` - Comma-separated list of skills (for developers/citizen developers)
+- `is_verified` - true or false (defaults to true)
+
+#### How to Use
+1. Navigate to Admin > Bulk Upload
+2. Download the template CSV file
+3. Fill in your data following the format
+4. Upload the CSV file
+5. Review import results and any errors
+
+Notes:
+- Teams must exist before uploading users
+- Skills are created automatically if they don't exist
+- Duplicate user emails are skipped with error messages
+- Validation ensures data integrity before import
 
 ### Admin Features
 - **Dashboard**: View statistics and charts for ideas, skills, and teams
@@ -574,6 +640,11 @@ The application includes a "My Ideas" feature that allows users to track both su
    - Email lookup form when no session data exists
    - Color-coded borders and relationship badges
    - Auto-refreshes every 30 seconds
+   - **Manager Dashboard**: Comprehensive team performance KPIs section
+     - Team overview stats (members, submissions, claims, completion rate, pending approvals)
+     - Interactive charts using Chart.js for visual analytics
+     - Team member activity table with individual metrics
+     - Recent activity tracking (last 30 days)
 
 #### Usage
 - Users can access their submitted and claimed ideas by clicking "My Ideas" in the navigation

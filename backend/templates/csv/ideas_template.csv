@@ -1,0 +1,3 @@
+title,description,email,benefactor_team,size,priority,skills,reward,needed_by,status
+"Sample Idea Title","Detailed description of what needs to be built","submitter@example.com","Cash - GPP","small","medium","Python,SQL/Databases","Recognition in team meeting","2025-12-31","open"
+"Another Example","This idea requires frontend skills","john.doe@example.com","SL - Tech","medium","high","Frontend/UI - Web,JavaScript","$500 gift card","2025-08-15","open"
