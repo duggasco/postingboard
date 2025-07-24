@@ -124,7 +124,14 @@ templates/
 #### Admin Features
 - Password authentication (password: "2929arch")
 - Dashboard with charts and statistics
-- Idea management with inline editing (shows ALL ideas, not just open ones)
+- **Idea Management**: Advanced management interface with modal editing
+  - Shows ALL ideas (not just open ones) 
+  - Comprehensive filtering by title/description, priority, status, size, and team
+  - Modal-based editing with idea analytics section
+  - Edit all fields including description, reward, and skills
+  - Unclaim ideas to reset status to open
+  - Delete ideas with confirmation
+  - Pagination with 20 items per page
 - Skill management (add/edit/delete)
 - Team management (add/edit/delete/approve)
 - **User Management**: Full CRUD operations on user profiles
@@ -680,10 +687,32 @@ This multi-layered approach ensures statistics load reliably even on fast page r
 - Providing clear console logging for debugging
 
 ### Admin Ideas Management
-The admin ideas management page (`/admin/ideas`) displays ALL ideas in the system, not just open ones. This was achieved by:
-- Removing the default `status='open'` filter from the `/api/ideas` endpoint
-- Explicitly passing an empty status parameter in the admin JavaScript: `/api/ideas?status=`
-- The home page continues to default to showing only open ideas via the HTML select default
+The admin ideas management page (`/admin/ideas`) provides a comprehensive interface for managing all ideas in the system:
+
+#### Features
+- **Complete View**: Shows ALL ideas (not just open ones) by passing empty status parameter
+- **Advanced Filtering**: 
+  - Search by title or description
+  - Filter by priority (low, medium, high)
+  - Filter by status (open, claimed, complete)
+  - Filter by size (small, medium, large, extra_large)
+  - Filter by team
+  - Clear all filters button
+- **Modal-Based Editing**: Click "Edit" to open comprehensive edit modal with:
+  - Idea analytics section showing ID, dates, submitter, claims, pending approvals, assignment info
+  - All fields editable: title, description, team, priority, size, status, reward, email
+  - Skills selection with checkboxes for all available skills
+- **Bulk Actions**: 
+  - Unclaim button for claimed/complete ideas (removes all claims, resets to open)
+  - Delete button with confirmation
+- **Pagination**: 20 items per page with navigation controls
+- **Consistent UI**: Follows same patterns as admin users management page
+
+#### API Enhancements
+The `/api/ideas/<id>` PUT endpoint now supports:
+- `description`: Update idea description
+- `reward`: Update reward text
+- `skill_ids`: Array of skill IDs to replace current skills
 
 The Flask implementation provides a traditional web application architecture with server-side rendering and REST APIs for dynamic functionality.
 
