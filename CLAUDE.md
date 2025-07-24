@@ -114,12 +114,33 @@ templates/
 - Auto-refresh functionality
 - Form validation and submission
 
-#### My Ideas Features
-- Shows both submitted and claimed ideas
-- Email lookup functionality for cross-session access
-- Visual distinction between submitted/claimed/both
-- Statistics showing submitted, claimed, open, and complete counts
-- Color-coded left borders and relationship badges
+#### My Ideas Page (`/my-ideas`)
+- **Personal Ideas Only**: Shows only ideas submitted or claimed by the current user
+- **Statistics**: Four cards showing Submitted, Claimed by Me, Open, and Complete counts
+- **Pending Approvals**: Section for idea owners to approve/deny claim requests
+- **Visual Indicators**: Color-coded borders for submitted (green), claimed (blue), or both
+- **Relationship Badges**: Clear labels showing user's relationship to each idea
+- **Authentication Required**: Must be logged in with verified email
+
+#### My Team Page (`/my-team`)
+- **Access Control**: Only visible to managers and admins in navigation
+- **Team Performance Dashboard**: Comprehensive team metrics and KPIs
+  - Team overview stats: members, submissions, claims, completion rate, pending approvals
+  - Recent activity tracking (last 30 days)
+  - Visual charts for submitted and claimed ideas analysis
+  - Team skills distribution and claims breakdown
+- **Team Member Management**:
+  - Searchable and filterable member list
+  - Edit team member profiles (name, role, skills)
+  - View individual member activity metrics
+  - Managers can only edit developers/citizen developers, not other managers
+- **Admin Features**:
+  - Team selector dropdown to view any team's data
+  - All teams overview table when no team selected
+  - Full access to all team analytics
+- **API Endpoints**:
+  - `GET /api/team/members/<email>` - Get team member details
+  - `PUT /api/team/members/<email>` - Update team member profile
 
 #### Admin Features
 - Password authentication (password: "2929arch")
@@ -319,14 +340,18 @@ docker compose -f docker-compose-flask.yml up -d
 - `GET /api/ideas` - List ideas with filters
   - Query params: `skill`, `priority`, `status`, `sort`
   - Note: If no status param provided, returns ALL ideas (changed from defaulting to 'open')
-- `GET /api/my-ideas` - Get user's submitted and claimed ideas (requires authentication)
-  - Query params: `email` (optional for email-based lookup)
-  - Returns: Array of ideas with `relationship` field (submitted/claimed/both)
-  - Includes `claim_info` for claimed ideas
-  - Includes `pending_claims` and `pending_approvals` for claim workflow
+- `GET /api/my-ideas` - Get user's personal submitted and claimed ideas (requires authentication)
+  - Returns: Object with:
+    - `ideas`: Array of personal ideas with `relationship` field (submitted/claimed/both)
+    - `pending_claims`: User's pending claim requests
+    - `pending_approvals`: Claim requests awaiting user's approval as idea owner
 - `GET /api/skills` - List all available skills
 - `GET /api/teams` - List teams (all with approval status for admin, approved only for others)
 - `GET /api/teams/<id>/members` - Get team members (manager only for their team)
+- `GET /api/team/members/<email>` - Get specific team member details (manager only for their team)
+- `PUT /api/team/members/<email>` - Update team member profile (manager only)
+  - Can update: name, role (developer/citizen_developer), skills
+  - Cannot edit other managers
 - `GET /api/team-stats` - Get comprehensive team statistics (manager only)
   - Returns overview metrics, breakdowns by priority/status/size/skills
   - Includes team member activity and recent activity (30 days)
@@ -741,53 +766,56 @@ Users and ideas are associated with teams:
   - Mutually exclusive dropdown/text input (selecting one clears the other)
   - Team selection persisted in localStorage for convenience
 
-### My Ideas / My Team's Ideas Functionality
-The application includes a "My Ideas" feature that allows authenticated users to track both submitted and claimed ideas. For managers and admins, this page displays as "My Team's Ideas" in the navigation.
+### My Ideas and My Team Pages
 
 #### Navigation Display
-- **Regular Users**: Shows "My Ideas" in navigation
-- **Managers**: Shows "My Team's Ideas" in navigation
-- **Admins**: Shows "My Team's Ideas" in navigation
+- **All Users**: "My Ideas" link in navigation
+- **Managers and Admins**: Additional "My Team" link appears to the right of "My Ideas"
+- **Active State**: Proper highlighting based on current page
 
-#### Implementation Details
-- **Authentication required**: Users must verify their email before accessing My Ideas
-- **Session-based tracking**: 
-  - User email stored in `session['user_email']` after verification
-  - Ideas retrieved based on authenticated user's email
-- **Database persistence**:
-  - Ideas table stores submitter email in `email` column
-  - Claims table stores claimer email in `claimer_email` column
-  - All data permanently associated with user's verified email
-- **Query logic**: Shows ideas where:
-  - User's email matches idea's submitter email (submitted ideas)
-  - User's email matches claim's claimer email (claimed ideas)
-  - Identifies relationship: submitted, claimed, or both
+#### My Ideas Page (`/my-ideas`)
+- **Personal Focus**: Shows only ideas submitted or claimed by the authenticated user
+- **Authentication Required**: Users must verify their email before accessing
+- **Database Queries**: 
+  - Ideas where `Idea.email == user_email` (submitted)
+  - Ideas where `Claim.claimer_email == user_email` (claimed)
+- **Relationship Tracking**: Each idea marked as submitted, claimed, or both
+- **Pending Approvals**: Shows claim requests requiring user's approval as idea owner
 
-#### Key Files Modified
+#### My Team Page (`/my-team`)
+- **Access Control**: Only accessible to managers and admins
+- **Manager View**: Shows data for their assigned team only
+- **Admin View**: Team selector to view any team or all teams overview
+- **Team Analytics**: Comprehensive performance metrics and charts
+- **Member Management**: Edit team member profiles (excluding other managers)
+
+#### Key Files Modified for Split
 1. **`blueprints/main.py`**:
-   - Submit route stores idea IDs and email in session
-   - Claim route stores claimed idea IDs and email in session
-   - Email always saved to database for persistence
+   - Added new `/my-team` route with manager/admin access control
+   - My Ideas route remains for all authenticated users
 
 2. **`blueprints/api.py`**:
-   - `/api/my-ideas` endpoint returns both submitted and claimed ideas for authenticated user
-   - No email parameter accepted - only shows ideas for the verified session user
-   - Returns relationship type and claim info for each idea
+   - `/api/my-ideas` simplified to return only personal ideas
+   - Removed team ideas from response
+   - Added `/api/team/members/<email>` GET endpoint
+   - Added `/api/team/members/<email>` PUT endpoint for member updates
 
-3. **`templates/my_ideas.html`**:
-   - Displays both submitted and claimed ideas with visual distinction
-   - Shows 4 stats: Submitted, Claimed by Me, Open, Complete
-   - Color-coded borders and relationship badges
-   - Auto-refreshes every 30 seconds
-   - **Manager Dashboard**: Comprehensive team performance KPIs section
-     - Team overview stats (members, submissions, claims, completion rate, pending approvals)
-     - Interactive charts using Chart.js for visual analytics split by submitted vs claimed
-     - Team member activity table with individual metrics including own vs other team claims
-     - Recent activity tracking (last 30 days)
-   - **Admin Team Analytics**: Similar dashboard for admins with team selector
-     - All teams overview table when no team selected
-     - Individual team analytics matching manager view when team selected
-     - Full access to view any team's performance metrics
+3. **`templates/base.html`**:
+   - Updated navigation to show "My Ideas" for all users
+   - Added conditional "My Team" link for managers/admins only
+
+4. **`templates/my_ideas.html`**:
+   - Removed all team-related sections and metrics
+   - Shows only personal submitted/claimed ideas
+   - Simplified stats to 4 personal metrics
+   - Maintains pending approvals functionality
+
+5. **`templates/my_team.html`** (new):
+   - Comprehensive team performance dashboard
+   - Team member management table with search/filter
+   - Modal-based member editing interface
+   - Admin team selector for viewing any team
+   - Interactive charts for team analytics
 
 #### Usage
 - Users must verify their email before accessing My Ideas
