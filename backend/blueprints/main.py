@@ -33,9 +33,9 @@ def submit():
             )
             
             # Handle optional fields
-            reward = request.form.get('reward')
-            if reward:
-                idea.reward = reward
+            bounty = request.form.get('bounty')
+            if bounty:
+                idea.bounty = bounty
                 
             needed_by = request.form.get('needed_by')
             if needed_by:
@@ -57,6 +57,67 @@ def submit():
                     idea.skills.append(skill)
             
             db.add(idea)
+            db.flush()  # Flush to get idea.id before creating bounty
+            
+            # Handle bounty if monetary is checked
+            is_monetary = request.form.get('is_monetary') == 'on'
+            if is_monetary:
+                from models import Bounty, Notification
+                is_expensed = request.form.get('is_expensed') == 'on'
+                amount = 0.0
+                
+                if is_expensed:
+                    amount_str = request.form.get('amount', '0')
+                    try:
+                        amount = float(amount_str) if amount_str else 0.0
+                    except ValueError:
+                        amount = 0.0
+                
+                # Create bounty record
+                bounty = Bounty(
+                    idea_id=idea.id,
+                    is_monetary=is_monetary,
+                    is_expensed=is_expensed,
+                    amount=amount,
+                    requires_approval=amount > 50
+                )
+                db.add(bounty)
+                
+                # If amount > $50, create notification for managers and admins
+                if amount > 50:
+                    # Get user's manager
+                    from models import UserProfile
+                    user_profile = db.query(UserProfile).filter_by(email=session.get('user_email')).first()
+                    
+                    # Notify user's manager if they have one
+                    if user_profile and user_profile.managed_team_id:
+                        managers = db.query(UserProfile).filter_by(
+                            managed_team_id=user_profile.team_id,
+                            role='manager'
+                        ).all()
+                        
+                        for manager in managers:
+                            notification = Notification(
+                                user_email=manager.email,
+                                type='bounty_approval',
+                                title='Bounty Approval Required',
+                                message=f'${amount:.2f} bounty requested for idea: {idea.title}',
+                                idea_id=idea.id,
+                                related_user_email=session.get('user_email')
+                            )
+                            db.add(notification)
+                    
+                    # Always notify admin
+                    admin_notification = Notification(
+                        user_email='admin@system.local',
+                        type='bounty_approval',
+                        title='Bounty Approval Required',
+                        message=f'${amount:.2f} bounty requested by {session.get("user_name", session.get("user_email"))} for idea: {idea.title}',
+                        idea_id=idea.id,
+                        related_user_email=session.get('user_email')
+                    )
+                    db.add(admin_notification)
+            
             db.commit()
             
             # Update session

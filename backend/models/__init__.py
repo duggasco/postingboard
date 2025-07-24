@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Table, Text, Enum, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Table, Text, Enum, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker, backref
 import enum
 
 Base = declarative_base()
@@ -36,7 +36,7 @@ class Idea(Base):
     email = Column(String(120), nullable=False)
     benefactor_team = Column(String(100), nullable=False)
     size = Column(Enum(IdeaSize), nullable=False)
-    reward = Column(String(200))
+    bounty = Column(String(200))
     needed_by = Column(DateTime, nullable=False)
     priority = Column(Enum(PriorityLevel), nullable=False)
     status = Column(Enum(IdeaStatus), default=IdeaStatus.open)
@@ -204,3 +204,21 @@ class Notification(Base):
     
     # Relationships
     idea = relationship('Idea', foreign_keys=[idea_id])
+
+class Bounty(Base):
+    __tablename__ = 'bounties'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False, unique=True)
+    is_monetary = Column(Boolean, default=False)
+    is_expensed = Column(Boolean, default=False)
+    amount = Column(Float, default=0.0)
+    requires_approval = Column(Boolean, default=False)  # True if amount > $50
+    is_approved = Column(Boolean, default=None)  # None=pending, True=approved, False=denied
+    approved_by = Column(String(120))  # Email of approver
+    approved_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    idea = relationship('Idea', backref=backref('bounty_details', uselist=False))

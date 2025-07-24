@@ -152,8 +152,8 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="edit-reward">Reward</label>
-                <input type="text" id="edit-reward" name="reward" class="form-control">
+                <label for="edit-bounty">Bounty</label>
+                <input type="text" id="edit-bounty" name="bounty" class="form-control">
             </div>
             <div class="form-group">
                 <label for="edit-email">Submitter Email</label>
@@ -668,7 +668,7 @@ function editIdea(ideaId) {
     document.getElementById('edit-priority').value = idea.priority;
     document.getElementById('edit-size').value = idea.size;
     document.getElementById('edit-status').value = idea.status;
-    document.getElementById('edit-reward').value = idea.reward || '';
+    document.getElementById('edit-bounty').value = idea.bounty || '';
     document.getElementById('edit-email').value = idea.email;
     
     // Populate team dropdown
@@ -732,7 +732,7 @@ document.getElementById('edit-idea-form').addEventListener('submit', async (e) =
         priority: formData.get('priority'),
         size: formData.get('size'),
         status: formData.get('status'),
-        reward: formData.get('reward'),
+        bounty: formData.get('bounty'),
         email: formData.get('email'),
         skill_ids: []
     };

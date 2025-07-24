@@ -180,6 +180,7 @@ function formatNotificationType(type) {
         'team_approval_request': 'Team Request',
         'team_approved': 'Team Approved',
         'team_denied': 'Team Denied',
+        'bounty_approval': 'Bounty Approval',
         'test_notification': 'Test'
     };
     return typeMap[type] || type;
@@ -243,6 +244,15 @@ async function handleNotificationClick(notificationId, ideaId, notificationType)
         case 'claim_request':
             // Idea owner goes to my-ideas to approve/deny
             destination = '/my-ideas';
+            break;
+            
+        case 'bounty_approval':
+            // Admin or manager goes to idea detail to review bounty
+            if (ideaId) {
+                destination = `/idea/${ideaId}`;
+            } else {
+                destination = '/admin/ideas';
+            }
             break;
             
         case 'claim_approved':

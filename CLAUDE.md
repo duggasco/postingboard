@@ -34,6 +34,18 @@ The `start-flask.sh` script handles Python version detection and virtual environ
 - Configures session management
 - Sets up error handlers
 
+#### Bounty System
+- **Non-monetary bounties**: Text description field for recognition/perks
+- **Monetary bounties**: Optional checkbox system with expense tracking
+  - Checkbox for "This idea has a monetary bounty"
+  - If checked, shows "Will be expensed" option
+  - If expensed, shows amount input field ($)
+  - Amounts over $50 require manager/admin approval
+  - Creates notifications for approval workflow
+- **Database**: Separate `bounties` table tracks monetary details
+  - `is_monetary`, `is_expensed`, `amount`, `requires_approval`
+  - `is_approved`, `approved_by`, `approved_at` for approval tracking
+
 #### Blueprint Structure
 ```
 blueprints/
@@ -61,7 +73,7 @@ templates/
 ```
 
 #### Database Models
-- **Idea**: Main entity with title, description, priority, size, status, and assignment fields
+- **Idea**: Main entity with title, description, priority, size, status, bounty (text), and assignment fields
 - **Skill**: Many-to-many relationship with ideas and users
 - **Team**: Stores team names with approval status (predefined teams are auto-approved)
 - **Claim**: Tracks who claimed which idea (created after approvals)
@@ -69,6 +81,8 @@ templates/
 - **UserProfile**: Stores user email, name, verification status, role, team, managed team, and skills
 - **VerificationCode**: Tracks email verification codes with expiry and rate limiting
 - **ManagerRequest**: Tracks requests from users to manage teams, requiring admin approval
+- **Bounty**: Tracks monetary bounty details for ideas (is_monetary, is_expensed, amount, approval status)
+- **Notification**: Stores user notifications for various events including bounty approvals
 - **Enums**: PriorityLevel, IdeaSize, IdeaStatus
 
 ### Flask-Specific Features
@@ -1539,6 +1553,31 @@ Fixed My Team page showing blank and team ideas not loading:
 - **Team Ideas Styling**: Updated to match Browse Ideas page exactly
   - Implemented identical card structure with idea-header containing title and status badge
   - Added skills tags display
-  - Included reward field display
+  - Included bounty field display (was previously showing as "reward")
   - Added clickable cards with View Details link
   - Consistent hover effects and interactions
+
+### Bounty System Implementation (July 2025)
+Added comprehensive monetary bounty tracking system:
+- **Database Changes**: Added `Bounty` model to track monetary bounties with approval workflow
+- **UI Enhancement**: Added monetary bounty section to submit form with:
+  - "Is monetary?" checkbox
+  - "Is expensed?" checkbox (shown when monetary is checked)
+  - Amount input field with $ formatting (shown when expensed is checked)
+  - Automatic notification for amounts over $50 requiring manager/admin approval
+- **Approval Workflow**: Bounties over $50 create notifications for managers and admins
+- **Terminology Update**: Replaced all references to "reward" with "bounty" throughout codebase
+  - Updated database column from `reward` to `bounty`
+  - Changed all UI labels and API responses
+  - Modified CSV templates and bulk upload functionality
+
+### Skills Gap Analysis for Teams (July 2025)
+Enhanced My Team page with skills gap visualization:
+- **Skills Needed Chart**: Added chart showing skills required by team's submitted ideas
+- **Gap Highlighting**: Skills the team lacks are highlighted in light red (#ffcccc)
+- **Visual Comparison**: Side-by-side display with team's actual skills for easy gap identification
+- **API Enhancement**: Added `skills_needed` field to team-stats endpoint
+
+### Team Performance Enhancements (July 2025)
+- **Removed Redundancy**: Removed team claims pie chart from My Team page (data available in table)
+- **Column Totals**: Added bold totals row at top of team members table for quick summaries

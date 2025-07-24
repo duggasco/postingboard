@@ -64,7 +64,7 @@ def migrate_database():
                 email VARCHAR(120) NOT NULL,
                 benefactor_team VARCHAR(100) NOT NULL,
                 size TEXT NOT NULL,
-                reward VARCHAR(200),
+                bounty VARCHAR(200),
                 needed_by DATETIME NOT NULL,
                 priority TEXT NOT NULL,
                 status TEXT DEFAULT 'open',
@@ -75,9 +75,9 @@ def migrate_database():
         # Copy data from old table to new table (excluding urgency column)
         cursor.execute("""
             INSERT INTO ideas_new (id, title, description, email, benefactor_team, 
-                                  size, reward, needed_by, priority, status, date_submitted)
+                                  size, bounty, needed_by, priority, status, date_submitted)
             SELECT id, title, description, email, benefactor_team, 
-                   size, reward, needed_by, priority, status, date_submitted
+                   size, bounty, needed_by, priority, status, date_submitted
             FROM ideas
         """)
         

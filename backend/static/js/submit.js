@@ -62,6 +62,62 @@
         // Handle form submission
         submitForm.addEventListener('submit', handleSubmit);
         
+        // Bounty functionality
+        const isMonetaryCheckbox = document.getElementById('is_monetary');
+        const expenseSection = document.getElementById('expense-section');
+        const isExpensedCheckbox = document.getElementById('is_expensed');
+        const amountSection = document.getElementById('amount-section');
+        const amountInput = document.getElementById('amount');
+        const approvalNotice = document.getElementById('approval-notice');
+        
+        // Show/hide expense section based on monetary checkbox
+        if (isMonetaryCheckbox) {
+            isMonetaryCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    expenseSection.style.display = 'block';
+                } else {
+                    expenseSection.style.display = 'none';
+                    isExpensedCheckbox.checked = false;
+                    amountSection.style.display = 'none';
+                    amountInput.value = '';
+                    approvalNotice.style.display = 'none';
+                }
+            });
+        }
+        
+        // Show/hide amount section based on expense checkbox
+        if (isExpensedCheckbox) {
+            isExpensedCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    amountSection.style.display = 'block';
+                } else {
+                    amountSection.style.display = 'none';
+                    amountInput.value = '';
+                    approvalNotice.style.display = 'none';
+                }
+            });
+        }
+        
+        // Show/hide approval notice based on amount
+        if (amountInput) {
+            amountInput.addEventListener('input', function() {
+                const amount = parseFloat(this.value) || 0;
+                if (amount > 50) {
+                    approvalNotice.style.display = 'block';
+                } else {
+                    approvalNotice.style.display = 'none';
+                }
+            });
+            
+            // Ensure only valid monetary amounts
+            amountInput.addEventListener('blur', function() {
+                const value = parseFloat(this.value);
+                if (!isNaN(value)) {
+                    this.value = value.toFixed(2);
+                }
+            });
+        }
+        
         // Allow Enter key to add skills
         skillInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {

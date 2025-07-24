@@ -85,7 +85,7 @@ def get_ideas():
                 'priority': idea.priority.value,
                 'size': idea.size.value,
                 'status': idea.status.value,
-                'reward': idea.reward,
+                'bounty': idea.bounty,
                 'needed_by': idea.needed_by.strftime('%Y-%m-%d') if idea.needed_by else None,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
                 'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],
@@ -437,8 +437,8 @@ def update_idea(idea_id):
             idea.email = data['email']
         if 'description' in data:
             idea.description = data['description']
-        if 'reward' in data:
-            idea.reward = data['reward']
+        if 'bounty' in data:
+            idea.bounty = data['bounty']
         
         # Handle skills update
         if 'skill_ids' in data:
@@ -2351,7 +2351,7 @@ def bulk_upload_ideas():
                     priority=priority,
                     needed_by=needed_by,
                     status=status,
-                    reward=row.get('reward', '').strip() or None
+                    bounty=row.get('bounty', '').strip() or None
                 )
                 
                 # Handle skills
