@@ -109,7 +109,7 @@ async function loadNotifications() {
                     const unreadClass = notif.is_read ? '' : 'unread';
                     
                     html += `
-                        <div class="notification-item ${unreadClass}" onclick="handleNotificationClick(${notif.id}, ${notif.idea_id || 'null'})">
+                        <div class="notification-item ${unreadClass}" onclick="handleNotificationClick(${notif.id}, ${notif.idea_id || 'null'}, '${notif.type}')">
                             <div class="notification-title">
                                 ${notif.title}
                                 <span class="notification-type-badge ${typeClass}">${formatNotificationType(notif.type)}</span>
@@ -168,13 +168,16 @@ function formatNotificationType(type) {
         'claim_approved': 'Approved',
         'claim_denied': 'Denied',
         'status_change': 'Status Update',
+        'idea_completed': 'Completed',
         'assigned': 'Assigned',
         'new_team_member': 'Team Update',
+        'new_manager': 'New Manager',
         'manager_approved': 'Manager Approved',
         'manager_denied': 'Manager Denied',
         'team_approval_request': 'Team Request',
         'team_approved': 'Team Approved',
-        'team_denied': 'Team Denied'
+        'team_denied': 'Team Denied',
+        'test_notification': 'Test'
     };
     return typeMap[type] || type;
 }
@@ -191,7 +194,7 @@ function toggleNotifications() {
     }
 }
 
-async function handleNotificationClick(notificationId, ideaId) {
+async function handleNotificationClick(notificationId, ideaId, notificationType) {
     // Mark as read
     await fetch(`/api/user/notifications/${notificationId}/read`, {
         method: 'POST',
@@ -203,9 +206,71 @@ async function handleNotificationClick(notificationId, ideaId) {
     // Refresh notifications
     loadNotifications();
     
-    // Navigate to idea if applicable
-    if (ideaId) {
-        window.location.href = `/idea/${ideaId}`;
+    // Navigate based on notification type
+    let destination = null;
+    
+    // Routing logic based on notification type
+    switch(notificationType) {
+        // Team-related notifications
+        case 'team_approval_request':
+            // Admin notifications for team approval
+            destination = '/admin/teams';
+            break;
+            
+        case 'team_approved':
+        case 'team_denied':
+            // User should check their profile to see team status
+            destination = '/profile';
+            break;
+            
+        // Manager-related notifications
+        case 'manager_approved':
+        case 'manager_denied':
+            // User can see their manager status
+            destination = '/profile';
+            break;
+            
+        case 'new_manager':
+        case 'new_team_member':
+            // Go to team page to see team members
+            destination = '/my-team';
+            break;
+            
+        // Claim-related notifications
+        case 'claim_request':
+            // Idea owner goes to my-ideas to approve/deny
+            destination = '/my-ideas';
+            break;
+            
+        case 'claim_approved':
+        case 'claim_denied':
+            // If we have an idea ID, go to the idea, otherwise my-ideas
+            destination = ideaId ? `/idea/${ideaId}` : '/my-ideas';
+            break;
+            
+        // Idea-related notifications
+        case 'status_change':
+        case 'idea_completed':
+        case 'assigned':
+            // Go to the specific idea if we have the ID
+            if (ideaId) {
+                destination = `/idea/${ideaId}`;
+            } else {
+                destination = '/my-ideas';
+            }
+            break;
+            
+        // Default case - if idea ID exists, go to idea, otherwise my-ideas
+        default:
+            if (ideaId) {
+                destination = `/idea/${ideaId}`;
+            }
+            break;
+    }
+    
+    // Navigate to the destination if we have one
+    if (destination) {
+        window.location.href = destination;
     }
 }
 

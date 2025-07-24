@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Notification Routing</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-notification { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border: 1px solid #ddd; 
+            cursor: pointer; 
+            background: #f5f5f5;
+        }
+        .test-notification:hover { background: #e0e0e0; }
+        h2 { color: #333; }
+        .destination { color: #4a90e2; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Notification Routing Test</h1>
+    <p>This page tests the notification routing logic. Click each notification to see where it would navigate:</p>
+    
+    <h2>Test Notifications:</h2>
+    
+    <div class="test-notification" onclick="testRoute('team_approval_request', null)">
+        <strong>Team Approval Request</strong><br>
+        Type: team_approval_request<br>
+        Expected destination: <span class="destination">/admin/teams</span>
+    </div>
+    
+    <div class="test-notification" onclick="testRoute('claim_request', null)">
+        <strong>Claim Request</strong><br>
+        Type: claim_request<br>
+        Expected destination: <span class="destination">/my-ideas</span>
+    </div>
+    
+    <div class="test-notification" onclick="testRoute('new_team_member', null)">
+        <strong>New Team Member</strong><br>
+        Type: new_team_member<br>
+        Expected destination: <span class="destination">/my-team</span>
+    </div>
+    
+    <div class="test-notification" onclick="testRoute('manager_approved', null)">
+        <strong>Manager Approved</strong><br>
+        Type: manager_approved<br>
+        Expected destination: <span class="destination">/profile</span>
+    </div>
+    
+    <div class="test-notification" onclick="testRoute('claim_approved', 123)">
+        <strong>Claim Approved (with idea ID)</strong><br>
+        Type: claim_approved, ideaId: 123<br>
+        Expected destination: <span class="destination">/idea/123</span>
+    </div>
+    
+    <div class="test-notification" onclick="testRoute('status_change', 456)">
+        <strong>Status Change (with idea ID)</strong><br>
+        Type: status_change, ideaId: 456<br>
+        Expected destination: <span class="destination">/idea/456</span>
+    </div>
+    
+    <script>
+    function testRoute(notificationType, ideaId) {
+        // Copy of the routing logic from handleNotificationClick
+        let destination = null;
+        
+        switch(notificationType) {
+            case 'team_approval_request':
+                destination = '/admin/teams';
+                break;
+                
+            case 'team_approved':
+            case 'team_denied':
+                destination = '/profile';
+                break;
+                
+            case 'manager_approved':
+            case 'manager_denied':
+                destination = '/profile';
+                break;
+                
+            case 'new_manager':
+            case 'new_team_member':
+                destination = '/my-team';
+                break;
+                
+            case 'claim_request':
+                destination = '/my-ideas';
+                break;
+                
+            case 'claim_approved':
+            case 'claim_denied':
+                destination = ideaId ? `/idea/${ideaId}` : '/my-ideas';
+                break;
+                
+            case 'status_change':
+            case 'idea_completed':
+            case 'assigned':
+                if (ideaId) {
+                    destination = `/idea/${ideaId}`;
+                } else {
+                    destination = '/my-ideas';
+                }
+                break;
+                
+            default:
+                if (ideaId) {
+                    destination = `/idea/${ideaId}`;
+                }
+                break;
+        }
+        
+        alert(`Notification type: ${notificationType}\nIdea ID: ${ideaId || 'none'}\nWould navigate to: ${destination || 'no destination'}`);
+    }
+    </script>
+</body>
+</html>

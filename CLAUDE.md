@@ -1418,3 +1418,21 @@ Fixed admin bell notifications not displaying despite API returning correct data
   - `window.debugNotifications()` - Shows current state and forces reload
   - `window.fixNotificationBadge()` - Manually fixes badge visibility
 - **Result**: Admin bell notifications now properly display the unread count
+
+### Notification Click Routing Implementation (July 2025)
+Implemented intelligent routing when users click on bell notifications:
+- **Feature**: Clicking notifications now takes users to the relevant area based on notification type
+- **Implementation**:
+  - Modified notification HTML to pass notification type to click handler
+  - Updated `handleNotificationClick` to route based on type
+  - Added comprehensive routing logic for all notification types
+- **Routing Map**:
+  - `team_approval_request` → `/admin/teams` (admin team approval page)
+  - `team_approved/team_denied` → `/profile` (user profile to see team status)
+  - `manager_approved/manager_denied` → `/profile` (user profile to see manager status)
+  - `new_manager/new_team_member` → `/my-team` (team page to see members)
+  - `claim_request` → `/my-ideas` (to approve/deny claims)
+  - `claim_approved/claim_denied` → `/idea/{id}` or `/my-ideas`
+  - `status_change/idea_completed/assigned` → `/idea/{id}` (specific idea page)
+- **Enhanced Display**: Updated `formatNotificationType` to show user-friendly labels for all types
+- **Result**: Users can now click any notification to navigate directly to the relevant page
