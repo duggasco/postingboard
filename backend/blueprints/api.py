@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest
 from sqlalchemy import desc, asc, func, or_
 from datetime import datetime
 from decorators import require_verified_email
@@ -2274,6 +2274,29 @@ def get_admin_users():
             submitted_count = db.query(Idea).filter_by(email=user.email).count()
             claimed_count = db.query(Claim).filter_by(claimer_email=user.email).count()
             
+            # Count complete ideas (both submitted and claimed)
+            complete_submitted = db.query(Idea).filter(
+                Idea.email == user.email,
+                Idea.status == IdeaStatus.complete
+            ).count()
+            
+            complete_claimed = db.query(Idea).join(Claim).filter(
+                Claim.claimer_email == user.email,
+                Idea.status == IdeaStatus.complete
+            ).count()
+            
+            # Count pending claims
+            pending_claims = db.query(ClaimApproval).filter(
+                ClaimApproval.claimer_email == user.email,
+                ClaimApproval.status == 'pending'
+            ).count()
+            
+            # Check for pending manager request
+            pending_manager_request = db.query(ManagerRequest).filter(
+                ManagerRequest.user_email == user.email,
+                ManagerRequest.status == 'pending'
+            ).first()
+            
             users_data.append({
                 'email': user.email,
                 'name': user.name,
@@ -2285,7 +2308,13 @@ def get_admin_users():
                 'skills': [{'id': skill.id, 'name': skill.name} for skill in user.skills],
                 'is_verified': user.is_verified,
                 'submitted_ideas_count': submitted_count,
-                'claimed_ideas_count': claimed_count
+                'claimed_ideas_count': claimed_count,
+                'complete_submitted_count': complete_submitted,
+                'complete_claimed_count': complete_claimed,
+                'pending_claims_count': pending_claims,
+                'has_pending_manager_request': pending_manager_request is not None,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_verified_at': user.last_verified_at.isoformat() if user.last_verified_at else None
             })
         
         return jsonify({

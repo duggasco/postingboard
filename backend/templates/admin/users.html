@@ -57,6 +57,19 @@
         </div>
         <form id="edit-user-form">
             <input type="hidden" id="edit-user-email" name="email">
+            <div id="user-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+                <h4 style="margin-top: 0; font-size: 16px;">User Analytics</h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div><strong>Email:</strong> <span id="info-email">-</span></div>
+                    <div><strong>Created:</strong> <span id="info-created">-</span></div>
+                    <div><strong>Last Verified:</strong> <span id="info-verified">-</span></div>
+                    <div><strong>Ideas Submitted:</strong> <span id="info-submitted">0</span></div>
+                    <div><strong>Ideas Claimed:</strong> <span id="info-claimed">0</span></div>
+                    <div><strong>Ideas Completed:</strong> <span id="info-completed">0</span></div>
+                    <div><strong>Pending Claims:</strong> <span id="info-pending">0</span></div>
+                    <div><strong>Manager Request:</strong> <span id="info-manager-request">No</span></div>
+                </div>
+            </div>
             <div class="form-group">
                 <label for="edit-name">Name</label>
                 <input type="text" id="edit-name" name="name" class="form-control" required>
@@ -249,6 +262,9 @@ function displayUsers() {
                     <th>Verified</th>
                     <th>Ideas</th>
                     <th>Claims</th>
+                    <th>Complete</th>
+                    <th>Pending</th>
+                    <th>Created</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -279,6 +295,9 @@ function displayUsers() {
                 <td>${verifiedBadge}</td>
                 <td>${user.submitted_ideas_count || 0}</td>
                 <td>${user.claimed_ideas_count || 0}</td>
+                <td>${(user.complete_submitted_count || 0) + (user.complete_claimed_count || 0)}</td>
+                <td>${user.pending_claims_count || 0}${user.has_pending_manager_request ? ' 📋' : ''}</td>
+                <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}</td>
                 <td>
                     <button class="btn btn-primary btn-sm" onclick="editUser('${user.email}')">Edit</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.email}')">Delete</button>
@@ -372,9 +391,16 @@ function clearFilters() {
     displayUsers();
 }
 
-function editUser(email) {
+async function editUser(email) {
     const user = allUsers.find(u => u.email === email);
     if (!user) return;
+    
+    // Ensure teams and skills are loaded
+    if (teams.length === 0) await loadTeams();
+    if (skills.length === 0) await loadSkills();
+    
+    // Re-populate team selects to ensure they're up to date
+    populateTeamSelects();
     
     // Populate form
     document.getElementById('edit-user-email').value = user.email;
@@ -383,6 +409,16 @@ function editUser(email) {
     document.getElementById('edit-team').value = user.team_id || '';
     document.getElementById('edit-managed-team').value = user.managed_team_id || '';
     document.getElementById('edit-verified').checked = user.is_verified;
+    
+    // Populate analytics
+    document.getElementById('info-email').textContent = user.email;
+    document.getElementById('info-created').textContent = user.created_at ? new Date(user.created_at).toLocaleString() : '-';
+    document.getElementById('info-verified').textContent = user.last_verified_at ? new Date(user.last_verified_at).toLocaleString() : 'Never';
+    document.getElementById('info-submitted').textContent = user.submitted_ideas_count || 0;
+    document.getElementById('info-claimed').textContent = user.claimed_ideas_count || 0;
+    document.getElementById('info-completed').textContent = (user.complete_submitted_count || 0) + (user.complete_claimed_count || 0);
+    document.getElementById('info-pending').textContent = user.pending_claims_count || 0;
+    document.getElementById('info-manager-request').textContent = user.has_pending_manager_request ? 'Yes (Pending)' : 'No';
     
     // Show/hide fields based on role
     const role = user.role;
@@ -410,6 +446,7 @@ function editUser(email) {
         } else if (newRole === 'citizen_developer' || newRole === 'developer') {
             managedTeamGroup.style.display = 'none';
             skillsGroup.style.display = 'block';
+            // Always repopulate skills when showing the skills section
             populateSkillsCheckboxes(user.skills || []);
         } else {
             managedTeamGroup.style.display = 'none';
@@ -424,12 +461,19 @@ function populateSkillsCheckboxes(userSkills) {
     const container = document.getElementById('edit-skills-container');
     container.innerHTML = '';
     
+    // Ensure skills array is loaded
+    if (!skills || skills.length === 0) {
+        container.innerHTML = '<p>Loading skills...</p>';
+        loadSkills().then(() => populateSkillsCheckboxes(userSkills));
+        return;
+    }
+    
     const userSkillIds = (userSkills || []).map(s => s.id);
     
     skills.forEach(skill => {
         const div = document.createElement('div');
         div.innerHTML = `
-            <label>
+            <label style="display: flex; align-items: center; gap: 4px;">
                 <input type="checkbox" name="skills[]" value="${skill.id}" 
                     ${userSkillIds.includes(skill.id) ? 'checked' : ''}>
                 ${skill.name}
