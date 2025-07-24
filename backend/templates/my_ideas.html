@@ -328,10 +328,10 @@ async function loadNotifications() {
         const response = await fetch('/api/user/notifications');
         const data = await response.json();
         
+        const notificationsList = document.getElementById('notifications-list');
+        const notificationCount = document.getElementById('notification-count');
+        
         if (data.success) {
-            const notificationsList = document.getElementById('notifications-list');
-            const notificationCount = document.getElementById('notification-count');
-            
             if (data.notifications.length === 0) {
                 notificationsList.innerHTML = '<div class="empty-notifications">No notifications</div>';
                 notificationCount.style.display = 'none';
@@ -362,9 +362,21 @@ async function loadNotifications() {
                     notificationCount.style.display = 'none';
                 }
             }
+        } else {
+            // Handle error case - show "No notifications" instead of leaving "Loading..."
+            notificationsList.innerHTML = '<div class="empty-notifications">No notifications</div>';
+            notificationCount.style.display = 'none';
+            if (data.error) {
+                console.error('Notification API error:', data.error);
+            }
         }
     } catch (error) {
         console.error('Error loading notifications:', error);
+        // Also handle network errors - show "No notifications" instead of leaving "Loading..."
+        const notificationsList = document.getElementById('notifications-list');
+        const notificationCount = document.getElementById('notification-count');
+        notificationsList.innerHTML = '<div class="empty-notifications">Unable to load notifications</div>';
+        notificationCount.style.display = 'none';
     }
 }
 
