@@ -635,7 +635,7 @@ def get_team_stats():
         # Priority breakdown of team's ideas (both submitted and claimed)
         priority_breakdown = {}
         priority_query = db.query(Idea.priority, func.count(Idea.id)).filter(
-            db.or_(
+            or_(
                 Idea.email.in_(team_member_emails),
                 Idea.id.in_(
                     db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
@@ -649,7 +649,7 @@ def get_team_stats():
         # Size breakdown
         size_breakdown = {}
         size_query = db.query(Idea.size, func.count(Idea.id)).filter(
-            db.or_(
+            or_(
                 Idea.email.in_(team_member_emails),
                 Idea.id.in_(
                     db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
@@ -726,6 +726,223 @@ def get_team_stats():
         ).count()
         
         stats = {
+            'overview': {
+                'total_members': len(team_members),
+                'ideas_submitted': team_submitted,
+                'ideas_claimed': team_claimed,
+                'completion_rate': completion_rate,
+                'pending_approvals': pending_approvals
+            },
+            'breakdowns': {
+                'status': status_breakdown,
+                'priority': priority_breakdown,
+                'size': size_breakdown,
+                'skills': [{'skill': skill, 'count': count} for skill, count in skills_distribution]
+            },
+            'member_activity': member_activity[:10],  # Top 10 members
+            'recent_activity': {
+                'submissions_30d': recent_submissions,
+                'claims_30d': recent_claims
+            }
+        }
+        
+        return jsonify(stats)
+    finally:
+        db.close()
+
+@api_bp.route('/admin/team-stats')
+def get_admin_team_stats():
+    """Get team statistics for admins. Can view any team or all teams."""
+    # Check if user is admin
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Unauthorized. Admin access required.'}), 403
+    
+    db = get_session()
+    try:
+        # Get optional team_id parameter
+        team_id = request.args.get('team_id', type=int)
+        
+        # If no team_id, return stats for all teams
+        if not team_id:
+            # Get all teams
+            teams = db.query(Team).order_by(Team.name).all()
+            all_teams_stats = []
+            
+            for team in teams:
+                # Get team members
+                team_members = db.query(UserProfile).filter(
+                    UserProfile.team_id == team.id
+                ).all()
+                
+                team_member_emails = [member.email for member in team_members]
+                
+                if not team_member_emails:
+                    # Skip teams with no members
+                    continue
+                
+                # Basic counts
+                team_submitted = db.query(Idea).filter(
+                    Idea.email.in_(team_member_emails)
+                ).count()
+                
+                team_claimed = db.query(func.count(func.distinct(Claim.idea_id))).join(
+                    Idea, Claim.idea_id == Idea.id
+                ).filter(
+                    Claim.claimer_email.in_(team_member_emails)
+                ).scalar() or 0
+                
+                # Completion rate
+                completed_ideas = db.query(Claim).join(Idea).filter(
+                    Claim.claimer_email.in_(team_member_emails),
+                    Idea.status == IdeaStatus.complete
+                ).count()
+                
+                completion_rate = round((completed_ideas / team_claimed * 100) if team_claimed > 0 else 0, 1)
+                
+                all_teams_stats.append({
+                    'team_id': team.id,
+                    'team_name': team.name,
+                    'is_approved': team.is_approved,
+                    'total_members': len(team_members),
+                    'ideas_submitted': team_submitted,
+                    'ideas_claimed': team_claimed,
+                    'completion_rate': completion_rate
+                })
+            
+            return jsonify({'teams': all_teams_stats})
+        
+        # Get stats for specific team
+        team = db.query(Team).filter(Team.id == team_id).first()
+        if not team:
+            return jsonify({'error': 'Team not found'}), 404
+        
+        # Get team members
+        team_members = db.query(UserProfile).filter(
+            UserProfile.team_id == team_id
+        ).all()
+        
+        team_member_emails = [member.email for member in team_members]
+        
+        # Basic counts
+        team_submitted = db.query(Idea).filter(
+            Idea.email.in_(team_member_emails)
+        ).count()
+        
+        # Get claimed ideas by team members with proper join
+        from models import ClaimApproval
+        team_claimed = db.query(func.count(func.distinct(Claim.idea_id))).join(
+            Idea, Claim.idea_id == Idea.id
+        ).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).scalar() or 0
+        
+        # Status breakdown of team's claimed ideas
+        status_breakdown = {}
+        claimed_status_query = db.query(Idea.status, func.count(Idea.id)).join(
+            Claim, Claim.idea_id == Idea.id
+        ).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).group_by(Idea.status).all()
+        
+        for status, count in claimed_status_query:
+            status_breakdown[status.value] = count
+        
+        # Priority breakdown of team's ideas (both submitted and claimed)
+        priority_breakdown = {}
+        priority_query = db.query(Idea.priority, func.count(Idea.id)).filter(
+            or_(
+                Idea.email.in_(team_member_emails),
+                Idea.id.in_(
+                    db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
+                )
+            )
+        ).group_by(Idea.priority).all()
+        
+        for priority, count in priority_query:
+            priority_breakdown[priority.value] = count
+        
+        # Size breakdown
+        size_breakdown = {}
+        size_query = db.query(Idea.size, func.count(Idea.id)).filter(
+            or_(
+                Idea.email.in_(team_member_emails),
+                Idea.id.in_(
+                    db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
+                )
+            )
+        ).group_by(Idea.size).all()
+        
+        for size, count in size_query:
+            size_breakdown[size.value] = count
+        
+        # Skills distribution - what skills are most common in team's claimed ideas
+        skills_distribution = db.query(Skill.name, func.count(Skill.id)).join(
+            Idea.skills
+        ).join(
+            Claim, Claim.idea_id == Idea.id
+        ).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).group_by(Skill.name).order_by(func.count(Skill.id).desc()).limit(10).all()
+        
+        # Team member activity
+        member_activity = []
+        for member in team_members:
+            submitted_count = db.query(Idea).filter(Idea.email == member.email).count()
+            claimed_count = db.query(Claim).filter(Claim.claimer_email == member.email).count()
+            completed_count = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.status == IdeaStatus.complete
+            ).count()
+            
+            member_activity.append({
+                'name': member.name,
+                'email': member.email,
+                'submitted': submitted_count,
+                'claimed': claimed_count,
+                'completed': completed_count
+            })
+        
+        # Sort by total activity
+        member_activity.sort(key=lambda x: x['submitted'] + x['claimed'], reverse=True)
+        
+        # Pending approvals for team
+        pending_approvals = db.query(ClaimApproval).join(
+            Idea, ClaimApproval.idea_id == Idea.id
+        ).filter(
+            ClaimApproval.claimer_email.in_(team_member_emails),
+            ClaimApproval.status == 'pending',
+            ClaimApproval.manager_approved == None
+        ).count()
+        
+        # Calculate completion rate
+        total_claimed = db.query(Claim).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).count()
+        
+        completed_ideas = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.status == IdeaStatus.complete
+        ).count()
+        
+        completion_rate = round((completed_ideas / total_claimed * 100) if total_claimed > 0 else 0, 1)
+        
+        # Recent activity (last 30 days)
+        from datetime import datetime, timedelta
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        
+        recent_submissions = db.query(Idea).filter(
+            Idea.email.in_(team_member_emails),
+            Idea.date_submitted >= thirty_days_ago
+        ).count()
+        
+        recent_claims = db.query(Claim).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Claim.claim_date >= thirty_days_ago
+        ).count()
+        
+        stats = {
+            'team_name': team.name,
+            'team_id': team.id,
             'overview': {
                 'total_members': len(team_members),
                 'ideas_submitted': team_submitted,
