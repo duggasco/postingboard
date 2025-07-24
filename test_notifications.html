@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Notifications</title>
+</head>
+<body>
+    <h1>Admin Notification Test</h1>
+    <button id="notification-bell">🔔 <span id="notification-count">0</span></button>
+    <div id="notifications-panel"><div id="notifications-list">Loading...</div></div>
+    
+    <h2>Debug Output:</h2>
+    <pre id="debug"></pre>
+    
+    <script>
+    async function testNotifications() {
+        const debug = document.getElementById('debug');
+        debug.textContent = 'Testing notifications...\n';
+        
+        try {
+            // Test with admin cookies
+            const response = await fetch('/api/user/notifications', {
+                credentials: 'include'
+            });
+            
+            debug.textContent += `Response status: ${response.status}\n`;
+            
+            const data = await response.json();
+            debug.textContent += `Response data: ${JSON.stringify(data, null, 2)}\n`;
+            
+            // Update UI
+            const count = document.getElementById('notification-count');
+            if (data.unread_count > 0) {
+                count.textContent = data.unread_count;
+                count.style.display = 'inline';
+                debug.textContent += `\nUpdated badge to show: ${data.unread_count}`;
+            } else {
+                count.style.display = 'none';
+                debug.textContent += '\nNo unread notifications, hiding badge';
+            }
+        } catch (error) {
+            debug.textContent += `\nError: ${error.message}\n${error.stack}`;
+        }
+    }
+    
+    // Test immediately
+    testNotifications();
+    </script>
+</body>
+</html>

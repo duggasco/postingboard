@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Notifications</title>
+</head>
+<body>
+    <h1>Debug Notification System</h1>
+    <div id="output"></div>
+    
+    <script>
+    async function debugNotifications() {
+        const output = document.getElementById('output');
+        
+        // Test 1: Check if we're logged in
+        output.innerHTML += '<h2>Test 1: Checking login status</h2>';
+        
+        try {
+            // Test 2: Fetch notifications
+            output.innerHTML += '<h2>Test 2: Fetching notifications</h2>';
+            const response = await fetch('/api/user/notifications');
+            const data = await response.json();
+            
+            output.innerHTML += `<pre>Status: ${response.status}
+Success: ${data.success}
+Unread Count: ${data.unread_count}
+Total Notifications: ${data.notifications ? data.notifications.length : 0}
+
+Notifications:
+${JSON.stringify(data.notifications, null, 2)}</pre>`;
+            
+            // Test 3: Check DOM elements
+            output.innerHTML += '<h2>Test 3: Checking DOM elements</h2>';
+            const bell = document.getElementById('notification-bell');
+            const count = document.getElementById('notification-count');
+            const panel = document.getElementById('notifications-panel');
+            
+            output.innerHTML += `<pre>Bell element: ${bell ? 'Found' : 'Not found'}
+Count element: ${count ? 'Found' : 'Not found'}
+Panel element: ${panel ? 'Found' : 'Not found'}</pre>`;
+            
+        } catch (error) {
+            output.innerHTML += `<pre>Error: ${error.message}</pre>`;
+        }
+    }
+    
+    // Run on load
+    window.onload = debugNotifications;
+    </script>
+</body>
+</html>

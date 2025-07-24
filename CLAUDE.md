@@ -1382,3 +1382,25 @@ Fixed "Failed to update profile" error for bulk uploaded users:
   - Removed all `from models import ...` statements inside functions
   - This fixed the "cannot access local variable 'UserProfile'" error
 - **Impact**: All users, including bulk uploaded ones, can now successfully update their profiles
+
+### Admin Notification Persistence Fix (July 2025)
+Fixed admin bell notifications not displaying despite being in database:
+- **Problem**: Admin notifications existed in database but bell icon showed "0" with display:none
+- **Root Cause**: JavaScript initialization timing issues on complex admin pages
+- **Solution**: Implemented multiple initialization strategies:
+  - DOMContentLoaded event listener for standard page loads
+  - Immediate initialization check if DOM already loaded
+  - 500ms fallback timer for general pages
+  - 1000ms special fallback for admin pages with complex initialization
+- **Debugging Enhancements**:
+  - Added comprehensive console logging throughout notification loading process
+  - Created `window.debugNotifications()` function for manual testing
+  - Added debug output to API endpoint to track notification queries
+- **Verification**: API correctly returns notifications, multiple initialization paths ensure bell updates
+
+### Cache Busting Implementation (July 2025)
+Added cache busting to prevent stale JavaScript and CSS files:
+- **JavaScript**: Added `?v={{ range(1000, 9999) | random }}` to main.js in base.html
+- **CSS**: Added same cache busting pattern to styles.css in base.html
+- **Coverage**: Since all templates extend base.html, cache busting works on every page
+- **Purpose**: Ensures browsers fetch fresh copies of assets after updates, preventing issues from cached files

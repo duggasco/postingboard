@@ -76,17 +76,27 @@ let notificationsPanelOpen = false;
 
 async function loadNotifications() {
     try {
+        console.log('Loading notifications...');
         const response = await fetch('/api/user/notifications');
+        
+        if (!response.ok) {
+            console.error('Failed to fetch notifications:', response.status, response.statusText);
+            return;
+        }
+        
         const data = await response.json();
         
-        console.log('Notification API response:', data);
+        console.log('Notification API response:', JSON.stringify(data, null, 2));
         
         const notificationsList = document.getElementById('notifications-list');
         const notificationCount = document.getElementById('notification-count');
         
         if (!notificationsList || !notificationCount) {
+            console.log('Notification elements not found - notificationsList:', notificationsList, 'notificationCount:', notificationCount);
             return; // Elements not found on this page
         }
+        
+        console.log('Notification elements found, unread count:', data.unread_count);
         
         if (data.success) {
             if (data.notifications.length === 0) {
@@ -113,9 +123,12 @@ async function loadNotifications() {
                 
                 // Update badge
                 if (data.unread_count > 0) {
+                    console.log('Setting notification count to:', data.unread_count);
                     notificationCount.textContent = data.unread_count;
                     notificationCount.style.display = 'inline-block';
+                    console.log('Badge updated - text:', notificationCount.textContent, 'display:', notificationCount.style.display);
                 } else {
+                    console.log('No unread notifications, hiding badge');
                     notificationCount.style.display = 'none';
                 }
             }
@@ -189,10 +202,24 @@ async function handleNotificationClick(notificationId, ideaId) {
 }
 
 // Initialize notifications when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
+function initializeNotifications() {
+    if (window.notificationsInitialized) {
+        console.log('Notifications already initialized, skipping...');
+        return;
+    }
+    
+    console.log('Initializing notifications...');
+    window.notificationsInitialized = true;
+    
     // Only initialize if user is logged in (notification bell exists)
     const notificationBell = document.getElementById('notification-bell');
+    const notificationCount = document.getElementById('notification-count');
+    
+    console.log('Found notification bell:', notificationBell);
+    console.log('Found notification count:', notificationCount);
+    
     if (notificationBell) {
+        console.log('Notification bell found, loading notifications...');
         loadNotifications();
         
         // Refresh notifications every 30 seconds
@@ -209,7 +236,57 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
+}
+
+// Set up multiple initialization strategies
+document.addEventListener('DOMContentLoaded', initializeNotifications);
+
+// Also try to initialize if DOM is already loaded
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    console.log('DOM already loaded, initializing notifications immediately...');
+    initializeNotifications();
+}
+
+// Fallback: initialize after a short delay
+setTimeout(function() {
+    const notificationBell = document.getElementById('notification-bell');
+    if (notificationBell && !window.notificationsInitialized) {
+        console.log('Fallback initialization of notifications...');
+        window.notificationsInitialized = true;
+        initializeNotifications();
+    }
+}, 500);
+
+// Extra fallback for admin pages that may have complex initialization
+if (window.location.pathname.includes('/admin')) {
+    setTimeout(function() {
+        const notificationBell = document.getElementById('notification-bell');
+        const notificationCount = document.getElementById('notification-count');
+        if (notificationBell && notificationCount && !window.adminNotificationsLoaded) {
+            console.log('Admin page fallback - forcing notification load...');
+            window.adminNotificationsLoaded = true;
+            loadNotifications();
+        }
+    }, 1000);
+}
+
+// Debug function that can be called from console
+window.debugNotifications = async function() {
+    console.log('=== Debug Notifications ===');
+    const bell = document.getElementById('notification-bell');
+    const count = document.getElementById('notification-count');
+    console.log('Bell element:', bell);
+    console.log('Count element:', count);
+    console.log('Count text:', count?.textContent);
+    console.log('Count display:', count?.style.display);
+    
+    console.log('\nForcing notification load...');
+    await loadNotifications();
+    
+    console.log('\nAfter load:');
+    console.log('Count text:', count?.textContent);
+    console.log('Count display:', count?.style.display);
+};
 
 // User Dropdown Menu
 let userDropdownOpen = false;

@@ -589,6 +589,9 @@ def get_user_notifications():
     if not user_email:
         return jsonify({'success': False, 'message': 'User email not found'}), 400
     
+    # Debug logging
+    print(f"Notifications API called - user_email: {user_email}, is_admin: {session.get('is_admin')}")
+    
     db = get_session()
     try:
         # Get unread notifications for the user
@@ -601,11 +604,13 @@ def get_user_notifications():
                 ),
                 Notification.is_read == False
             ).order_by(desc(Notification.created_at)).limit(50).all()
+            print(f"Admin query returned {len(notifications)} unread notifications")
         else:
             notifications = db.query(Notification).filter_by(
                 user_email=user_email,
                 is_read=False
             ).order_by(desc(Notification.created_at)).limit(50).all()
+            print(f"Regular user query returned {len(notifications)} unread notifications")
         
         # Also get recent read notifications (last 7 days)
         from datetime import timedelta
@@ -648,6 +653,7 @@ def get_user_notifications():
             })
         
         unread_count = len([n for n in notifications_data if not n['is_read']])
+        print(f"Final unread count being returned: {unread_count}")
         
         return jsonify({
             'success': True,
