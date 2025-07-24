@@ -1307,7 +1307,7 @@ Updated messaging about skill persistence on submit form:
 
 ### Chart Color Consistency (July 2025)
 Implemented consistent color mapping across all charts in My Team page:
-- **Structured Color System**: Created category-based color mappings for status, priority, size, and team claims
+- **Structured Color System**: Created category-based color mappings for status, priority, size, skills, and team claims
 - **Context-Aware Colors**: "medium" shows as orange in priority charts and blue in size charts
 - **Auto-Detection**: Chart type is automatically determined based on label content
 - **Visual Consistency**: Same categories now use identical colors across all chart types
@@ -1316,6 +1316,21 @@ Implemented consistent color mapping across all charts in My Team page:
   - Priority: high=red, medium=orange, low=green  
   - Size: small=teal, medium=blue, large=purple, extra_large=pink
   - Team Claims: Own Team=blue, Other Teams=orange
+  - Skills: Distinct colors for each skill type (SQL=blue, Python=brown, Java=pink, etc.)
+
+### Team Skills Chart Fix (July 2025)
+Fixed data processing error in team skills chart:
+- **API Data Format**: API returns `team_skills` as array of objects with `skill` and `count` properties
+- **Frontend Processing**: Updated to correctly extract skill names and counts from API response
+- **Color Assignment**: Added 'skills' category to COLOR_MAPPINGS with distinct colors for each skill
+- **Chart Type Parameter**: Updated createBarChart to accept chartType parameter for proper color mapping
+
+### My Team Role Display Fix (July 2025)
+Fixed roles not displaying correctly in My Team users table:
+- **Issue**: Only "Developer" and "Citizen Developer" roles were shown, managers and idea submitters displayed as "Developer"
+- **Fix**: Updated role display logic to handle all four role types: Manager, Idea Submitter, Citizen Developer, Developer
+- **Filter Update**: Added all role options to the role filter dropdown
+- **API**: Confirmed API was already returning correct role data, issue was only in frontend display
 
 ### Profile Update Error Fix (December 2024)
 Fixed "Failed to update profile" error when saving profile changes:

@@ -148,6 +148,8 @@
                     <input type="text" id="member-search-input" placeholder="Search by name or email..." class="form-control" style="width: 250px;">
                     <select id="member-role-filter" class="form-control" style="width: 150px;">
                         <option value="">All Roles</option>
+                        <option value="manager">Manager</option>
+                        <option value="idea_submitter">Idea Submitter</option>
                         <option value="citizen_developer">Citizen Developer</option>
                         <option value="developer">Developer</option>
                     </select>
@@ -382,7 +384,14 @@ function displayMembers() {
     
     let html = '';
     filteredMembers.forEach(member => {
-        const roleDisplay = member.role === 'citizen_developer' ? 'Citizen Developer' : 'Developer';
+        let roleDisplay = 'Developer';
+        if (member.role === 'citizen_developer') {
+            roleDisplay = 'Citizen Developer';
+        } else if (member.role === 'manager') {
+            roleDisplay = 'Manager';
+        } else if (member.role === 'idea_submitter') {
+            roleDisplay = 'Idea Submitter';
+        }
         const skillsList = member.skills ? member.skills.join(', ') : '-';
         
         html += `
@@ -611,11 +620,11 @@ function updateCharts() {
     // Create team skills chart
     const teamSkillsData = {};
     if (teamStats.breakdowns.team_skills) {
-        teamStats.breakdowns.team_skills.forEach(skill => {
-            teamSkillsData[skill] = (teamSkillsData[skill] || 0) + 1;
+        teamStats.breakdowns.team_skills.forEach(item => {
+            teamSkillsData[item.skill] = item.count;
         });
     }
-    createBarChart('team-skills-chart', 'Team Skills', teamSkillsData);
+    createBarChart('team-skills-chart', 'Team Skills', teamSkillsData, 'skills');
     
     // Create team claims breakdown chart  
     const claimsBreakdown = {
@@ -654,7 +663,7 @@ function createDoughnutChart(canvasId, title, data) {
     });
 }
 
-function createBarChart(canvasId, title, data) {
+function createBarChart(canvasId, title, data, chartType) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || !data) return;
     
@@ -669,7 +678,7 @@ function createBarChart(canvasId, title, data) {
             datasets: [{
                 label: 'Count',
                 data: values,
-                backgroundColor: getChartColors(labels)
+                backgroundColor: getChartColors(labels, chartType)
             }]
         },
         options: {
@@ -722,8 +731,21 @@ const COLOR_MAPPINGS = {
         'Other Teams': '#fd7e14', // orange
     },
     
+    // Skills colors - using a distinct palette for skills
+    'skills': {
+        'sql/databases': '#1f77b4',        // blue
+        'frontend/ui - tableau': '#ff7f0e', // orange
+        'frontend/ui - streamlit': '#2ca02c', // green
+        'frontend/ui - web': '#d62728',    // red
+        'frontend/ui - powerbi': '#9467bd', // purple
+        'python': '#8c564b',               // brown
+        'java': '#e377c2',                 // pink
+        'platform': '#7f7f7f',             // gray
+        'regulatory': '#bcbd22',           // olive
+    },
+    
     // Default fallback colors for unmapped items
-    '_default': ['#4a90e2', '#28a745', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c']
+    '_default': ['#4a90e2', '#28a745', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c', '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
 };
 
 function getChartColors(labels, chartType) {
@@ -766,7 +788,7 @@ function getChartColors(labels, chartType) {
         
         // If no color found, check all mappings
         if (!color) {
-            for (const category of ['status', 'priority', 'size', 'team']) {
+            for (const category of ['status', 'priority', 'size', 'team', 'skills']) {
                 if (COLOR_MAPPINGS[category][lowerLabel]) {
                     color = COLOR_MAPPINGS[category][lowerLabel];
                     break;
