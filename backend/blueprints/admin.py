@@ -78,11 +78,6 @@ def teams():
     """Manage teams page."""
     return render_template('admin/teams.html')
 
-@admin_bp.route('/manager-requests')
-@admin_required
-def manager_requests():
-    """Manage manager requests page."""
-    return render_template('admin/manager_requests.html')
 
 @admin_bp.route('/email-settings')
 @admin_required

@@ -627,11 +627,11 @@ Notes:
   - Add/edit/delete teams
   - Approve custom teams submitted by users
   - Separate sections for approved and pending teams
-- **Manager Requests**: 
-  - View pending manager requests
-  - Approve or deny requests to manage teams
-  - Remove existing managers from their teams
-  - Track request history
+- **Manager Requests** (integrated into User Management): 
+  - View and manage pending requests directly in user edit modal
+  - Approve or deny requests while editing users
+  - Remove existing managers via user management
+  - Smart role changes handle manager workflow automatically
 - **Admin Team Analytics** (in My Team's Ideas page):
   - View performance metrics for all teams or individual teams
   - Team selector dropdown to choose specific team
@@ -934,10 +934,10 @@ When users select the "Manager" role in their profile, they can request to manag
    - User sees notification: "Your request to manage [Team] is pending admin approval"
 
 2. **Admin Review**:
-   - **Option A**: Admin navigates to `/admin/manager-requests` (traditional approach)
-   - **Option B**: Admin goes to `/admin/users` and edits the user directly
+   - Admin goes to `/admin/users` to manage all user-related tasks
    - Pending requests appear in User Analytics section of edit modal
    - Can approve or deny requests directly from user management
+   - Manager requests are fully integrated into user management workflow
 
 3. **Approval Process**:
    - **Approve**: Updates request status to `approved`, assigns `managed_team_id` to user, changes role to "manager"
@@ -1257,6 +1257,7 @@ Integrated manager request workflow into admin user management:
   - `PUT /api/admin/users/<email>` handles role changes intelligently
   - Manager approval endpoint also updates user role
 - **Streamlined Workflow**: Admins can manage everything from one interface
+- **Deprecated**: Removed separate `/admin/manager-requests` page in favor of integrated approach
 
 ### My Team Page Data Display Fix (July 2025)
 Fixed missing data and charts on the My Team page:

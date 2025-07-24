@@ -477,7 +477,7 @@ def get_admin_notifications():
                 'type': 'manager_request',
                 'count': pending_manager_requests,
                 'message': f'{pending_manager_requests} pending manager request{"s" if pending_manager_requests > 1 else ""}',
-                'link': '/admin/manager-requests',
+                'link': '/admin/users',
                 'priority': 'high'
             })
         
