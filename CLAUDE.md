@@ -421,6 +421,23 @@ class Notification(Base):
 - Notifications include links to related ideas when applicable
 - System automatically notifies all relevant parties (submitters, claimers, managers)
 
+## Version Indicator
+
+### Overview
+A dynamic version indicator appears in the bottom right corner of all pages showing the git commit hash (e.g., "v.446f372").
+
+### Features
+- **Dynamic Detection**: Automatically detects current git commit
+- **Docker Support**: Passes commit hash via build args when git not available
+- **Hidden Admin Access**: Clicking the version indicator navigates to admin portal
+- **Subtle Design**: Low opacity (0.6) with hover effect to avoid drawing attention
+
+### Implementation
+- Flask context processor injects `git_commit` into all templates
+- `get_git_revision_short_hash()` in app.py handles detection
+- Falls back to "v.unknown" when git unavailable
+- Docker build args pass commit at build time: `GIT_COMMIT=$(git rev-parse --short HEAD)`
+
 ## Future Enhancements
 1. WebSocket support for real-time updates
 2. File upload capabilities
@@ -504,9 +521,10 @@ This issue affects all enum-based filters (priority, status, size) throughout th
 
 
 ## Admin Access
-- Navigate to `/admin/login`
+- **Hidden Access**: Click the version indicator (e.g., "v.446f372") in the bottom right corner of any page
 - Password: `2929arch`
 - After login, redirects to `/admin/dashboard`
+- Note: Admin link removed from navigation bar for security
 
 ### Bulk Upload Feature
 The admin portal includes a bulk upload feature for importing ideas and users via CSV files.
