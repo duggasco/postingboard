@@ -555,10 +555,39 @@ async function saveMember(event) {
 }
 
 async function loadTeamIdeas() {
-    // Team ideas section removed as it's not part of the team analytics dashboard
-    // Team members can view all ideas on the Browse Ideas page
     const container = document.getElementById('team-ideas-container');
-    container.innerHTML = '<p style="text-align: center; color: #6c757d;">To view team ideas, please visit the <a href="/">Browse Ideas</a> page and filter by your team.</p>';
+    
+    try {
+        // Get the selected team ID (for admins) or use the default team
+        const teamId = currentTeamId || teamStats?.teamId;
+        
+        if (!teamId || !teamStats || !teamStats.teamName) {
+            container.innerHTML = '<p style="text-align: center; color: #6c757d;">No team selected.</p>';
+            return;
+        }
+        
+        // Fetch ideas for the team
+        const response = await fetch(`/api/ideas?benefactor_team=${encodeURIComponent(teamStats.teamName)}`);
+        const ideas = await response.json();
+        
+        if (!ideas || ideas.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #6c757d;">No ideas found for this team.</p>';
+            return;
+        }
+        
+        // Display ideas as cards
+        let html = '<div class="ideas-grid">';
+        ideas.forEach(idea => {
+            html += createIdeaCard(idea);
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading team ideas:', error);
+        container.innerHTML = '<p style="text-align: center; color: #dc3545;">Error loading team ideas. Please try again.</p>';
+    }
 }
 
 function createIdeaCard(idea) {
@@ -571,29 +600,37 @@ function createIdeaCard(idea) {
     else if (idea.relationship === 'claimed') borderClass = 'idea-claimed';
     else if (idea.relationship === 'both') borderClass = 'idea-both';
     
-    const submitterName = idea.submitter_name || idea.email;
-    const claimerInfo = idea.claims && idea.claims.length > 0 
-        ? idea.claims.map(c => `${c.name} (${c.email})`).join(', ')
-        : null;
+    const truncatedDescription = idea.description.length > 150 
+        ? idea.description.substring(0, 150) + '...' 
+        : idea.description;
+    
+    const titleAttr = idea.description.length > 150 
+        ? `title="${utils.escapeHtml(idea.description).replace(/"/g, '&quot;')}"` 
+        : '';
     
     return `
         <div class="idea-card ${borderClass}">
             <h3 class="idea-title">
                 <a href="/idea/${idea.id}">${utils.escapeHtml(idea.title)}</a>
             </h3>
-            <p class="idea-description">${utils.escapeHtml(idea.description)}</p>
+            <p class="idea-description" ${titleAttr}>${utils.escapeHtml(truncatedDescription)}</p>
             <div class="idea-meta">
-                <span class="team">${utils.escapeHtml(idea.benefactor_team)}</span>
-                <span class="priority-badge ${priorityClass}">${idea.priority}</span>
-                <span class="size-badge ${sizeClass}">${idea.size.replace('_', ' ')}</span>
+                <div class="priority-badge ${priorityClass}">Priority: ${idea.priority}</div>
+                <div class="size-badge ${sizeClass}">Size: ${idea.size.replace('_', ' ')}</div>
+            </div>
+            <div class="idea-status">
                 <span class="status-badge ${statusClass}">${idea.status}</span>
             </div>
             <div class="idea-footer">
-                <div class="submitter-info">
-                    Submitted by ${utils.escapeHtml(submitterName)}: ${utils.formatDate(idea.date_submitted)}
-                </div>
-                ${claimerInfo ? `<div class="claimer-info">Claimed by ${utils.escapeHtml(claimerInfo)}</div>` : ''}
+                <div>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</div>
+                <div>Team: ${utils.escapeHtml(idea.benefactor_team)}</div>
+                ${idea.needed_by ? `<div>Needed by: ${utils.formatDate(idea.needed_by)}</div>` : ''}
             </div>
+            ${idea.claims && idea.claims.length > 0 ? `
+                <div class="claim-info">
+                    Claimed by: ${idea.claims.map(c => utils.escapeHtml(c.name)).join(', ')}
+                </div>
+            ` : ''}
         </div>
     `;
 }

@@ -1095,6 +1095,8 @@ def get_team_stats():
         ).count()
         
         stats = {
+            'teamId': team_id,
+            'teamName': team.name,
             'overview': {
                 'total_members': len(team_members),
                 'ideas_submitted': team_submitted,
@@ -1407,8 +1409,8 @@ def get_admin_team_stats():
         ).count()
         
         stats = {
-            'team_name': team.name,
-            'team_id': team.id,
+            'teamId': team.id,
+            'teamName': team.name,
             'overview': {
                 'total_members': len(team_members),
                 'ideas_submitted': team_submitted,

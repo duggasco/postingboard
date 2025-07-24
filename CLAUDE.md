@@ -1487,3 +1487,17 @@ Added ability to delete notifications for cleanliness:
 - **Security**: Users can only delete their own notifications; admins can delete any
 - **User Experience**: No confirmation dialog for smooth, quick deletion
 - **Result**: Users can easily clean up their notification list by removing old or irrelevant notifications
+
+### My Team Page Fixes (July 2025)
+Fixed My Team page showing blank and team ideas not loading:
+- **File Corruption Issue**: My Team page template was corrupted (reduced to 1 byte)
+  - Fixed by restoring from git: `git restore backend/templates/my_team.html`
+  - Re-implemented the loadTeamIdeas function
+- **API Response Structure**: JavaScript expected `teamStats.teamName` but API didn't include it
+  - Updated `/api/team-stats` to include `teamId` and `teamName` fields
+  - Updated `/api/admin/team-stats` to use consistent field names
+  - Team ideas section now properly loads ideas filtered by team name
+- **Card Layout Update**: Updated `createIdeaCard` function to match Browse Ideas modern layout
+  - Stacked priority/size badges
+  - Description tooltips for truncated text
+  - Consistent styling with rest of application
