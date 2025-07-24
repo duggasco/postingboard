@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills
 from sqlalchemy import desc, asc, func, or_
 from datetime import datetime
 from decorators import require_verified_email
@@ -600,6 +600,11 @@ def get_team_stats():
         team_id = session.get('user_managed_team_id')
         user_email = session.get('user_email')
         
+        # Get team object
+        team = db.query(Team).filter(Team.id == team_id).first()
+        if not team:
+            return jsonify({'error': 'Team not found'}), 404
+        
         # Get team members
         team_members = db.query(UserProfile).filter(
             UserProfile.team_id == team_id,
@@ -632,42 +637,70 @@ def get_team_stats():
         for status, count in claimed_status_query:
             status_breakdown[status.value] = count
         
-        # Priority breakdown of team's ideas (both submitted and claimed)
-        priority_breakdown = {}
-        priority_query = db.query(Idea.priority, func.count(Idea.id)).filter(
-            or_(
-                Idea.email.in_(team_member_emails),
-                Idea.id.in_(
-                    db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
-                )
-            )
+        # Submitted ideas by status
+        submitted_status_breakdown = {}
+        submitted_status_query = db.query(Idea.status, func.count(Idea.id)).filter(
+            Idea.email.in_(team_member_emails)
+        ).group_by(Idea.status).all()
+        
+        for status, count in submitted_status_query:
+            submitted_status_breakdown[status.value] = count
+        
+        # Priority breakdown - split by submitted vs claimed
+        priority_submitted = {}
+        priority_submitted_query = db.query(Idea.priority, func.count(Idea.id)).filter(
+            Idea.email.in_(team_member_emails)
         ).group_by(Idea.priority).all()
         
-        for priority, count in priority_query:
-            priority_breakdown[priority.value] = count
-        
-        # Size breakdown
-        size_breakdown = {}
-        size_query = db.query(Idea.size, func.count(Idea.id)).filter(
-            or_(
-                Idea.email.in_(team_member_emails),
-                Idea.id.in_(
-                    db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
-                )
-            )
-        ).group_by(Idea.size).all()
-        
-        for size, count in size_query:
-            size_breakdown[size.value] = count
-        
-        # Skills distribution - what skills are most common in team's claimed ideas
-        skills_distribution = db.query(Skill.name, func.count(Skill.id)).join(
-            Idea.skills
-        ).join(
+        for priority, count in priority_submitted_query:
+            priority_submitted[priority.value] = count
+            
+        priority_claimed = {}
+        priority_claimed_query = db.query(Idea.priority, func.count(Idea.id)).join(
             Claim, Claim.idea_id == Idea.id
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
-        ).group_by(Skill.name).order_by(func.count(Skill.id).desc()).limit(10).all()
+        ).group_by(Idea.priority).all()
+        
+        for priority, count in priority_claimed_query:
+            priority_claimed[priority.value] = count
+        
+        # Size breakdown - split by submitted vs claimed
+        size_submitted = {}
+        size_submitted_query = db.query(Idea.size, func.count(Idea.id)).filter(
+            Idea.email.in_(team_member_emails)
+        ).group_by(Idea.size).all()
+        
+        for size, count in size_submitted_query:
+            size_submitted[size.value] = count
+            
+        size_claimed = {}
+        size_claimed_query = db.query(Idea.size, func.count(Idea.id)).join(
+            Claim, Claim.idea_id == Idea.id
+        ).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).group_by(Idea.size).all()
+        
+        for size, count in size_claimed_query:
+            size_claimed[size.value] = count
+        
+        # Team member skills - get all skills of team members
+        team_skills = {}
+        for member in team_members:
+            member_skills = db.query(Skill.name).join(
+                user_skills, Skill.id == user_skills.c.skill_id
+            ).filter(
+                user_skills.c.user_id == member.id
+            ).all()
+            
+            for (skill_name,) in member_skills:
+                team_skills[skill_name] = team_skills.get(skill_name, 0) + 1
+        
+        # Sort team skills by count
+        team_skills_list = [{'skill': skill, 'count': count} 
+                           for skill, count in sorted(team_skills.items(), 
+                                                    key=lambda x: x[1], 
+                                                    reverse=True)][:10]
         
         # Team member activity
         member_activity = []
@@ -679,12 +712,40 @@ def get_team_stats():
                 Idea.status == IdeaStatus.complete
             ).count()
             
+            # Claims for own team vs other teams
+            own_team_claims = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.benefactor_team == team.name
+            ).count()
+            
+            other_team_claims = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.benefactor_team != team.name
+            ).count()
+            
+            # Completed for own team vs other teams
+            own_team_completed = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.benefactor_team == team.name,
+                Idea.status == IdeaStatus.complete
+            ).count()
+            
+            other_team_completed = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.benefactor_team != team.name,
+                Idea.status == IdeaStatus.complete
+            ).count()
+            
             member_activity.append({
                 'name': member.name,
                 'email': member.email,
                 'submitted': submitted_count,
                 'claimed': claimed_count,
-                'completed': completed_count
+                'completed': completed_count,
+                'own_team_claims': own_team_claims,
+                'other_team_claims': other_team_claims,
+                'own_team_completed': own_team_completed,
+                'other_team_completed': other_team_completed
             })
         
         # Sort by total activity
@@ -725,6 +786,29 @@ def get_team_stats():
             Claim.claim_date >= thirty_days_ago
         ).count()
         
+        # Team claims breakdown (own team vs other teams)
+        own_team_claims = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.benefactor_team == team.name
+        ).count()
+        
+        other_team_claims = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.benefactor_team != team.name
+        ).count()
+        
+        own_team_completed = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.benefactor_team == team.name,
+            Idea.status == IdeaStatus.complete
+        ).count()
+        
+        other_team_completed = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.benefactor_team != team.name,
+            Idea.status == IdeaStatus.complete
+        ).count()
+        
         stats = {
             'overview': {
                 'total_members': len(team_members),
@@ -735,9 +819,22 @@ def get_team_stats():
             },
             'breakdowns': {
                 'status': status_breakdown,
-                'priority': priority_breakdown,
-                'size': size_breakdown,
-                'skills': [{'skill': skill, 'count': count} for skill, count in skills_distribution]
+                'submitted_status': submitted_status_breakdown,
+                'priority': {
+                    'submitted': priority_submitted,
+                    'claimed': priority_claimed
+                },
+                'size': {
+                    'submitted': size_submitted,
+                    'claimed': size_claimed
+                },
+                'team_skills': team_skills_list,
+                'team_claims': {
+                    'own_team': own_team_claims,
+                    'other_teams': other_team_claims,
+                    'own_team_completed': own_team_completed,
+                    'other_teams_completed': other_team_completed
+                }
             },
             'member_activity': member_activity[:10],  # Top 10 members
             'recent_activity': {
@@ -847,42 +944,70 @@ def get_admin_team_stats():
         for status, count in claimed_status_query:
             status_breakdown[status.value] = count
         
-        # Priority breakdown of team's ideas (both submitted and claimed)
-        priority_breakdown = {}
-        priority_query = db.query(Idea.priority, func.count(Idea.id)).filter(
-            or_(
-                Idea.email.in_(team_member_emails),
-                Idea.id.in_(
-                    db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
-                )
-            )
+        # Submitted ideas by status
+        submitted_status_breakdown = {}
+        submitted_status_query = db.query(Idea.status, func.count(Idea.id)).filter(
+            Idea.email.in_(team_member_emails)
+        ).group_by(Idea.status).all()
+        
+        for status, count in submitted_status_query:
+            submitted_status_breakdown[status.value] = count
+        
+        # Priority breakdown - split by submitted vs claimed
+        priority_submitted = {}
+        priority_submitted_query = db.query(Idea.priority, func.count(Idea.id)).filter(
+            Idea.email.in_(team_member_emails)
         ).group_by(Idea.priority).all()
         
-        for priority, count in priority_query:
-            priority_breakdown[priority.value] = count
-        
-        # Size breakdown
-        size_breakdown = {}
-        size_query = db.query(Idea.size, func.count(Idea.id)).filter(
-            or_(
-                Idea.email.in_(team_member_emails),
-                Idea.id.in_(
-                    db.query(Claim.idea_id).filter(Claim.claimer_email.in_(team_member_emails))
-                )
-            )
-        ).group_by(Idea.size).all()
-        
-        for size, count in size_query:
-            size_breakdown[size.value] = count
-        
-        # Skills distribution - what skills are most common in team's claimed ideas
-        skills_distribution = db.query(Skill.name, func.count(Skill.id)).join(
-            Idea.skills
-        ).join(
+        for priority, count in priority_submitted_query:
+            priority_submitted[priority.value] = count
+            
+        priority_claimed = {}
+        priority_claimed_query = db.query(Idea.priority, func.count(Idea.id)).join(
             Claim, Claim.idea_id == Idea.id
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
-        ).group_by(Skill.name).order_by(func.count(Skill.id).desc()).limit(10).all()
+        ).group_by(Idea.priority).all()
+        
+        for priority, count in priority_claimed_query:
+            priority_claimed[priority.value] = count
+        
+        # Size breakdown - split by submitted vs claimed
+        size_submitted = {}
+        size_submitted_query = db.query(Idea.size, func.count(Idea.id)).filter(
+            Idea.email.in_(team_member_emails)
+        ).group_by(Idea.size).all()
+        
+        for size, count in size_submitted_query:
+            size_submitted[size.value] = count
+            
+        size_claimed = {}
+        size_claimed_query = db.query(Idea.size, func.count(Idea.id)).join(
+            Claim, Claim.idea_id == Idea.id
+        ).filter(
+            Claim.claimer_email.in_(team_member_emails)
+        ).group_by(Idea.size).all()
+        
+        for size, count in size_claimed_query:
+            size_claimed[size.value] = count
+        
+        # Team member skills - get all skills of team members
+        team_skills = {}
+        for member in team_members:
+            member_skills = db.query(Skill.name).join(
+                user_skills, Skill.id == user_skills.c.skill_id
+            ).filter(
+                user_skills.c.user_id == member.id
+            ).all()
+            
+            for (skill_name,) in member_skills:
+                team_skills[skill_name] = team_skills.get(skill_name, 0) + 1
+        
+        # Sort team skills by count
+        team_skills_list = [{'skill': skill, 'count': count} 
+                           for skill, count in sorted(team_skills.items(), 
+                                                    key=lambda x: x[1], 
+                                                    reverse=True)][:10]
         
         # Team member activity
         member_activity = []
@@ -894,12 +1019,40 @@ def get_admin_team_stats():
                 Idea.status == IdeaStatus.complete
             ).count()
             
+            # Claims for own team vs other teams
+            own_team_claims = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.benefactor_team == team.name
+            ).count()
+            
+            other_team_claims = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.benefactor_team != team.name
+            ).count()
+            
+            # Completed for own team vs other teams
+            own_team_completed = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.benefactor_team == team.name,
+                Idea.status == IdeaStatus.complete
+            ).count()
+            
+            other_team_completed = db.query(Claim).join(Idea).filter(
+                Claim.claimer_email == member.email,
+                Idea.benefactor_team != team.name,
+                Idea.status == IdeaStatus.complete
+            ).count()
+            
             member_activity.append({
                 'name': member.name,
                 'email': member.email,
                 'submitted': submitted_count,
                 'claimed': claimed_count,
-                'completed': completed_count
+                'completed': completed_count,
+                'own_team_claims': own_team_claims,
+                'other_team_claims': other_team_claims,
+                'own_team_completed': own_team_completed,
+                'other_team_completed': other_team_completed
             })
         
         # Sort by total activity
@@ -940,6 +1093,29 @@ def get_admin_team_stats():
             Claim.claim_date >= thirty_days_ago
         ).count()
         
+        # Team claims breakdown (own team vs other teams)
+        own_team_claims = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.benefactor_team == team.name
+        ).count()
+        
+        other_team_claims = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.benefactor_team != team.name
+        ).count()
+        
+        own_team_completed = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.benefactor_team == team.name,
+            Idea.status == IdeaStatus.complete
+        ).count()
+        
+        other_team_completed = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Idea.benefactor_team != team.name,
+            Idea.status == IdeaStatus.complete
+        ).count()
+        
         stats = {
             'team_name': team.name,
             'team_id': team.id,
@@ -952,9 +1128,22 @@ def get_admin_team_stats():
             },
             'breakdowns': {
                 'status': status_breakdown,
-                'priority': priority_breakdown,
-                'size': size_breakdown,
-                'skills': [{'skill': skill, 'count': count} for skill, count in skills_distribution]
+                'submitted_status': submitted_status_breakdown,
+                'priority': {
+                    'submitted': priority_submitted,
+                    'claimed': priority_claimed
+                },
+                'size': {
+                    'submitted': size_submitted,
+                    'claimed': size_claimed
+                },
+                'team_skills': team_skills_list,
+                'team_claims': {
+                    'own_team': own_team_claims,
+                    'other_teams': other_team_claims,
+                    'own_team_completed': own_team_completed,
+                    'other_teams_completed': other_team_completed
+                }
             },
             'member_activity': member_activity[:10],  # Top 10 members
             'recent_activity': {

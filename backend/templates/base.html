@@ -13,7 +13,7 @@
             <h1 class="nav-title">Citizen Developer Posting Board</h1>
             <ul class="nav-links">
                 <li><a href="{{ url_for('main.home') }}" class="{% if request.endpoint == 'main.home' %}active{% endif %}">All Ideas</a></li>
-                <li><a href="{{ url_for('main.my_ideas') }}" class="{% if request.endpoint == 'main.my_ideas' %}active{% endif %}">My Ideas</a></li>
+                <li><a href="{{ url_for('main.my_ideas') }}" class="{% if request.endpoint == 'main.my_ideas' %}active{% endif %}">{% if session.get('user_role') == 'manager' or session.get('is_admin') %}My Team's Ideas{% else %}My Ideas{% endif %}</a></li>
                 <li><a href="{{ url_for('main.submit') }}" class="{% if request.endpoint == 'main.submit' %}active{% endif %}">Submit Idea</a></li>
                 {% if session.get('user_email') %}
                     <li class="nav-notification">
