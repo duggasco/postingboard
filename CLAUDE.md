@@ -78,7 +78,10 @@ templates/
 - `/api/my-ideas` - Get user's submitted and claimed ideas (requires authentication)
 - `/api/skills` - Get all available skills
 - `/api/teams` - Get teams (all for admin, approved only for others)
+- `/api/teams/<id>/members` - Get team members (manager only for their team)
+- `/api/team-stats` - Get comprehensive team statistics (manager only)
 - `/api/admin/stats` - Get dashboard statistics
+- `/api/admin/team-stats` - Get team statistics for admins (all teams or specific team)
 - RESTful design with JSON responses
 
 #### Authentication Endpoints
@@ -224,8 +227,15 @@ The application will be accessible at http://localhost:9094
 - **Assignment Tracking**: Ideas track who assigned them and when
 - **Team Performance Dashboard**: Comprehensive KPIs and analytics for team activity
   - Overview metrics: team size, submissions, claims, completion rate, pending approvals
-  - Visual charts: priority/status/size distributions, top skills
-  - Team member activity table with individual performance metrics
+  - Visual charts split by submitted vs claimed:
+    - Priority distribution (separate charts for submitted and claimed)
+    - Status distribution (separate charts for submitted and claimed)
+    - Size distribution (separate charts for submitted and claimed)
+    - Team skills (actual team member capabilities)
+    - Team claims breakdown (own team vs other teams)
+  - Team member activity table with individual performance metrics including:
+    - Ideas submitted, total claimed, claims for own team, claims for other teams
+    - Total completed, total activity
   - Recent activity tracking (last 30 days)
 
 ### Submitter and Claimer Display
@@ -323,6 +333,15 @@ docker compose -f docker-compose-flask.yml up -d
 
 ### Admin Endpoints
 - `GET /api/admin/stats` - Dashboard statistics
+- `GET /api/admin/team-stats` - Get team statistics for admins
+  - Query params: `team_id` (optional - if not provided, returns all teams overview)
+  - Returns comprehensive team analytics including:
+    - Team overview metrics (members, submissions, claims, completion rate)
+    - Recent activity (last 30 days)
+    - Breakdowns by priority/status/size split by submitted vs claimed
+    - Team skills distribution
+    - Team claims breakdown (own team vs other teams)
+    - Individual team member activity metrics
 - `POST /api/teams` - Add new team (admin only)
 - `PUT /api/teams/<id>` - Update team name or approval status (admin only)
 - `DELETE /api/teams/<id>` - Delete team (admin only)
@@ -581,6 +600,14 @@ Notes:
   - Approve or deny requests to manage teams
   - Remove existing managers from their teams
   - Track request history
+- **Admin Team Analytics** (in My Team's Ideas page):
+  - View performance metrics for all teams or individual teams
+  - Team selector dropdown to choose specific team
+  - All teams overview table showing:
+    - Team name, status, member count
+    - Ideas submitted, claimed, completion rate
+  - Individual team analytics matching manager view but for any team
+  - Same comprehensive charts and metrics as manager dashboard
 - **Email Settings**: Configure SMTP settings for verification emails
 - **Notification System**: Admin dashboard displays all pending requests requiring attention
 
@@ -685,8 +712,13 @@ Users and ideas are associated with teams:
   - Mutually exclusive dropdown/text input (selecting one clears the other)
   - Team selection persisted in localStorage for convenience
 
-### My Ideas Functionality
-The application includes a "My Ideas" feature that allows authenticated users to track both submitted and claimed ideas.
+### My Ideas / My Team's Ideas Functionality
+The application includes a "My Ideas" feature that allows authenticated users to track both submitted and claimed ideas. For managers and admins, this page displays as "My Team's Ideas" in the navigation.
+
+#### Navigation Display
+- **Regular Users**: Shows "My Ideas" in navigation
+- **Managers**: Shows "My Team's Ideas" in navigation
+- **Admins**: Shows "My Team's Ideas" in navigation
 
 #### Implementation Details
 - **Authentication required**: Users must verify their email before accessing My Ideas
@@ -720,9 +752,13 @@ The application includes a "My Ideas" feature that allows authenticated users to
    - Auto-refreshes every 30 seconds
    - **Manager Dashboard**: Comprehensive team performance KPIs section
      - Team overview stats (members, submissions, claims, completion rate, pending approvals)
-     - Interactive charts using Chart.js for visual analytics
-     - Team member activity table with individual metrics
+     - Interactive charts using Chart.js for visual analytics split by submitted vs claimed
+     - Team member activity table with individual metrics including own vs other team claims
      - Recent activity tracking (last 30 days)
+   - **Admin Team Analytics**: Similar dashboard for admins with team selector
+     - All teams overview table when no team selected
+     - Individual team analytics matching manager view when team selected
+     - Full access to view any team's performance metrics
 
 #### Usage
 - Users must verify their email before accessing My Ideas
