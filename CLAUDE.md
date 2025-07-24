@@ -1283,3 +1283,18 @@ Implemented consistent color mapping across all charts in My Team page:
   - Priority: high=red, medium=orange, low=green  
   - Size: small=teal, medium=blue, large=purple, extra_large=pink
   - Team Claims: Own Team=blue, Other Teams=orange
+
+### Profile Update Error Fix (December 2024)
+Fixed "Failed to update profile" error when saving profile changes:
+- **SQLAlchemy Compatibility**: Replaced deprecated `db.query(Model).get(id)` with `db.query(Model).filter_by(id=id).first()`
+- **Error Handling**: Added proper exception handling in profile update endpoint to catch and report database errors
+- **Transaction Management**: Added explicit rollback on errors to prevent database transaction issues
+
+### Profile Page Styling Consistency (December 2024)
+Fixed button sizing and form styling inconsistencies on the My Profile page:
+- **Button Uniformity**: Removed custom button styles that were overriding global design system
+- **Form Labels**: Added consistent `form-label` class with uppercase styling to all form fields
+- **Alert Styling**: Updated alerts to match global design system with proper colors and borders
+- **Badge Updates**: Changed badges to use soft backgrounds consistent with status indicators
+- **Typography**: Standardized h1 size to 1.75rem and form group spacing to 20px
+- **Help Text**: Consistent 12px gray text for all help messages

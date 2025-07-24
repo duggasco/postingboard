@@ -206,6 +206,13 @@ def update_profile():
                 'success': False,
                 'error': 'User not found.'
             }), 404
+    except Exception as e:
+        db.rollback()
+        print(f"Error updating profile: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to update profile. Please try again.'
+        }), 500
     finally:
         db.close()
 

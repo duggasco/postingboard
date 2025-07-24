@@ -136,7 +136,7 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
         if old_team_id != team_id and team_id is not None:
             from models import UserProfile, Team, Notification
             # Get the team name
-            team = db.query(Team).get(team_id)
+            team = db.query(Team).filter_by(id=team_id).first()
             if team:
                 # Find the manager of this team
                 manager = db.query(UserProfile).filter_by(
@@ -186,7 +186,7 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
         # Add new skills
         from models import Skill
         for skill_id in skill_ids:
-            skill = db.query(Skill).get(skill_id)
+            skill = db.query(Skill).filter_by(id=skill_id).first()
             if skill:
                 user.skills.append(skill)
     
