@@ -1245,6 +1245,16 @@ All potentially truncated fields show full content on hover:
 
 ## Recent Fixes and Updates
 
+### Team Request Notification Fix (July 2025)
+Fixed missing notifications when users submit custom team requests:
+- **Problem**: Admin portal showed notification banner but no actual notification in dashboard or bell
+- **Root Cause**: No notification was created when users submitted custom teams
+- **Solution**: 
+  - Added notification creation in auth.py when custom teams are created
+  - Updated user notifications endpoint to include system notifications (admin@system.local) for admins
+  - Added team approval notifications sent to all team members when admin approves
+- **Impact**: Admins now receive proper notifications for team requests in both dashboard and bell icon
+
 ### Manager Integration in User Management (July 2025)
 Integrated manager request workflow into admin user management:
 - **UI Enhancement**: Added pending manager request section in user edit modal
@@ -1331,6 +1341,19 @@ Fixed roles not displaying correctly in My Team users table:
 - **Fix**: Updated role display logic to handle all four role types: Manager, Idea Submitter, Citizen Developer, Developer
 - **Filter Update**: Added all role options to the role filter dropdown
 - **API**: Confirmed API was already returning correct role data, issue was only in frontend display
+
+### Team Request Notification Fix (July 2025)
+Fixed missing notifications when users submit custom team requests:
+- **Issue**: Admin dashboard showed pending teams but no notifications were created, bell icon didn't show team requests
+- **Fix**: 
+  - Create notification for `admin@system.local` when new team is created with `is_approved=false`
+  - Update user notifications endpoint to include system notifications for admins
+  - Create notifications for team members when their team is approved
+- **Implementation**:
+  - New team creation triggers admin notification in `auth.py`
+  - Admin bell icon now shows team approval requests via system notifications
+  - Team approval sends notifications to all team members
+- **Result**: Admins are properly notified of new team requests and users are notified when their teams are approved
 
 ### Profile Update Error Fix (December 2024)
 Fixed "Failed to update profile" error when saving profile changes:

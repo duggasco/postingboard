@@ -156,6 +156,17 @@ def update_profile():
                 db.add(new_team)
                 db.commit()
                 team_id = new_team.id
+                
+                # Create notification for admins about new team request
+                admin_notification = Notification(
+                    user_email='admin@system.local',  # System notification for all admins
+                    type='team_approval_request',
+                    title='New team approval request',
+                    message=f'User {user.name or user.email} has requested to create team "{custom_team}"',
+                    related_user_email=user.email
+                )
+                db.add(admin_notification)
+                db.commit()
             else:
                 team_id = existing_team.id
         

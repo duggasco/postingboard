@@ -270,6 +270,22 @@ def update_team(team_id):
         
         is_approved = request.json.get('is_approved')
         if is_approved is not None:
+            # Check if this is an approval (changing from False to True)
+            if not team.is_approved and is_approved:
+                # Find users who belong to this team to notify them
+                team_users = db.query(UserProfile).filter_by(team_id=team.id).all()
+                
+                for user in team_users:
+                    # Create notification for each team member
+                    notification = Notification(
+                        user_email=user.email,
+                        type='team_approved',
+                        title='Team approved!',
+                        message=f'Your team "{team.name}" has been approved by an administrator.',
+                        related_user_email='admin@system.local'
+                    )
+                    db.add(notification)
+            
             team.is_approved = is_approved
         
         db.commit()
@@ -530,19 +546,41 @@ def get_user_notifications():
     db = get_session()
     try:
         # Get unread notifications for the user
-        notifications = db.query(Notification).filter_by(
-            user_email=user_email,
-            is_read=False
-        ).order_by(desc(Notification.created_at)).limit(50).all()
+        if session.get('is_admin'):
+            # Admins also see system notifications
+            notifications = db.query(Notification).filter(
+                or_(
+                    Notification.user_email == user_email,
+                    Notification.user_email == 'admin@system.local'
+                ),
+                Notification.is_read == False
+            ).order_by(desc(Notification.created_at)).limit(50).all()
+        else:
+            notifications = db.query(Notification).filter_by(
+                user_email=user_email,
+                is_read=False
+            ).order_by(desc(Notification.created_at)).limit(50).all()
         
         # Also get recent read notifications (last 7 days)
         from datetime import timedelta
         seven_days_ago = datetime.utcnow() - timedelta(days=7)
-        recent_read = db.query(Notification).filter(
-            Notification.user_email == user_email,
-            Notification.is_read == True,
-            Notification.created_at >= seven_days_ago
-        ).order_by(desc(Notification.created_at)).limit(20).all()
+        
+        if session.get('is_admin'):
+            # Admins also see system notifications
+            recent_read = db.query(Notification).filter(
+                or_(
+                    Notification.user_email == user_email,
+                    Notification.user_email == 'admin@system.local'
+                ),
+                Notification.is_read == True,
+                Notification.created_at >= seven_days_ago
+            ).order_by(desc(Notification.created_at)).limit(20).all()
+        else:
+            recent_read = db.query(Notification).filter(
+                Notification.user_email == user_email,
+                Notification.is_read == True,
+                Notification.created_at >= seven_days_ago
+            ).order_by(desc(Notification.created_at)).limit(20).all()
         
         # Combine and sort
         all_notifications = notifications + recent_read
