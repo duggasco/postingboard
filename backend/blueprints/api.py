@@ -717,6 +717,40 @@ def mark_notification_read(notification_id):
     finally:
         db.close()
 
+@api_bp.route('/user/notifications/<int:notification_id>', methods=['DELETE'])
+def delete_notification(notification_id):
+    """Delete a notification."""
+    if not session.get('user_verified'):
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    user_email = session.get('user_email')
+    is_admin = session.get('is_admin')
+    
+    db = get_session()
+    try:
+        # Admin can delete any notification, users can only delete their own
+        if is_admin:
+            notification = db.query(Notification).filter_by(id=notification_id).first()
+        else:
+            notification = db.query(Notification).filter_by(
+                id=notification_id,
+                user_email=user_email
+            ).first()
+        
+        if not notification:
+            return jsonify({'success': False, 'message': 'Notification not found'}), 404
+        
+        db.delete(notification)
+        db.commit()
+        
+        return jsonify({'success': True, 'message': 'Notification deleted'})
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting notification: {e}")
+        return jsonify({'success': False, 'error': 'Failed to delete notification'}), 500
+    finally:
+        db.close()
+
 @api_bp.route('/team/members/<email>')
 def get_team_member(email):
     """Get details of a specific team member (manager or admin only)."""

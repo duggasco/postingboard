@@ -109,13 +109,16 @@ async function loadNotifications() {
                     const unreadClass = notif.is_read ? '' : 'unread';
                     
                     html += `
-                        <div class="notification-item ${unreadClass}" onclick="handleNotificationClick(${notif.id}, ${notif.idea_id || 'null'}, '${notif.type}')">
-                            <div class="notification-title">
-                                ${notif.title}
-                                <span class="notification-type-badge ${typeClass}">${formatNotificationType(notif.type)}</span>
+                        <div class="notification-item ${unreadClass}">
+                            <button class="notification-delete" onclick="event.stopPropagation(); deleteNotification(${notif.id})" title="Delete notification">×</button>
+                            <div class="notification-content" onclick="handleNotificationClick(${notif.id}, ${notif.idea_id || 'null'}, '${notif.type}')">
+                                <div class="notification-title">
+                                    ${notif.title}
+                                    <span class="notification-type-badge ${typeClass}">${formatNotificationType(notif.type)}</span>
+                                </div>
+                                <div class="notification-message">${notif.message}</div>
+                                <div class="notification-time">${notif.time_ago}</div>
                             </div>
-                            <div class="notification-message">${notif.message}</div>
-                            <div class="notification-time">${notif.time_ago}</div>
                         </div>
                     `;
                 });
@@ -271,6 +274,30 @@ async function handleNotificationClick(notificationId, ideaId, notificationType)
     // Navigate to the destination if we have one
     if (destination) {
         window.location.href = destination;
+    }
+}
+
+async function deleteNotification(notificationId) {
+    try {
+        const response = await fetch(`/api/user/notifications/${notificationId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Refresh the notifications list
+            loadNotifications();
+        } else {
+            console.error('Failed to delete notification:', data.message || data.error);
+            alert('Failed to delete notification. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error deleting notification:', error);
+        alert('Error deleting notification. Please try again.');
     }
 }
 

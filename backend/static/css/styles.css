@@ -1043,11 +1043,11 @@ textarea.form-control {
 }
 
 .notification-item {
+    position: relative;
     padding: 15px;
     border: 1px solid #e9ecef;
     border-radius: 8px;
     margin-bottom: 10px;
-    cursor: pointer;
     transition: all 0.2s ease;
 }
 
@@ -1060,6 +1060,35 @@ textarea.form-control {
 .notification-item.unread {
     background: #e3f2fd;
     border-color: #4a90e2;
+}
+
+.notification-content {
+    cursor: pointer;
+}
+
+.notification-delete {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.notification-delete:hover {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.notification-delete:active {
+    transform: scale(0.95);
 }
 
 .notification-title {

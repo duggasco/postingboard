@@ -1436,3 +1436,18 @@ Implemented intelligent routing when users click on bell notifications:
   - `status_change/idea_completed/assigned` → `/idea/{id}` (specific idea page)
 - **Enhanced Display**: Updated `formatNotificationType` to show user-friendly labels for all types
 - **Result**: Users can now click any notification to navigate directly to the relevant page
+
+### Notification Delete Feature (July 2025)
+Added ability to delete notifications for cleanliness:
+- **Feature**: Clickable X button in top-right corner of each notification
+- **Implementation**:
+  - Added delete button to notification HTML with proper event handling
+  - Created DELETE endpoint at `/api/user/notifications/<id>`
+  - Implemented JavaScript handler to delete and refresh notifications
+- **Styling**:
+  - Delete button positioned absolutely in top-right corner
+  - Gray color that turns red on hover
+  - Subtle hover effects with background color change
+- **Security**: Users can only delete their own notifications; admins can delete any
+- **User Experience**: No confirmation dialog for smooth, quick deletion
+- **Result**: Users can easily clean up their notification list by removing old or irrelevant notifications
