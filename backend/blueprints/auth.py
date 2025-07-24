@@ -103,6 +103,9 @@ def profile():
             flash('Please verify your email first.', 'warning')
             return redirect(url_for('auth.verify_email'))
         
+        # Ensure session is properly initialized for bulk uploaded users
+        update_session_from_db(user.email)
+        
         # Get all available skills
         skills = db.query(Skill).order_by(Skill.name).all()
         
@@ -208,7 +211,11 @@ def update_profile():
             }), 404
     except Exception as e:
         db.rollback()
-        print(f"Error updating profile: {str(e)}")
+        import traceback
+        error_details = f"Error updating profile for {session.get('user_email')}: {str(e)}"
+        print(error_details)
+        print(f"Traceback: {traceback.format_exc()}")
+        print(f"Form data - name: {name}, role: {role}, team_id: {team_id}, skills: {skill_ids}")
         return jsonify({
             'success': False,
             'error': 'Failed to update profile. Please try again.'

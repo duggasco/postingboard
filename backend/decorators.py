@@ -114,7 +114,7 @@ def update_session_from_db(email):
             
             if pending_request:
                 session['pending_manager_request'] = True
-                session['pending_team'] = pending_request.team.name
+                session['pending_team'] = pending_request.team.name if pending_request.team else None
             else:
                 session['pending_manager_request'] = False
                 session['pending_team'] = None

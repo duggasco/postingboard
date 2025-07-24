@@ -1298,3 +1298,11 @@ Fixed button sizing and form styling inconsistencies on the My Profile page:
 - **Badge Updates**: Changed badges to use soft backgrounds consistent with status indicators
 - **Typography**: Standardized h1 size to 1.75rem and form group spacing to 20px
 - **Help Text**: Consistent 12px gray text for all help messages
+
+### Bulk Upload User Profile Update Fix (December 2024)
+Fixed "Failed to update profile" error for bulk uploaded users:
+- **Root Cause**: Bulk uploaded users were marked as verified but hadn't gone through the email verification flow, so their session wasn't properly initialized
+- **Session Initialization**: Added `update_session_from_db()` call in the profile route to ensure session is populated with user data
+- **Enhanced Logging**: Added detailed error logging with traceback and form data to help diagnose profile update failures
+- **Manager Request Fix**: Added null check for pending manager request team relationship to prevent errors
+- **Impact**: Bulk uploaded users can now successfully update their profiles without needing to go through email verification first
