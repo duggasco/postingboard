@@ -1084,7 +1084,7 @@ The admin user management portal allows administrators to view, edit, and delete
 To maintain consistency across all admin pages, follow these guidelines:
 
 1. **Use Global CSS Classes** - Never embed custom CSS in admin templates
-   - Tables: Use `data-table` class, not custom table styling
+   - Tables: Use `data-table` class, or `users-data-table` for compact user listings
    - Buttons: Use `btn`, `btn-primary`, `btn-secondary`, `btn-danger`, `btn-sm`
    - Forms: Use `form-control` for inputs and selects
    - Status indicators: Use `status-badge` with status-specific classes
@@ -1133,3 +1133,36 @@ To maintain consistency across all admin pages, follow these guidelines:
    - Always compare new admin pages with existing ones (Skills, Teams)
    - Ensure hover states, transitions, and animations match
    - Verify responsive behavior at different screen sizes
+
+### Admin User Management Table
+
+The admin users table uses a special compact design with the `users-data-table` class:
+
+#### Table Specifications
+- **Font sizes**: 11px body text, 10px uppercase headers
+- **Padding**: 6px horizontal, 4px vertical (vs standard 10px)
+- **Layout**: Fixed table layout with specific column widths
+- **Text overflow**: Ellipsis with tooltips for truncated content
+
+#### Column Abbreviations
+- **Headers**: Shortened with full titles in tooltips
+  - "Managed Team" → "Managed"
+  - "Verified" → "Status"
+  - "Complete" → "Done"
+  - "Pending" → "Pend"
+- **Role names**: 
+  - "Citizen Developer" → "CitDev"
+  - "Developer" → "Dev"
+  - "Manager" → "Mgr"
+  - "Idea Submitter" → "Submitter"
+- **Verification**: ✓ (verified) or ✗ (unverified) instead of badges
+- **Dates**: MM/DD format with full date/time in tooltip
+
+#### Tooltips
+All potentially truncated fields show full content on hover:
+- Name, Email, Role (full name), Team, Managed Team, Skills list
+
+#### API Compatibility
+- Teams endpoint returns direct array: `[{id, name, is_approved}, ...]`
+- Skills endpoint returns direct array: `[{id, name}, ...]`
+- Users endpoint returns wrapped object: `{success: true, users: [...]}`
