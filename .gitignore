@@ -50,6 +50,10 @@ Thumbs.db
 
 # Temporary files
 cookies.txt
+*_test_*.json
+*_test_*.txt
+test_*.csv
+*test_cookies.txt
 
 # Docker
 docker-compose.override.yml

@@ -1,5 +1,0 @@
-email,name,role,team,skills,is_verified
-"developer1@example.com","Alex Johnson","developer","Cash - GPP","Python,SQL/Databases,Java","true"
-"manager1@example.com","Sarah Williams","manager","SL - Tech","","true"
-"citizen.dev@example.com","Mike Chen","citizen_developer","Cash - Sales","Frontend/UI - Web,Python","true"
-"idea.person@example.com","Emma Davis","idea_submitter","COO - IDA","","true"
