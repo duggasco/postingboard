@@ -1623,10 +1623,11 @@ def approve_manager_request(request_id):
         manager_request.processed_at = datetime.now()
         manager_request.processed_by = session.get('user_email', 'admin@system.local')
         
-        # Update the user's managed_team_id
+        # Update the user's managed_team_id and role
         user = db.query(UserProfile).filter_by(email=manager_request.user_email).first()
         if user:
             user.managed_team_id = manager_request.requested_team_id
+            user.role = 'manager'  # Also change their role to manager
         
         # Create notification for the approved manager
         if user and manager_request.team:
@@ -1721,6 +1722,12 @@ def remove_manager():
         
         # Remove managed team
         user.managed_team_id = None
+        
+        # Optionally change role back (if specified in request)
+        if 'change_role' in request.json and request.json['change_role']:
+            new_role = request.json.get('new_role', 'developer')
+            if new_role in ['developer', 'citizen_developer', 'idea_submitter']:
+                user.role = new_role
         
         db.commit()
         
@@ -2365,7 +2372,7 @@ def get_admin_users():
                 ManagerRequest.status == 'pending'
             ).first()
             
-            users_data.append({
+            user_data = {
                 'email': user.email,
                 'name': user.name,
                 'role': user.role,
@@ -2383,7 +2390,18 @@ def get_admin_users():
                 'has_pending_manager_request': pending_manager_request is not None,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_verified_at': user.last_verified_at.isoformat() if user.last_verified_at else None
-            })
+            }
+            
+            # Add pending manager request details if exists
+            if pending_manager_request:
+                user_data['pending_manager_request'] = {
+                    'id': pending_manager_request.id,
+                    'requested_team_id': pending_manager_request.requested_team_id,
+                    'requested_team': pending_manager_request.team.name if pending_manager_request.team else None,
+                    'requested_at': pending_manager_request.requested_at.isoformat() if pending_manager_request.requested_at else None
+                }
+            
+            users_data.append(user_data)
         
         return jsonify({
             'success': True,
@@ -2410,6 +2428,10 @@ def update_admin_user(email):
         if not user:
             return jsonify({'success': False, 'error': 'User not found.'}), 404
         
+        # Track role changes for manager workflow
+        old_role = user.role
+        old_managed_team_id = user.managed_team_id
+        
         # Update user fields
         if 'name' in data:
             user.name = data['name']
@@ -2421,6 +2443,30 @@ def update_admin_user(email):
             user.managed_team_id = data['managed_team_id']
         if 'is_verified' in data:
             user.is_verified = data['is_verified']
+        
+        # Handle manager role changes
+        if 'role' in data:
+            # If changing FROM manager to another role, clear managed team
+            if old_role == 'manager' and data['role'] != 'manager':
+                user.managed_team_id = None
+                
+            # If changing TO manager and they have a pending request, auto-approve it
+            if old_role != 'manager' and data['role'] == 'manager':
+                # Check for pending manager request
+                pending_request = db.query(ManagerRequest).filter_by(
+                    user_email=user.email,
+                    status='pending'
+                ).first()
+                
+                if pending_request:
+                    # Approve the pending request
+                    pending_request.status = 'approved'
+                    pending_request.processed_at = datetime.utcnow()
+                    pending_request.processed_by = 'admin'
+                    
+                    # Set the managed team from the request if not already set
+                    if not user.managed_team_id and pending_request.requested_team_id:
+                        user.managed_team_id = pending_request.requested_team_id
         
         # Update skills
         if 'skill_ids' in data:

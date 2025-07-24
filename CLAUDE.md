@@ -934,14 +934,16 @@ When users select the "Manager" role in their profile, they can request to manag
    - User sees notification: "Your request to manage [Team] is pending admin approval"
 
 2. **Admin Review**:
-   - Admin navigates to `/admin/manager-requests`
-   - Sees list of pending requests with user name, email, team, and request date
-   - Can approve or deny each request
+   - **Option A**: Admin navigates to `/admin/manager-requests` (traditional approach)
+   - **Option B**: Admin goes to `/admin/users` and edits the user directly
+   - Pending requests appear in User Analytics section of edit modal
+   - Can approve or deny requests directly from user management
 
 3. **Approval Process**:
-   - **Approve**: Updates request status to `approved`, assigns `managed_team_id` to user
+   - **Approve**: Updates request status to `approved`, assigns `managed_team_id` to user, changes role to "manager"
    - **Deny**: Updates request status to `denied`, user must submit new request if desired
    - Admin can also remove existing managers from their teams
+   - Smart role changes: editing user role in admin panel handles manager workflow automatically
 
 4. **Manager Access**:
    - Approved managers see "Team Ideas" section in My Ideas page
@@ -1116,8 +1118,16 @@ The admin user management portal allows administrators to view, edit, and delete
   - Name, role, team, managed team (for managers)
   - Skills (for developers/citizen developers)
   - Email verification status
+  - **Integrated Manager Request Management**:
+    - Shows pending manager requests in User Analytics section
+    - Approve/Deny buttons for pending requests directly in edit modal
+    - "Remove as Manager" button for existing managers
 - **Delete Users**: Remove users with cascading deletion of related data
 - **Statistics**: Shows submitted and claimed idea counts per user
+- **Smart Role Management**:
+  - Changing user to manager role with pending request auto-approves it
+  - Changing user from manager role automatically clears managed team
+  - Approving manager request also changes user role to "manager"
 
 #### Known Issues and Fixes (Fixed in commit b589163)
 - **Null Handling**: JavaScript now properly handles users with null names or roles
@@ -1130,8 +1140,17 @@ The admin user management portal allows administrators to view, edit, and delete
 - Template: `/templates/admin/users.html`
 - API Endpoints:
   - `GET /api/admin/users` - List all users with statistics
+    - Now includes `pending_manager_request` object with request details
   - `PUT /api/admin/users/<email>` - Update user profile
+    - Intelligent role change handling
+    - Auto-approves pending manager requests when changing to manager role
+    - Clears managed_team_id when changing from manager role
   - `DELETE /api/admin/users/<email>` - Delete user and related data
+  - `POST /api/admin/manager-requests/<id>/approve` - Approve manager request
+    - Also changes user role to "manager"
+  - `POST /api/admin/manager-requests/<id>/deny` - Deny manager request
+  - `POST /api/admin/remove-manager` - Remove manager status
+    - Optional: change role with `change_role` and `new_role` parameters
 - Pagination: 20 users per page with navigation controls
 - Real-time filtering without page reload
 
@@ -1225,6 +1244,19 @@ All potentially truncated fields show full content on hover:
 - Users endpoint returns wrapped object: `{success: true, users: [...]}`
 
 ## Recent Fixes and Updates
+
+### Manager Integration in User Management (July 2025)
+Integrated manager request workflow into admin user management:
+- **UI Enhancement**: Added pending manager request section in user edit modal
+- **Smart Role Changes**: 
+  - Approving manager request also changes user role to "manager"
+  - Changing role from manager automatically clears managed team
+  - Changing role to manager with pending request auto-approves it
+- **API Updates**: 
+  - `GET /api/admin/users` now includes pending manager request details
+  - `PUT /api/admin/users/<email>` handles role changes intelligently
+  - Manager approval endpoint also updates user role
+- **Streamlined Workflow**: Admins can manage everything from one interface
 
 ### My Team Page Data Display Fix (July 2025)
 Fixed missing data and charts on the My Team page:

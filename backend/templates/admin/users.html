@@ -67,7 +67,13 @@
                     <div><strong>Ideas Claimed:</strong> <span id="info-claimed">0</span></div>
                     <div><strong>Ideas Completed:</strong> <span id="info-completed">0</span></div>
                     <div><strong>Pending Claims:</strong> <span id="info-pending">0</span></div>
-                    <div><strong>Manager Request:</strong> <span id="info-manager-request">No</span></div>
+                    <div id="manager-request-info"><strong>Manager Request:</strong> <span id="info-manager-request">No</span></div>
+                </div>
+                <div id="manager-request-actions" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; display: none;">
+                    <h5 style="margin-bottom: 10px;">Pending Manager Request</h5>
+                    <p style="margin-bottom: 10px;">This user has requested to manage: <strong id="requested-team-name">-</strong></p>
+                    <button type="button" class="btn btn-success btn-sm" onclick="approveManagerRequestFromEdit()">Approve Request</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="denyManagerRequestFromEdit()">Deny Request</button>
                 </div>
             </div>
             <div class="form-group">
@@ -94,6 +100,9 @@
                 <select id="edit-managed-team" name="managed_team_id" class="form-control">
                     <option value="">No Managed Team</option>
                 </select>
+                <div id="remove-manager-container" style="margin-top: 10px; display: none;">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeManagerFromEdit()">Remove as Manager</button>
+                </div>
             </div>
             <div class="form-group" id="edit-skills-group" style="display: none;">
                 <label>Skills</label>
@@ -500,14 +509,32 @@ async function editUser(email) {
     document.getElementById('info-pending').textContent = user.pending_claims_count || 0;
     document.getElementById('info-manager-request').textContent = user.has_pending_manager_request ? 'Yes (Pending)' : 'No';
     
+    // Handle pending manager request
+    const managerRequestActions = document.getElementById('manager-request-actions');
+    if (user.has_pending_manager_request && user.pending_manager_request) {
+        // Store the request for later use
+        window.currentEditingUser = user;
+        window.currentManagerRequestId = user.pending_manager_request.id;
+        
+        document.getElementById('requested-team-name').textContent = user.pending_manager_request.team_name || '-';
+        managerRequestActions.style.display = 'block';
+    } else {
+        managerRequestActions.style.display = 'none';
+        window.currentEditingUser = null;
+        window.currentManagerRequestId = null;
+    }
+    
     // Show/hide fields based on role
     const role = user.role;
     const managedTeamGroup = document.getElementById('edit-managed-team-group');
     const skillsGroup = document.getElementById('edit-skills-group');
+    const removeManagerContainer = document.getElementById('remove-manager-container');
     
     if (role === 'manager') {
         managedTeamGroup.style.display = 'block';
         skillsGroup.style.display = 'none';
+        // Show remove manager button if they are currently managing a team
+        removeManagerContainer.style.display = user.managed_team_id ? 'block' : 'none';
     } else if (role === 'citizen_developer' || role === 'developer') {
         managedTeamGroup.style.display = 'none';
         skillsGroup.style.display = 'block';
@@ -523,14 +550,28 @@ async function editUser(email) {
         if (newRole === 'manager') {
             managedTeamGroup.style.display = 'block';
             skillsGroup.style.display = 'none';
+            // Show remove manager button if they currently have a managed team
+            const currentManagedTeam = document.getElementById('edit-managed-team').value;
+            removeManagerContainer.style.display = currentManagedTeam ? 'block' : 'none';
         } else if (newRole === 'citizen_developer' || newRole === 'developer') {
             managedTeamGroup.style.display = 'none';
             skillsGroup.style.display = 'block';
+            removeManagerContainer.style.display = 'none';
             // Always repopulate skills when showing the skills section
             populateSkillsCheckboxes(user.skills || []);
         } else {
             managedTeamGroup.style.display = 'none';
             skillsGroup.style.display = 'none';
+            removeManagerContainer.style.display = 'none';
+        }
+    };
+    
+    // Add managed team change listener
+    document.getElementById('edit-managed-team').onchange = function() {
+        const selectedTeam = this.value;
+        const role = document.getElementById('edit-role').value;
+        if (role === 'manager') {
+            removeManagerContainer.style.display = selectedTeam ? 'block' : 'none';
         }
     };
     
@@ -626,6 +667,92 @@ async function deleteUser(email) {
     } catch (error) {
         console.error('Error deleting user:', error);
         alert('Failed to delete user');
+    }
+}
+
+async function approveManagerRequestFromEdit() {
+    if (!window.currentManagerRequestId) return;
+    
+    if (!confirm('Approve this manager request?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/manager-requests/${window.currentManagerRequestId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Manager request approved successfully!');
+            closeModal();
+            loadUsers(); // Reload to refresh data
+        } else {
+            alert('Failed to approve request: ' + (result.message || result.error));
+        }
+    } catch (error) {
+        console.error('Error approving manager request:', error);
+        alert('Failed to approve manager request');
+    }
+}
+
+async function denyManagerRequestFromEdit() {
+    if (!window.currentManagerRequestId) return;
+    
+    if (!confirm('Deny this manager request?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/manager-requests/${window.currentManagerRequestId}/deny`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Manager request denied.');
+            closeModal();
+            loadUsers(); // Reload to refresh data
+        } else {
+            alert('Failed to deny request: ' + (result.message || result.error));
+        }
+    } catch (error) {
+        console.error('Error denying manager request:', error);
+        alert('Failed to deny manager request');
+    }
+}
+
+async function removeManagerFromEdit() {
+    if (!window.currentEditingUser) return;
+    
+    const email = window.currentEditingUser.email;
+    if (!confirm(`Remove ${window.currentEditingUser.name || email} as manager of their team?`)) return;
+    
+    try {
+        const response = await fetch('/api/admin/remove-manager', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Manager removed from team successfully!');
+            closeModal();
+            loadUsers(); // Reload to refresh data
+        } else {
+            alert('Failed to remove manager: ' + (result.message || result.error));
+        }
+    } catch (error) {
+        console.error('Error removing manager:', error);
+        alert('Failed to remove manager');
     }
 }
 
