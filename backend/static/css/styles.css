@@ -397,6 +397,7 @@ body {
 .idea-meta {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;  /* Align badges to the left */
     gap: 6px;
     margin-bottom: 10px;
     font-size: 12px;
@@ -404,10 +405,11 @@ body {
 }
 
 .idea-meta > div {
-    display: block;
+    display: inline-block;  /* Make badges only as wide as their content */
 }
 
 .priority-badge {
+    display: inline-block;
     padding: 3px 10px;
     border-radius: 12px;
     font-size: 11px;
@@ -433,6 +435,7 @@ body {
 
 /* Size badge styling to match priority badges */
 .size-badge {
+    display: inline-block;
     padding: 3px 10px;
     border-radius: 12px;
     font-size: 11px;
