@@ -209,7 +209,7 @@ templates/
     - Extra Large: #fce4ec background, #c2185b text (major undertaking)
   - Chart colors refined for consistency:
     - Size: small=#26a69a, medium=#42a5f5, large=#7e57c2, extra_large=#ec407a
-  - Truncated descriptions show full text on mouseover via title attribute
+  - Truncated descriptions show full text on mouseover via title attribute with pointer cursor
 
 ## Docker Configuration
 

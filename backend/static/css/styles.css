@@ -483,10 +483,13 @@ body {
     margin-bottom: 12px;
     font-size: 13px;
     flex-grow: 1;
-    cursor: help;  /* Show help cursor when hovering over truncated descriptions */
 }
 
-/* Enhanced tooltip styling for descriptions */
+/* Enhanced tooltip styling for descriptions with title */
+.idea-description[title] {
+    cursor: pointer;  /* Normal pointer for better appearance */
+}
+
 .idea-description[title]:hover {
     color: #495057;  /* Slightly darker on hover to indicate interactivity */
 }
