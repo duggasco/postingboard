@@ -15,7 +15,6 @@
                 <li><a href="{{ url_for('main.home') }}" class="{% if request.endpoint == 'main.home' %}active{% endif %}">All Ideas</a></li>
                 <li><a href="{{ url_for('main.my_ideas') }}" class="{% if request.endpoint == 'main.my_ideas' %}active{% endif %}">My Ideas</a></li>
                 <li><a href="{{ url_for('main.submit') }}" class="{% if request.endpoint == 'main.submit' %}active{% endif %}">Submit Idea</a></li>
-                <li><a href="{{ url_for('admin.index') }}" class="{% if request.endpoint and request.endpoint.startswith('admin.') %}active{% endif %}">Admin</a></li>
                 {% if session.get('user_email') %}
                     <li class="nav-notification">
                         <button id="notification-bell" class="notification-bell" onclick="toggleNotifications()">
@@ -89,5 +88,10 @@
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block extra_js %}{% endblock %}
+    
+    <!-- Version indicator -->
+    <a href="{{ url_for('admin.index') }}" class="version-indicator" title="Admin Portal">
+        v.{{ git_commit }}
+    </a>
 </body>
 </html>

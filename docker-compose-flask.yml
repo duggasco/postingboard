@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: ./backend/Dockerfile
+      args:
+        - GIT_COMMIT=${GIT_COMMIT:-unknown}
     ports:
       - "9094:9094"
     environment:

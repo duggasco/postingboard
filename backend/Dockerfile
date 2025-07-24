@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Accept git commit as build argument
+ARG GIT_COMMIT=unknown
+
 WORKDIR /app
 
 COPY requirements.txt .
@@ -12,6 +15,9 @@ COPY ./backend .
 RUN mkdir -p flask_session
 
 RUN python database.py
+
+# Set git commit as environment variable
+ENV GIT_COMMIT=$GIT_COMMIT
 
 EXPOSE 9094
 

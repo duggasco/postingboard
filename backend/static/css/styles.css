@@ -792,6 +792,11 @@ textarea.form-control {
     text-align: center;
     padding: 60px 20px;
     color: #666;
+    grid-column: 1 / -1;  /* Span full width when in grid container */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .empty-state h3 {
@@ -1124,4 +1129,25 @@ textarea.form-control {
     .nav-user-dropdown {
         margin-left: 8px;
     }
+}
+
+/* Version indicator */
+.version-indicator {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    color: #999;
+    font-size: 11px;
+    font-family: monospace;
+    opacity: 0.6;
+    z-index: 100;
+    text-decoration: none;
+    cursor: default;
+    transition: opacity 0.2s ease;
+}
+
+.version-indicator:hover {
+    opacity: 0.8;
+    color: #666;
+    text-decoration: none;
 }

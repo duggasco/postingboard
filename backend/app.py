@@ -2,6 +2,7 @@ from flask import Flask, render_template, redirect, url_for, session, request
 from flask_session import Session
 from dotenv import load_dotenv
 import os
+import subprocess
 from config import Config
 
 # Load environment variables
@@ -12,6 +13,19 @@ from blueprints.main import main_bp
 from blueprints.admin import admin_bp
 from blueprints.api import api_bp
 from blueprints.auth import auth
+
+def get_git_revision_short_hash():
+    """Get the short git commit hash for version tracking"""
+    # First check if we have it as an environment variable (from Docker build)
+    git_commit = os.getenv('GIT_COMMIT')
+    if git_commit and git_commit != 'unknown':
+        return git_commit
+    
+    # Otherwise try to get it from git command
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+    except:
+        return 'unknown'
 
 def create_app():
     app = Flask(__name__)
@@ -27,6 +41,11 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(auth)
+    
+    # Make git commit hash available to all templates
+    @app.context_processor
+    def inject_git_commit():
+        return {'git_commit': get_git_revision_short_hash()}
     
     # Add cache control headers for admin pages
     @app.after_request
