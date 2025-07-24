@@ -52,10 +52,122 @@
     
     <div style="margin-top: 40px;">
         <h3>Manage Ideas</h3>
+        
+        <!-- Filters Section -->
+        <div style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input type="text" id="search-input" placeholder="Search by title or description..." class="form-control" style="max-width: 300px;">
+                <select id="priority-filter" class="form-control" style="max-width: 150px;">
+                    <option value="">All Priorities</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+                <select id="status-filter" class="form-control" style="max-width: 150px;">
+                    <option value="">All Statuses</option>
+                    <option value="open">Open</option>
+                    <option value="claimed">Claimed</option>
+                    <option value="complete">Complete</option>
+                </select>
+                <select id="size-filter" class="form-control" style="max-width: 150px;">
+                    <option value="">All Sizes</option>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="extra_large">Extra Large</option>
+                </select>
+                <select id="team-filter" class="form-control" style="max-width: 200px;">
+                    <option value="">All Teams</option>
+                </select>
+                <button id="clear-filters" class="btn btn-secondary">Clear Filters</button>
+            </div>
+        </div>
+        
         <div id="ideas-table-container">
             <div class="loading">Loading ideas...</div>
         </div>
         <div id="pagination-container" style="margin-top: 20px; text-align: center;"></div>
+    </div>
+</div>
+
+<!-- Edit Idea Modal -->
+<div id="edit-idea-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Idea</h3>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <form id="edit-idea-form">
+            <input type="hidden" id="edit-idea-id" name="id">
+            <div id="idea-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+                <h4 style="margin-top: 0; font-size: 16px;">Idea Analytics</h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div><strong>ID:</strong> <span id="info-id">-</span></div>
+                    <div><strong>Submitted:</strong> <span id="info-submitted">-</span></div>
+                    <div><strong>Submitter:</strong> <span id="info-submitter">-</span></div>
+                    <div><strong>Needed By:</strong> <span id="info-needed">-</span></div>
+                    <div><strong>Total Claims:</strong> <span id="info-claims">0</span></div>
+                    <div><strong>Pending Approvals:</strong> <span id="info-pending">0</span></div>
+                    <div><strong>Assigned To:</strong> <span id="info-assigned">None</span></div>
+                    <div><strong>Assigned By:</strong> <span id="info-assigned-by">-</span></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="edit-title">Title</label>
+                <input type="text" id="edit-title" name="title" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-description">Description</label>
+                <textarea id="edit-description" name="description" class="form-control" rows="4" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="edit-team">Team</label>
+                <select id="edit-team" name="team" class="form-control">
+                    <option value="">Select Team</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-priority">Priority</label>
+                <select id="edit-priority" name="priority" class="form-control" required>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-size">Size</label>
+                <select id="edit-size" name="size" class="form-control" required>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="extra_large">Extra Large</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-status">Status</label>
+                <select id="edit-status" name="status" class="form-control" required>
+                    <option value="open">Open</option>
+                    <option value="claimed">Claimed</option>
+                    <option value="complete">Complete</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-reward">Reward</label>
+                <input type="text" id="edit-reward" name="reward" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="edit-email">Submitter Email</label>
+                <input type="email" id="edit-email" name="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Skills</label>
+                <div id="edit-skills-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;"></div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}
@@ -71,6 +183,91 @@
     font-weight: bold;
     margin-left: 5px;
     vertical-align: super;
+}
+
+.priority-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.priority-badge.priority-high {
+    background: #fee;
+    color: #dc3545;
+}
+
+.priority-badge.priority-medium {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.priority-badge.priority-low {
+    background: #d4edda;
+    color: #155724;
+}
+
+.size-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.size-badge.size-small {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.size-badge.size-medium {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.size-badge.size-large {
+    background: #fff9c4;
+    color: #f57f17;
+}
+
+.size-badge.size-extra_large {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.pagination {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+}
+
+.pagination button {
+    padding: 5px 10px;
+    border: 1px solid #dee2e6;
+    background: white;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: #e9ecef;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination button.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.pagination span {
+    padding: 5px;
 }
 
 .admin-nav-link {
@@ -254,26 +451,70 @@
 let currentPage = 1;
 const itemsPerPage = 20;
 let allIdeas = [];
+let filteredIdeas = [];
+let allTeams = [];
+let allSkills = [];
 
 async function loadIdeas() {
     try {
         // Explicitly request all ideas without status filter
         const ideas = await utils.fetchJson('/api/ideas?status=');
         allIdeas = ideas;
-        displayIdeas();
+        filteredIdeas = allIdeas;
+        applyFilters();
+        
+        // Load teams for filter
+        await loadTeamsForFilter();
+        
+        // Load skills for edit modal
+        await loadSkills();
     } catch (error) {
         console.error('Error loading ideas:', error);
         document.getElementById('ideas-table-container').innerHTML = '<div class="error">Error loading ideas</div>';
     }
 }
 
+async function loadTeamsForFilter() {
+    try {
+        const teams = await utils.fetchJson('/api/teams');
+        allTeams = teams;
+        
+        const teamFilter = document.getElementById('team-filter');
+        teamFilter.innerHTML = '<option value="">All Teams</option>';
+        
+        const uniqueTeams = [...new Set(allIdeas.map(idea => idea.benefactor_team))].filter(team => team);
+        uniqueTeams.sort().forEach(team => {
+            const option = document.createElement('option');
+            option.value = team;
+            option.textContent = team;
+            teamFilter.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading teams:', error);
+    }
+}
+
+async function loadSkills() {
+    try {
+        const response = await fetch('/api/skills');
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            allSkills = data;
+        }
+    } catch (error) {
+        console.error('Error loading skills:', error);
+    }
+}
+
 function displayIdeas() {
     const start = (currentPage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
-    const pageIdeas = allIdeas.slice(start, end);
+    const pageIdeas = filteredIdeas.slice(start, end);
     
-    if (pageIdeas.length === 0) {
+    if (filteredIdeas.length === 0) {
         document.getElementById('ideas-table-container').innerHTML = '<div class="empty-state">No ideas found</div>';
+        document.getElementById('pagination-container').innerHTML = '';
         return;
     }
     
@@ -288,6 +529,7 @@ function displayIdeas() {
                     <th>Size</th>
                     <th>Status</th>
                     <th>Submitted By</th>
+                    <th>Claimed By</th>
                     <th>Date</th>
                     <th>Actions</th>
                 </tr>
@@ -296,37 +538,26 @@ function displayIdeas() {
     `;
     
     pageIdeas.forEach(idea => {
-        const statusClass = `status-${idea.status}`;
+        const priorityBadge = `<span class="priority-badge priority-${idea.priority}">${idea.priority}</span>`;
+        const sizeBadge = `<span class="size-badge size-${idea.size}">${idea.size.replace('_', ' ')}</span>`;
+        const statusBadge = `<span class="status-badge status-${idea.status}">${idea.status}</span>`;
+        
         tableHtml += `
             <tr data-idea-id="${idea.id}">
                 <td>${idea.id}</td>
-                <td class="editable-cell" data-field="title">${utils.escapeHtml(idea.title)}</td>
-                <td class="editable-cell" data-field="team">${utils.escapeHtml(idea.benefactor_team)}</td>
-                <td class="editable-cell" data-field="priority">
-                    <select class="cell-select" data-field="priority">
-                        <option value="low" ${idea.priority === 'low' ? 'selected' : ''}>Low</option>
-                        <option value="medium" ${idea.priority === 'medium' ? 'selected' : ''}>Medium</option>
-                        <option value="high" ${idea.priority === 'high' ? 'selected' : ''}>High</option>
-                    </select>
-                </td>
-                <td class="editable-cell" data-field="size">
-                    <select class="cell-select" data-field="size">
-                        <option value="small" ${idea.size === 'small' ? 'selected' : ''}>Small</option>
-                        <option value="medium" ${idea.size === 'medium' ? 'selected' : ''}>Medium</option>
-                        <option value="large" ${idea.size === 'large' ? 'selected' : ''}>Large</option>
-                        <option value="extra_large" ${idea.size === 'extra_large' ? 'selected' : ''}>Extra Large</option>
-                    </select>
-                </td>
-                <td class="editable-cell" data-field="status">
-                    <select class="cell-select ${statusClass}" data-field="status">
-                        <option value="open" ${idea.status === 'open' ? 'selected' : ''}>Open</option>
-                        <option value="claimed" ${idea.status === 'claimed' ? 'selected' : ''}>Claimed</option>
-                        <option value="complete" ${idea.status === 'complete' ? 'selected' : ''}>Complete</option>
-                    </select>
-                </td>
+                <td title="${utils.escapeHtml(idea.title)}">${utils.escapeHtml(idea.title)}</td>
+                <td>${utils.escapeHtml(idea.benefactor_team || '-')}</td>
+                <td>${priorityBadge}</td>
+                <td>${sizeBadge}</td>
+                <td>${statusBadge}</td>
                 <td>${idea.submitter_name ? utils.escapeHtml(idea.submitter_name) + ' (' + utils.escapeHtml(idea.email) + ')' : utils.escapeHtml(idea.email)}</td>
+                <td>${idea.claims && idea.claims.length > 0 ? idea.claims.map(c => utils.escapeHtml(c.name || c.email)).join(', ') : '-'}</td>
                 <td>${utils.formatDate(idea.date_submitted)}</td>
                 <td>
+                    <button class="btn btn-primary btn-sm" onclick="editIdea(${idea.id})">Edit</button>
+                    ${idea.status === 'claimed' || idea.status === 'complete' ? 
+                        `<button class="btn btn-warning btn-sm" onclick="unclaimIdea(${idea.id})">Unclaim</button>` : 
+                        ''}
                     <button class="btn btn-danger btn-sm" onclick="deleteIdea(${idea.id})">Delete</button>
                 </td>
             </tr>
@@ -336,79 +567,217 @@ function displayIdeas() {
     tableHtml += '</tbody></table>';
     document.getElementById('ideas-table-container').innerHTML = tableHtml;
     
-    // Add event listeners for editable cells
-    setupEditableCells();
-    
     // Update pagination
     updatePagination();
 }
 
-function setupEditableCells() {
-    // Text fields
-    document.querySelectorAll('.editable-cell[data-field]:not(:has(select))').forEach(cell => {
-        cell.addEventListener('click', function() {
-            if (this.querySelector('input')) return;
-            
-            const originalValue = this.textContent;
-            const field = this.dataset.field;
-            
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = originalValue;
-            input.className = 'cell-input';
-            
-            this.innerHTML = '';
-            this.appendChild(input);
-            input.focus();
-            input.select();
-            
-            const saveValue = async () => {
-                const newValue = input.value.trim();
-                if (newValue !== originalValue) {
-                    const ideaId = this.closest('tr').dataset.ideaId;
-                    await updateIdea(ideaId, field, newValue);
-                }
-                this.textContent = newValue || originalValue;
-            };
-            
-            input.addEventListener('blur', saveValue);
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    input.blur();
-                }
-            });
-        });
-    });
+function updatePagination() {
+    const totalPages = Math.ceil(filteredIdeas.length / itemsPerPage);
+    const paginationContainer = document.getElementById('pagination-container');
     
-    // Select fields
-    document.querySelectorAll('.cell-select').forEach(select => {
-        select.addEventListener('change', async function() {
-            const ideaId = this.closest('tr').dataset.ideaId;
-            const field = this.dataset.field;
-            const value = this.value;
-            
-            if (field === 'status') {
-                this.className = `cell-select status-${value}`;
-            }
-            
-            await updateIdea(ideaId, field, value);
-        });
-    });
+    if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination">';
+    
+    // Previous button
+    html += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `<button onclick="changePage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += '<span>...</span>';
+        }
+    }
+    
+    // Next button
+    html += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+    
+    html += '</div>';
+    paginationContainer.innerHTML = html;
 }
 
-async function updateIdea(ideaId, field, value) {
-    try {
-        const data = {};
-        data[field] = value;
+function changePage(page) {
+    const totalPages = Math.ceil(filteredIdeas.length / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        displayIdeas();
+    }
+}
+
+function applyFilters() {
+    const searchInput = document.getElementById('search-input').value.toLowerCase();
+    const priorityFilter = document.getElementById('priority-filter').value;
+    const statusFilter = document.getElementById('status-filter').value;
+    const sizeFilter = document.getElementById('size-filter').value;
+    const teamFilter = document.getElementById('team-filter').value;
+    
+    filteredIdeas = allIdeas.filter(idea => {
+        // Search filter
+        if (searchInput) {
+            const titleMatch = idea.title && idea.title.toLowerCase().includes(searchInput);
+            const descriptionMatch = idea.description && idea.description.toLowerCase().includes(searchInput);
+            if (!titleMatch && !descriptionMatch) {
+                return false;
+            }
+        }
         
+        // Priority filter
+        if (priorityFilter && idea.priority !== priorityFilter) {
+            return false;
+        }
+        
+        // Status filter
+        if (statusFilter && idea.status !== statusFilter) {
+            return false;
+        }
+        
+        // Size filter
+        if (sizeFilter && idea.size !== sizeFilter) {
+            return false;
+        }
+        
+        // Team filter
+        if (teamFilter && idea.benefactor_team !== teamFilter) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    currentPage = 1;
+    displayIdeas();
+}
+
+// Edit modal functions
+function editIdea(ideaId) {
+    const idea = allIdeas.find(i => i.id === ideaId);
+    if (!idea) return;
+    
+    // Populate analytics info
+    document.getElementById('info-id').textContent = idea.id;
+    document.getElementById('info-submitted').textContent = utils.formatDate(idea.date_submitted);
+    document.getElementById('info-submitter').textContent = idea.submitter_name ? 
+        `${idea.submitter_name} (${idea.email})` : idea.email;
+    document.getElementById('info-needed').textContent = idea.needed_by ? 
+        utils.formatDate(idea.needed_by) : 'Not specified';
+    document.getElementById('info-claims').textContent = idea.claims ? idea.claims.length : 0;
+    document.getElementById('info-pending').textContent = idea.pending_approvals || 0;
+    document.getElementById('info-assigned').textContent = idea.assigned_to_email || 'None';
+    document.getElementById('info-assigned-by').textContent = idea.assigned_by || '-';
+    
+    // Populate form fields
+    document.getElementById('edit-idea-id').value = idea.id;
+    document.getElementById('edit-title').value = idea.title;
+    document.getElementById('edit-description').value = idea.description || '';
+    document.getElementById('edit-priority').value = idea.priority;
+    document.getElementById('edit-size').value = idea.size;
+    document.getElementById('edit-status').value = idea.status;
+    document.getElementById('edit-reward').value = idea.reward || '';
+    document.getElementById('edit-email').value = idea.email;
+    
+    // Populate team dropdown
+    const teamSelect = document.getElementById('edit-team');
+    teamSelect.innerHTML = '<option value="">Select Team</option>';
+    if (allTeams) {
+        allTeams.forEach(team => {
+            const option = document.createElement('option');
+            option.value = team.name;
+            option.textContent = team.name;
+            option.selected = team.name === idea.benefactor_team;
+            teamSelect.appendChild(option);
+        });
+    }
+    
+    // Populate skills checkboxes
+    const skillsContainer = document.getElementById('edit-skills-container');
+    skillsContainer.innerHTML = '';
+    
+    if (allSkills) {
+        const ideaSkillIds = idea.skills ? idea.skills.map(s => s.id) : [];
+        
+        allSkills.forEach(skill => {
+            const label = document.createElement('label');
+            label.style.display = 'flex';
+            label.style.alignItems = 'center';
+            label.style.gap = '5px';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'skills';
+            checkbox.value = skill.id;
+            checkbox.checked = ideaSkillIds.includes(skill.id);
+            
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(skill.name));
+            
+            skillsContainer.appendChild(label);
+        });
+    }
+    
+    // Show modal
+    document.getElementById('edit-idea-modal').classList.add('active');
+}
+
+function closeEditModal() {
+    document.getElementById('edit-idea-modal').classList.remove('active');
+}
+
+// Form submission
+document.getElementById('edit-idea-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const ideaId = document.getElementById('edit-idea-id').value;
+    const formData = new FormData(e.target);
+    
+    const data = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        team: formData.get('team'),
+        priority: formData.get('priority'),
+        size: formData.get('size'),
+        status: formData.get('status'),
+        reward: formData.get('reward'),
+        email: formData.get('email'),
+        skill_ids: []
+    };
+    
+    // Get selected skills
+    const checkedSkills = document.querySelectorAll('#edit-skills-container input[type="checkbox"]:checked');
+    data.skill_ids = Array.from(checkedSkills).map(cb => parseInt(cb.value));
+    
+    try {
         await utils.fetchJson(`/api/ideas/${ideaId}`, {
             method: 'PUT',
             body: JSON.stringify(data)
         });
+        
+        closeEditModal();
+        loadIdeas();
     } catch (error) {
         console.error('Error updating idea:', error);
-        alert('Error updating idea. Please refresh and try again.');
+        alert('Error updating idea. Please try again.');
+    }
+});
+
+async function unclaimIdea(ideaId) {
+    if (!confirm('Are you sure you want to unclaim this idea? This will remove all claims and reset the status to open.')) {
+        return;
+    }
+    
+    try {
+        await utils.fetchJson(`/api/ideas/${ideaId}/unclaim`, {
+            method: 'POST'
+        });
+        
+        loadIdeas();
+    } catch (error) {
+        console.error('Error unclaiming idea:', error);
+        alert('Error unclaiming idea. Please try again.');
     }
 }
 
@@ -426,34 +795,26 @@ async function deleteIdea(ideaId) {
     }
 }
 
-function updatePagination() {
-    const totalPages = Math.ceil(allIdeas.length / itemsPerPage);
-    let paginationHtml = '';
-    
-    if (totalPages > 1) {
-        if (currentPage > 1) {
-            paginationHtml += `<button class="btn btn-secondary btn-sm" onclick="changePage(${currentPage - 1})">Previous</button> `;
-        }
-        
-        paginationHtml += `<span>Page ${currentPage} of ${totalPages}</span> `;
-        
-        if (currentPage < totalPages) {
-            paginationHtml += `<button class="btn btn-secondary btn-sm" onclick="changePage(${currentPage + 1})">Next</button>`;
-        }
-    }
-    
-    document.getElementById('pagination-container').innerHTML = paginationHtml;
-}
+// Add event listeners for filters
+document.getElementById('search-input').addEventListener('input', applyFilters);
+document.getElementById('priority-filter').addEventListener('change', applyFilters);
+document.getElementById('status-filter').addEventListener('change', applyFilters);
+document.getElementById('size-filter').addEventListener('change', applyFilters);
+document.getElementById('team-filter').addEventListener('change', applyFilters);
 
-function changePage(page) {
-    currentPage = page;
-    displayIdeas();
-}
+document.getElementById('clear-filters').addEventListener('click', () => {
+    document.getElementById('search-input').value = '';
+    document.getElementById('priority-filter').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('size-filter').value = '';
+    document.getElementById('team-filter').value = '';
+    applyFilters();
+});
 
 // Initialize ideas loading
 loadIdeas();
 
-// Auto-refresh every 5 seconds
-setInterval(loadIdeas, 5000);
+// Auto-refresh every 30 seconds
+setInterval(loadIdeas, 30000);
 </script>
 {% endblock %}
