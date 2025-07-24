@@ -872,6 +872,7 @@ Updated for Python 3.12 compatibility:
 ### Known Issues and Solutions
 1. **"Failed to import site module" error**: This occurs when trying to use a locally built Python with missing dependencies. Solution: Use system Python (3.8+) instead.
 2. **numpy/pandas compatibility**: Earlier versions (numpy 1.24.3, pandas 2.0.3) don't support Python 3.12. Solution: Use the updated flexible version ranges.
+3. **Cron environment Python version**: If cron has Python 3.6 or older, the flask-health-monitor.sh script will automatically search for and use a compatible Python 3.8+ version from various system locations.
 
 ## Authentication System Details
 

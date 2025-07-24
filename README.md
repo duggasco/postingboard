@@ -218,6 +218,28 @@ docker compose -f docker-compose-flask.yml down
 - Set up regular database backups
 - Monitor application logs and performance
 
+## Health Monitoring
+
+The application includes a health monitoring script that can be run via cron to ensure the Flask app stays running:
+
+```bash
+# Add to crontab for hourly health checks
+0 * * * * /path/to/postingboard/flask-health-monitor.sh >> /var/log/flask-health.log 2>&1
+```
+
+The health monitor will:
+- Check if the Flask process is running
+- Verify the application responds to health checks
+- Restart the application if it's down or unresponsive
+- Log all actions for troubleshooting
+
+### Python Version Compatibility
+The health monitor script is designed to work in restricted cron environments:
+- **Automatic Python Detection**: Searches for Python 3.8+ even if the cron environment has an older version (e.g., Python 3.6)
+- **Multiple Search Locations**: Checks standard paths and common installation directories
+- **Virtual Environment Management**: Creates/updates venv with the compatible Python version found
+- **Detailed Logging**: Reports which Python version is being used for troubleshooting
+
 ## Troubleshooting
 
 ### Common Issues

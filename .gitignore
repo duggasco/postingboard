@@ -56,4 +56,4 @@ test_*.csv
 *test_cookies.txt
 
 # Docker
-docker-compose.override.yml
+docker-compose.override.ymlflask-app.pid
