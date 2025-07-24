@@ -79,6 +79,8 @@ async function loadNotifications() {
         const response = await fetch('/api/user/notifications');
         const data = await response.json();
         
+        console.log('Notification API response:', data);
+        
         const notificationsList = document.getElementById('notifications-list');
         const notificationCount = document.getElementById('notification-count');
         
@@ -148,7 +150,9 @@ function formatNotificationType(type) {
         'assigned': 'Assigned',
         'new_team_member': 'Team Update',
         'manager_approved': 'Manager Approved',
-        'manager_denied': 'Manager Denied'
+        'manager_denied': 'Manager Denied',
+        'team_approval_request': 'Team Request',
+        'team_approved': 'Team Approved'
     };
     return typeMap[type] || type;
 }

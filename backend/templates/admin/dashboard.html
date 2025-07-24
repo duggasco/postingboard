@@ -89,8 +89,8 @@
         return element;
     }
 
-    // Load admin notifications
-    async function loadNotifications() {
+    // Load admin dashboard notifications (renamed to avoid conflict with bell notifications)
+    async function loadAdminDashboardNotifications() {
         try {
             const response = await fetch('/api/admin/notifications');
             const data = await response.json();
@@ -210,7 +210,7 @@
             console.log('Page already complete, loading stats after delay');
             setTimeout(() => {
                 loadStats();
-                loadNotifications();
+                loadAdminDashboardNotifications();
             }, 250);
         }
         
@@ -219,7 +219,7 @@
             console.log('Window load event fired');
             setTimeout(() => {
                 loadStats();
-                loadNotifications();
+                loadAdminDashboardNotifications();
             }, 250);
         });
         
@@ -229,7 +229,7 @@
                 requestAnimationFrame(() => {
                     console.log('RequestAnimationFrame triggered');
                     loadStats();
-                    loadNotifications();
+                    loadAdminDashboardNotifications();
                 });
             });
         }
@@ -244,9 +244,9 @@
         initStats();
     }
     
-    // Refresh notifications periodically (every 30 seconds)
+    // Refresh dashboard notifications periodically (every 30 seconds)
     setInterval(() => {
-        loadNotifications();
+        loadAdminDashboardNotifications();
     }, 30000);
 })();
 
