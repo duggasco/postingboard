@@ -11,7 +11,7 @@
     
     <div class="admin-nav">
         <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
-        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link active">Manage Ideas</a>
         <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
         <a href="{{ url_for('admin.teams') }}" class="admin-nav-link">Manage Teams</a>
         <a href="{{ url_for('admin.users') }}" class="admin-nav-link">Manage Users</a>
@@ -20,45 +20,210 @@
         <a href="{{ url_for('admin.bulk_upload') }}" class="admin-nav-link">Bulk Upload</a>
     </div>
     
-    <div id="ideas-table-container">
-        <div class="loading">Loading ideas...</div>
+    <div style="margin-bottom: 30px;">
+        <h3>Filter Ideas</h3>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="search-input" placeholder="Search by title or description..." class="form-control" style="max-width: 300px;">
+            <select id="priority-filter" class="form-control" style="max-width: 150px;">
+                <option value="">All Priorities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+            <select id="status-filter" class="form-control" style="max-width: 150px;">
+                <option value="">All Statuses</option>
+                <option value="open">Open</option>
+                <option value="claimed">Claimed</option>
+                <option value="complete">Complete</option>
+            </select>
+            <select id="size-filter" class="form-control" style="max-width: 150px;">
+                <option value="">All Sizes</option>
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+                <option value="extra_large">Extra Large</option>
+            </select>
+            <select id="team-filter" class="form-control" style="max-width: 200px;">
+                <option value="">All Teams</option>
+            </select>
+            <button id="clear-filters" class="btn btn-secondary">Clear Filters</button>
+        </div>
     </div>
     
-    <div id="pagination-container" style="margin-top: 20px; text-align: center;"></div>
+    <div>
+        <h3>All Ideas</h3>
+        <div id="ideas-table-container">
+            <div class="loading">Loading ideas...</div>
+        </div>
+        
+        <div id="pagination-container" style="margin-top: 20px; text-align: center;"></div>
+    </div>
+</div>
+
+<!-- Edit Idea Modal -->
+<div id="edit-idea-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Idea</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="edit-idea-form">
+            <input type="hidden" id="edit-idea-id" name="id">
+            <div id="idea-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+                <h4 style="margin-top: 0; font-size: 16px;">Idea Analytics</h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div><strong>ID:</strong> <span id="info-id">-</span></div>
+                    <div><strong>Submitted:</strong> <span id="info-submitted">-</span></div>
+                    <div><strong>Submitter:</strong> <span id="info-submitter">-</span></div>
+                    <div><strong>Needed By:</strong> <span id="info-needed">-</span></div>
+                    <div><strong>Total Claims:</strong> <span id="info-claims">0</span></div>
+                    <div><strong>Pending Approvals:</strong> <span id="info-pending">0</span></div>
+                    <div><strong>Assigned To:</strong> <span id="info-assigned">None</span></div>
+                    <div><strong>Assigned By:</strong> <span id="info-assigned-by">-</span></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="edit-title">Title</label>
+                <input type="text" id="edit-title" name="title" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-description">Description</label>
+                <textarea id="edit-description" name="description" class="form-control" rows="4" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="edit-team">Team</label>
+                <select id="edit-team" name="team" class="form-control">
+                    <option value="">Select Team</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-priority">Priority</label>
+                <select id="edit-priority" name="priority" class="form-control" required>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-size">Size</label>
+                <select id="edit-size" name="size" class="form-control" required>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="extra_large">Extra Large</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-status">Status</label>
+                <select id="edit-status" name="status" class="form-control" required>
+                    <option value="open">Open</option>
+                    <option value="claimed">Claimed</option>
+                    <option value="complete">Complete</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-reward">Reward</label>
+                <input type="text" id="edit-reward" name="reward" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="edit-email">Submitter Email</label>
+                <input type="email" id="edit-email" name="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Skills</label>
+                <div id="edit-skills-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;"></div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 <script>
-// Admin ideas management
 let currentPage = 1;
 const itemsPerPage = 20;
 let allIdeas = [];
+let filteredIdeas = [];
+let teams = [];
+let skills = [];
 
 async function loadIdeas() {
     try {
-        // Explicitly request all ideas without status filter
-        const ideas = await utils.fetchJson('/api/ideas?status=');
+        const response = await fetch('/api/ideas?status=');
+        const ideas = await response.json();
         allIdeas = ideas;
+        filteredIdeas = [...allIdeas];
         displayIdeas();
     } catch (error) {
         console.error('Error loading ideas:', error);
-        document.getElementById('ideas-table-container').innerHTML = '<div class="error">Error loading ideas</div>';
+        document.getElementById('ideas-table-container').innerHTML = '<p>Error loading ideas.</p>';
+    }
+}
+
+async function loadTeams() {
+    try {
+        const response = await fetch('/api/teams');
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            teams = data;
+            
+            // Populate team filter
+            const teamFilter = document.getElementById('team-filter');
+            teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team.name;
+                option.textContent = team.name;
+                teamFilter.appendChild(option);
+            });
+            
+            // Populate edit form team select
+            const editTeam = document.getElementById('edit-team');
+            editTeam.innerHTML = '<option value="">Select Team</option>';
+            teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team.name;
+                option.textContent = team.name;
+                editTeam.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading teams:', error);
+    }
+}
+
+async function loadSkills() {
+    try {
+        const response = await fetch('/api/skills');
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            skills = data;
+        }
+    } catch (error) {
+        console.error('Error loading skills:', error);
     }
 }
 
 function displayIdeas() {
-    const start = (currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    const pageIdeas = allIdeas.slice(start, end);
+    const container = document.getElementById('ideas-table-container');
     
-    if (pageIdeas.length === 0) {
-        document.getElementById('ideas-table-container').innerHTML = '<div class="empty-state">No ideas found</div>';
+    if (filteredIdeas.length === 0) {
+        container.innerHTML = '<p>No ideas found.</p>';
+        document.getElementById('pagination-container').innerHTML = '';
         return;
     }
     
-    let tableHtml = `
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const ideasToDisplay = filteredIdeas.slice(startIndex, endIndex);
+    
+    let html = `
         <table class="data-table">
             <thead>
                 <tr>
@@ -77,41 +242,26 @@ function displayIdeas() {
             <tbody>
     `;
     
-    pageIdeas.forEach(idea => {
-        const statusClass = `status-${idea.status}`;
-        tableHtml += `
-            <tr data-idea-id="${idea.id}">
+    ideasToDisplay.forEach(idea => {
+        const priorityBadge = `<span class="priority-badge priority-${idea.priority}">${idea.priority}</span>`;
+        const sizeBadge = `<span class="size-badge size-${idea.size}">${idea.size.replace('_', ' ')}</span>`;
+        const statusBadge = `<span class="status-badge status-${idea.status}">${idea.status}</span>`;
+        
+        html += `
+            <tr>
                 <td>${idea.id}</td>
-                <td class="editable-cell" data-field="title">${utils.escapeHtml(idea.title)}</td>
-                <td class="editable-cell" data-field="team">${utils.escapeHtml(idea.benefactor_team)}</td>
-                <td class="editable-cell" data-field="priority">
-                    <select class="cell-select" data-field="priority">
-                        <option value="low" ${idea.priority === 'low' ? 'selected' : ''}>Low</option>
-                        <option value="medium" ${idea.priority === 'medium' ? 'selected' : ''}>Medium</option>
-                        <option value="high" ${idea.priority === 'high' ? 'selected' : ''}>High</option>
-                    </select>
-                </td>
-                <td class="editable-cell" data-field="size">
-                    <select class="cell-select" data-field="size">
-                        <option value="small" ${idea.size === 'small' ? 'selected' : ''}>Small</option>
-                        <option value="medium" ${idea.size === 'medium' ? 'selected' : ''}>Medium</option>
-                        <option value="large" ${idea.size === 'large' ? 'selected' : ''}>Large</option>
-                        <option value="extra_large" ${idea.size === 'extra_large' ? 'selected' : ''}>Extra Large</option>
-                    </select>
-                </td>
-                <td class="editable-cell" data-field="status">
-                    <select class="cell-select ${statusClass}" data-field="status">
-                        <option value="open" ${idea.status === 'open' ? 'selected' : ''}>Open</option>
-                        <option value="claimed" ${idea.status === 'claimed' ? 'selected' : ''}>Claimed</option>
-                        <option value="complete" ${idea.status === 'complete' ? 'selected' : ''}>Complete</option>
-                    </select>
-                </td>
+                <td title="${utils.escapeHtml(idea.title)}">${utils.escapeHtml(idea.title)}</td>
+                <td>${utils.escapeHtml(idea.benefactor_team || '-')}</td>
+                <td>${priorityBadge}</td>
+                <td>${sizeBadge}</td>
+                <td>${statusBadge}</td>
                 <td>${idea.submitter_name ? utils.escapeHtml(idea.submitter_name) + ' (' + utils.escapeHtml(idea.email) + ')' : utils.escapeHtml(idea.email)}</td>
                 <td>${idea.claims && idea.claims.length > 0 ? idea.claims.map(c => utils.escapeHtml(c.name || c.email)).join(', ') : '-'}</td>
                 <td>${utils.formatDate(idea.date_submitted)}</td>
                 <td>
+                    <button class="btn btn-primary btn-sm" onclick="editIdea(${idea.id})">Edit</button>
                     ${idea.status === 'claimed' || idea.status === 'complete' ? 
-                        `<button class="btn btn-warning btn-sm" onclick="unclaimIdea(${idea.id})">Unclaim</button> ` : 
+                        `<button class="btn btn-warning btn-sm" onclick="unclaimIdea(${idea.id})">Unclaim</button>` : 
                         ''}
                     <button class="btn btn-danger btn-sm" onclick="deleteIdea(${idea.id})">Delete</button>
                 </td>
@@ -119,144 +269,303 @@ function displayIdeas() {
         `;
     });
     
-    tableHtml += '</tbody></table>';
-    document.getElementById('ideas-table-container').innerHTML = tableHtml;
+    html += '</tbody></table>';
+    container.innerHTML = html;
     
-    // Add event listeners for editable cells
-    setupEditableCells();
-    
-    // Update pagination
-    updatePagination();
+    displayPagination();
 }
 
-function setupEditableCells() {
-    // Text fields
-    document.querySelectorAll('.editable-cell[data-field]:not(:has(select))').forEach(cell => {
-        cell.addEventListener('click', function() {
-            if (this.querySelector('input')) return;
-            
-            const originalValue = this.textContent;
-            const field = this.dataset.field;
-            
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = originalValue;
-            input.className = 'cell-input';
-            
-            this.innerHTML = '';
-            this.appendChild(input);
-            input.focus();
-            input.select();
-            
-            const saveValue = async () => {
-                const newValue = input.value.trim();
-                if (newValue !== originalValue) {
-                    const ideaId = this.closest('tr').dataset.ideaId;
-                    await updateIdea(ideaId, field, newValue);
-                }
-                this.textContent = newValue || originalValue;
-            };
-            
-            input.addEventListener('blur', saveValue);
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    input.blur();
-                }
-            });
-        });
-    });
+function displayPagination() {
+    const totalPages = Math.ceil(filteredIdeas.length / itemsPerPage);
+    const paginationContainer = document.getElementById('pagination-container');
     
-    // Select fields
-    document.querySelectorAll('.cell-select').forEach(select => {
-        select.addEventListener('change', async function() {
-            const ideaId = this.closest('tr').dataset.ideaId;
-            const field = this.dataset.field;
-            const value = this.value;
-            
-            if (field === 'status') {
-                this.className = `cell-select status-${value}`;
+    if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination">';
+    
+    // Previous button
+    html += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `<button onclick="changePage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += '<span>...</span>';
+        }
+    }
+    
+    // Next button
+    html += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+    
+    html += '</div>';
+    paginationContainer.innerHTML = html;
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(filteredIdeas.length / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        displayIdeas();
+    }
+}
+
+function applyFilters() {
+    const searchInput = document.getElementById('search-input').value.toLowerCase();
+    const priorityFilter = document.getElementById('priority-filter').value;
+    const statusFilter = document.getElementById('status-filter').value;
+    const sizeFilter = document.getElementById('size-filter').value;
+    const teamFilter = document.getElementById('team-filter').value;
+    
+    filteredIdeas = allIdeas.filter(idea => {
+        // Search filter
+        if (searchInput) {
+            const titleMatch = idea.title && idea.title.toLowerCase().includes(searchInput);
+            const descriptionMatch = idea.description && idea.description.toLowerCase().includes(searchInput);
+            if (!titleMatch && !descriptionMatch) {
+                return false;
             }
-            
-            await updateIdea(ideaId, field, value);
-        });
+        }
+        
+        // Priority filter
+        if (priorityFilter && idea.priority !== priorityFilter) {
+            return false;
+        }
+        
+        // Status filter
+        if (statusFilter && idea.status !== statusFilter) {
+            return false;
+        }
+        
+        // Size filter
+        if (sizeFilter && idea.size !== sizeFilter) {
+            return false;
+        }
+        
+        // Team filter
+        if (teamFilter && idea.benefactor_team !== teamFilter) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    currentPage = 1;
+    displayIdeas();
+}
+
+function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('priority-filter').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('size-filter').value = '';
+    document.getElementById('team-filter').value = '';
+    filteredIdeas = [...allIdeas];
+    currentPage = 1;
+    displayIdeas();
+}
+
+async function editIdea(ideaId) {
+    const idea = allIdeas.find(i => i.id === ideaId);
+    if (!idea) return;
+    
+    // Ensure teams and skills are loaded
+    if (teams.length === 0) await loadTeams();
+    if (skills.length === 0) await loadSkills();
+    
+    // Populate form
+    document.getElementById('edit-idea-id').value = idea.id;
+    document.getElementById('edit-title').value = idea.title;
+    document.getElementById('edit-description').value = idea.description || '';
+    document.getElementById('edit-team').value = idea.benefactor_team || '';
+    document.getElementById('edit-priority').value = idea.priority;
+    document.getElementById('edit-size').value = idea.size;
+    document.getElementById('edit-status').value = idea.status;
+    document.getElementById('edit-reward').value = idea.reward || '';
+    document.getElementById('edit-email').value = idea.email;
+    
+    // Populate analytics
+    document.getElementById('info-id').textContent = idea.id;
+    document.getElementById('info-submitted').textContent = utils.formatDate(idea.date_submitted);
+    document.getElementById('info-submitter').textContent = idea.submitter_name ? 
+        `${idea.submitter_name} (${idea.email})` : idea.email;
+    document.getElementById('info-needed').textContent = idea.needed_by ? 
+        utils.formatDate(idea.needed_by) : 'Not specified';
+    document.getElementById('info-claims').textContent = idea.claims ? idea.claims.length : 0;
+    
+    // Count pending approvals
+    const pendingApprovals = await getPendingApprovalsCount(ideaId);
+    document.getElementById('info-pending').textContent = pendingApprovals;
+    
+    // Show assignment info if assigned
+    document.getElementById('info-assigned').textContent = idea.assigned_to_email || 'None';
+    document.getElementById('info-assigned-by').textContent = idea.assigned_by || '-';
+    
+    // Populate skills checkboxes
+    populateSkillsCheckboxes(idea.skills || []);
+    
+    document.getElementById('edit-idea-modal').classList.add('active');
+}
+
+async function getPendingApprovalsCount(ideaId) {
+    try {
+        const response = await fetch('/api/claim-approvals/pending');
+        const data = await response.json();
+        
+        if (data.pending_approvals) {
+            const pendingForIdea = data.pending_approvals.filter(approval => 
+                approval.idea_id === ideaId
+            );
+            return pendingForIdea.length;
+        }
+        return 0;
+    } catch (error) {
+        console.error('Error fetching pending approvals:', error);
+        return 0;
+    }
+}
+
+function populateSkillsCheckboxes(ideaSkills) {
+    const container = document.getElementById('edit-skills-container');
+    container.innerHTML = '';
+    
+    if (!skills || skills.length === 0) {
+        container.innerHTML = '<p>Loading skills...</p>';
+        loadSkills().then(() => populateSkillsCheckboxes(ideaSkills));
+        return;
+    }
+    
+    const ideaSkillIds = (ideaSkills || []).map(s => s.id);
+    
+    skills.forEach(skill => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label style="display: flex; align-items: center; gap: 4px;">
+                <input type="checkbox" name="skills[]" value="${skill.id}" 
+                    ${ideaSkillIds.includes(skill.id) ? 'checked' : ''}>
+                ${skill.name}
+            </label>
+        `;
+        container.appendChild(div);
     });
 }
 
-async function updateIdea(ideaId, field, value) {
+function closeModal() {
+    document.getElementById('edit-idea-modal').classList.remove('active');
+}
+
+async function saveIdea(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const ideaId = formData.get('id');
+    const data = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        team: formData.get('team'),
+        priority: formData.get('priority'),
+        size: formData.get('size'),
+        status: formData.get('status'),
+        reward: formData.get('reward'),
+        email: formData.get('email'),
+        skill_ids: formData.getAll('skills[]').map(id => parseInt(id))
+    };
+    
     try {
-        const data = {};
-        data[field] = value;
-        
-        await utils.fetchJson(`/api/ideas/${ideaId}`, {
+        const response = await fetch(`/api/ideas/${ideaId}`, {
             method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(data)
         });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Idea updated successfully!');
+            closeModal();
+            loadIdeas();
+        } else {
+            alert('Failed to update idea: ' + result.message);
+        }
     } catch (error) {
         console.error('Error updating idea:', error);
-        alert('Error updating idea. Please refresh and try again.');
+        alert('Failed to update idea');
     }
 }
 
 async function deleteIdea(ideaId) {
-    if (!confirm('Are you sure you want to delete this idea?')) return;
+    if (!confirm('Are you sure you want to delete this idea?')) {
+        return;
+    }
     
     try {
-        await utils.fetchJson(`/api/ideas/${ideaId}`, {
+        const response = await fetch(`/api/ideas/${ideaId}`, {
             method: 'DELETE'
         });
-        loadIdeas();
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Idea deleted successfully!');
+            loadIdeas();
+        } else {
+            alert('Failed to delete idea: ' + result.message);
+        }
     } catch (error) {
         console.error('Error deleting idea:', error);
-        alert('Error deleting idea. Please try again.');
+        alert('Failed to delete idea');
     }
 }
 
 async function unclaimIdea(ideaId) {
-    if (!confirm('Are you sure you want to unclaim this idea? This will remove all claims and set status to open.')) return;
+    if (!confirm('Are you sure you want to unclaim this idea? This will remove all claims and set status to open.')) {
+        return;
+    }
     
     try {
-        const response = await utils.fetchJson(`/api/ideas/${ideaId}/unclaim`, {
+        const response = await fetch(`/api/ideas/${ideaId}/unclaim`, {
             method: 'POST'
         });
-        if (response.message) {
-            alert(response.message);
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message || 'Idea unclaimed successfully!');
+            loadIdeas();
+        } else {
+            alert('Failed to unclaim idea: ' + result.message);
         }
-        loadIdeas();
     } catch (error) {
         console.error('Error unclaiming idea:', error);
-        alert('Error unclaiming idea. Please try again.');
+        alert('Failed to unclaim idea');
     }
 }
 
-function updatePagination() {
-    const totalPages = Math.ceil(allIdeas.length / itemsPerPage);
-    let paginationHtml = '';
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    loadTeams();
+    loadSkills();
+    loadIdeas();
     
-    if (totalPages > 1) {
-        if (currentPage > 1) {
-            paginationHtml += `<button class="btn btn-secondary btn-sm" onclick="changePage(${currentPage - 1})">Previous</button> `;
-        }
-        
-        paginationHtml += `<span>Page ${currentPage} of ${totalPages}</span> `;
-        
-        if (currentPage < totalPages) {
-            paginationHtml += `<button class="btn btn-secondary btn-sm" onclick="changePage(${currentPage + 1})">Next</button>`;
-        }
-    }
+    document.getElementById('search-input').addEventListener('input', applyFilters);
+    document.getElementById('priority-filter').addEventListener('change', applyFilters);
+    document.getElementById('status-filter').addEventListener('change', applyFilters);
+    document.getElementById('size-filter').addEventListener('change', applyFilters);
+    document.getElementById('team-filter').addEventListener('change', applyFilters);
+    document.getElementById('clear-filters').addEventListener('click', clearFilters);
+    document.getElementById('edit-idea-form').addEventListener('submit', saveIdea);
     
-    document.getElementById('pagination-container').innerHTML = paginationHtml;
-}
-
-function changePage(page) {
-    currentPage = page;
-    displayIdeas();
-}
-
-// Initialize
-loadIdeas();
-
-// Auto-refresh every 5 seconds
-setInterval(loadIdeas, 5000);
+    // Close modal when clicking outside
+    document.getElementById('edit-idea-modal').onclick = function(event) {
+        if (event.target === this) {
+            closeModal();
+        }
+    };
+});
 </script>
 {% endblock %}

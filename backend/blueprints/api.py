@@ -366,6 +366,20 @@ def update_idea(idea_id):
                     
         if 'email' in data:
             idea.email = data['email']
+        if 'description' in data:
+            idea.description = data['description']
+        if 'reward' in data:
+            idea.reward = data['reward']
+        
+        # Handle skills update
+        if 'skill_ids' in data:
+            # Clear existing skills
+            idea.skills = []
+            # Add new skills
+            skill_ids = data['skill_ids']
+            if skill_ids:
+                skills = db.query(Skill).filter(Skill.id.in_(skill_ids)).all()
+                idea.skills = skills
         
         db.commit()
         return jsonify({'success': True})
