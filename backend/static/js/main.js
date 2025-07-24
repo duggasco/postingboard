@@ -125,11 +125,19 @@ async function loadNotifications() {
                 if (data.unread_count > 0) {
                     console.log('Setting notification count to:', data.unread_count);
                     notificationCount.textContent = data.unread_count;
-                    notificationCount.style.display = 'inline-block';
-                    console.log('Badge updated - text:', notificationCount.textContent, 'display:', notificationCount.style.display);
+                    // Use important to override any conflicting styles
+                    notificationCount.style.cssText = 'display: inline-block !important; visibility: visible !important; opacity: 1 !important;';
+                    console.log('Badge updated - text:', notificationCount.textContent, 'styles:', notificationCount.style.cssText);
+                    
+                    // Double-check the element is visible
+                    const computedStyle = window.getComputedStyle(notificationCount);
+                    console.log('Computed styles - display:', computedStyle.display, 'visibility:', computedStyle.visibility, 'opacity:', computedStyle.opacity);
+                    
+                    // Force a reflow to ensure the browser updates
+                    notificationCount.offsetHeight;
                 } else {
                     console.log('No unread notifications, hiding badge');
-                    notificationCount.style.display = 'none';
+                    notificationCount.style.cssText = 'display: none !important;';
                 }
             }
         } else {
@@ -268,6 +276,18 @@ if (window.location.pathname.includes('/admin')) {
             loadNotifications();
         }
     }, 1000);
+    
+    // Additional fallback specifically for fixing the inline style issue
+    setTimeout(function() {
+        const notificationCount = document.getElementById('notification-count');
+        if (notificationCount && notificationCount.textContent !== '0') {
+            console.log('Fixing notification badge visibility - current text:', notificationCount.textContent);
+            notificationCount.removeAttribute('style');
+            notificationCount.style.display = 'inline-block';
+            notificationCount.style.visibility = 'visible';
+            notificationCount.style.opacity = '1';
+        }
+    }, 1500);
 }
 
 // Debug function that can be called from console
@@ -279,6 +299,7 @@ window.debugNotifications = async function() {
     console.log('Count element:', count);
     console.log('Count text:', count?.textContent);
     console.log('Count display:', count?.style.display);
+    console.log('Count inline style:', count?.getAttribute('style'));
     
     console.log('\nForcing notification load...');
     await loadNotifications();
@@ -286,6 +307,20 @@ window.debugNotifications = async function() {
     console.log('\nAfter load:');
     console.log('Count text:', count?.textContent);
     console.log('Count display:', count?.style.display);
+    console.log('Count inline style:', count?.getAttribute('style'));
+};
+
+// Manual fix function for testing
+window.fixNotificationBadge = function() {
+    const count = document.getElementById('notification-count');
+    if (count) {
+        const currentText = count.textContent;
+        console.log('Current badge text:', currentText);
+        if (currentText && currentText !== '0') {
+            count.setAttribute('style', 'display: inline-block !important;');
+            console.log('Badge should now be visible');
+        }
+    }
 };
 
 // User Dropdown Menu

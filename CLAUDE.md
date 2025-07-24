@@ -1404,3 +1404,17 @@ Added cache busting to prevent stale JavaScript and CSS files:
 - **CSS**: Added same cache busting pattern to styles.css in base.html
 - **Coverage**: Since all templates extend base.html, cache busting works on every page
 - **Purpose**: Ensures browsers fetch fresh copies of assets after updates, preventing issues from cached files
+
+### Admin Bell Notification Display Fix (July 2025)
+Fixed admin bell notifications not displaying despite API returning correct data:
+- **Problem**: Bell icon showed "0" with display:none even though API returned unread_count: 3
+- **Root Cause**: Duplicate CSS definition in admin dashboard template was missing critical positioning properties
+- **Solutions Implemented**:
+  - Removed conflicting `.notification-badge` CSS from admin/dashboard.html that was overriding global styles
+  - Enhanced JavaScript to use `!important` flags to force visibility: `display: inline-block !important`
+  - Added additional 1.5s fallback specifically for admin pages to fix inline style issues
+  - Implemented force reflow with `offsetHeight` to ensure browser updates
+- **Debug Tools Added**:
+  - `window.debugNotifications()` - Shows current state and forces reload
+  - `window.fixNotificationBadge()` - Manually fixes badge visibility
+- **Result**: Admin bell notifications now properly display the unread count
