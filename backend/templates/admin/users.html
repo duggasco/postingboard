@@ -117,6 +117,78 @@
 
 {% block extra_js %}
 <style>
+/* Compact users table styling */
+.users-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    font-size: 11px;
+    table-layout: fixed;
+}
+
+.users-data-table th,
+.users-data-table td {
+    padding: 6px 4px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.users-data-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.users-data-table tr:hover {
+    background-color: #fafbfc;
+}
+
+/* Column widths */
+.users-data-table th:nth-child(1),
+.users-data-table td:nth-child(1) { width: 10%; } /* Name */
+.users-data-table th:nth-child(2),
+.users-data-table td:nth-child(2) { width: 12%; } /* Email */
+.users-data-table th:nth-child(3),
+.users-data-table td:nth-child(3) { width: 8%; } /* Role */
+.users-data-table th:nth-child(4),
+.users-data-table td:nth-child(4) { width: 9%; } /* Team */
+.users-data-table th:nth-child(5),
+.users-data-table td:nth-child(5) { width: 9%; } /* Managed */
+.users-data-table th:nth-child(6),
+.users-data-table td:nth-child(6) { width: 15%; } /* Skills */
+.users-data-table th:nth-child(7),
+.users-data-table td:nth-child(7) { width: 5%; } /* Status */
+.users-data-table th:nth-child(8),
+.users-data-table td:nth-child(8) { width: 4%; } /* Ideas */
+.users-data-table th:nth-child(9),
+.users-data-table td:nth-child(9) { width: 4%; } /* Claims */
+.users-data-table th:nth-child(10),
+.users-data-table td:nth-child(10) { width: 4%; } /* Complete */
+.users-data-table th:nth-child(11),
+.users-data-table td:nth-child(11) { width: 4%; } /* Pending */
+.users-data-table th:nth-child(12),
+.users-data-table td:nth-child(12) { width: 6%; } /* Created */
+.users-data-table th:nth-child(13),
+.users-data-table td:nth-child(13) { width: 10%; } /* Actions */
+
+/* Compact status badges */
+.users-data-table .status-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+}
+
+/* Compact buttons */
+.users-data-table .btn-sm {
+    padding: 3px 8px;
+    font-size: 10px;
+}
+
 .pagination {
     display: flex;
     justify-content: center;
@@ -182,8 +254,9 @@ async function loadTeams() {
         const response = await fetch('/api/teams');
         const data = await response.json();
         
-        if (data.success) {
-            teams = data.teams;
+        // API returns direct array, not object with teams property
+        if (Array.isArray(data)) {
+            teams = data;
             
             // Populate team filter
             const teamFilter = document.getElementById('team-filter');
@@ -196,6 +269,8 @@ async function loadTeams() {
             
             // Populate edit form team selects
             populateTeamSelects();
+        } else {
+            console.error('Unexpected teams data format:', data);
         }
     } catch (error) {
         console.error('Error loading teams:', error);
@@ -207,8 +282,11 @@ async function loadSkills() {
         const response = await fetch('/api/skills');
         const data = await response.json();
         
-        if (data.success) {
-            skills = data.skills;
+        // API returns direct array, not object with skills property
+        if (Array.isArray(data)) {
+            skills = data;
+        } else {
+            console.error('Unexpected skills data format:', data);
         }
     } catch (error) {
         console.error('Error loading skills:', error);
@@ -250,21 +328,21 @@ function displayUsers() {
     const usersToDisplay = filteredUsers.slice(startIndex, endIndex);
     
     let html = `
-        <table class="data-table">
+        <table class="users-data-table">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Team</th>
-                    <th>Managed Team</th>
-                    <th>Skills</th>
-                    <th>Verified</th>
-                    <th>Ideas</th>
-                    <th>Claims</th>
-                    <th>Complete</th>
-                    <th>Pending</th>
-                    <th>Created</th>
+                    <th title="User Name">Name</th>
+                    <th title="Email Address">Email</th>
+                    <th title="User Role">Role</th>
+                    <th title="Team">Team</th>
+                    <th title="Managed Team">Managed</th>
+                    <th title="Skills">Skills</th>
+                    <th title="Verification Status">Status</th>
+                    <th title="Ideas Submitted">Ideas</th>
+                    <th title="Ideas Claimed">Claims</th>
+                    <th title="Completed Ideas">Done</th>
+                    <th title="Pending Claims">Pend</th>
+                    <th title="Created Date">Created</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -273,31 +351,33 @@ function displayUsers() {
     
     usersToDisplay.forEach(user => {
         const verifiedBadge = user.is_verified 
-            ? '<span class="status-badge status-complete">Verified</span>'
-            : '<span class="status-badge status-pending">Unverified</span>';
+            ? '<span class="status-badge status-complete" title="Verified">✓</span>'
+            : '<span class="status-badge status-pending" title="Unverified">✗</span>';
         
+        // Abbreviate role names
         const roleDisplay = user.role 
-            ? user.role.replace('_', ' ').split(' ')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' ')
-            : 'Not Set';
+            ? (user.role === 'citizen_developer' ? 'CitDev' :
+               user.role === 'idea_submitter' ? 'Submitter' :
+               user.role === 'developer' ? 'Dev' :
+               user.role === 'manager' ? 'Mgr' : user.role)
+            : '-';
         
         const skillsList = user.skills.map(s => s.name).join(', ') || '-';
         
         html += `
             <tr>
-                <td>${user.name || '-'}</td>
-                <td>${user.email}</td>
-                <td>${roleDisplay}</td>
-                <td>${user.team_name || '-'}</td>
-                <td>${user.managed_team_name || '-'}</td>
-                <td>${skillsList}</td>
+                <td title="${user.name || '-'}">${user.name || '-'}</td>
+                <td title="${user.email}">${user.email}</td>
+                <td title="${user.role ? user.role.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '-'}">${roleDisplay}</td>
+                <td title="${user.team_name || '-'}">${user.team_name || '-'}</td>
+                <td title="${user.managed_team_name || '-'}">${user.managed_team_name || '-'}</td>
+                <td title="${skillsList}">${skillsList}</td>
                 <td>${verifiedBadge}</td>
                 <td>${user.submitted_ideas_count || 0}</td>
                 <td>${user.claimed_ideas_count || 0}</td>
                 <td>${(user.complete_submitted_count || 0) + (user.complete_claimed_count || 0)}</td>
                 <td>${user.pending_claims_count || 0}${user.has_pending_manager_request ? ' 📋' : ''}</td>
-                <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}</td>
+                <td title="${user.created_at ? new Date(user.created_at).toLocaleString() : '-'}">${user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit'}) : '-'}</td>
                 <td>
                     <button class="btn btn-primary btn-sm" onclick="editUser('${user.email}')">Edit</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.email}')">Delete</button>
