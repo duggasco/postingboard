@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest, idea_skills
 from sqlalchemy import desc, asc, func, or_
 from datetime import datetime
 from decorators import require_verified_email
@@ -986,6 +986,28 @@ def get_team_stats():
                                                     key=lambda x: x[1], 
                                                     reverse=True)][:10]
         
+        # Skills needed for ideas submitted by this team
+        skills_needed = {}
+        team_submitted_ideas = db.query(Idea).filter(
+            Idea.email.in_(team_member_emails)
+        ).all()
+        
+        for idea in team_submitted_ideas:
+            idea_skill_list = db.query(Skill.name).join(
+                idea_skills, Skill.id == idea_skills.c.skill_id
+            ).filter(
+                idea_skills.c.idea_id == idea.id
+            ).all()
+            
+            for (skill_name,) in idea_skill_list:
+                skills_needed[skill_name] = skills_needed.get(skill_name, 0) + 1
+        
+        # Sort skills needed by count
+        skills_needed_list = [{'skill': skill, 'count': count} 
+                             for skill, count in sorted(skills_needed.items(), 
+                                                      key=lambda x: x[1], 
+                                                      reverse=True)][:10]
+        
         # Team member activity
         member_activity = []
         for member in team_members:
@@ -1120,6 +1142,7 @@ def get_team_stats():
                     'claimed': size_claimed
                 },
                 'team_skills': team_skills_list,
+                'skills_needed': skills_needed_list,
                 'team_claims': {
                     'own_team': own_team_claims,
                     'other_teams': other_team_claims,
@@ -1300,6 +1323,28 @@ def get_admin_team_stats():
                                                     key=lambda x: x[1], 
                                                     reverse=True)][:10]
         
+        # Skills needed for ideas submitted by this team
+        skills_needed = {}
+        team_submitted_ideas = db.query(Idea).filter(
+            Idea.email.in_(team_member_emails)
+        ).all()
+        
+        for idea in team_submitted_ideas:
+            idea_skill_list = db.query(Skill.name).join(
+                idea_skills, Skill.id == idea_skills.c.skill_id
+            ).filter(
+                idea_skills.c.idea_id == idea.id
+            ).all()
+            
+            for (skill_name,) in idea_skill_list:
+                skills_needed[skill_name] = skills_needed.get(skill_name, 0) + 1
+        
+        # Sort skills needed by count
+        skills_needed_list = [{'skill': skill, 'count': count} 
+                             for skill, count in sorted(skills_needed.items(), 
+                                                      key=lambda x: x[1], 
+                                                      reverse=True)][:10]
+        
         # Team member activity
         member_activity = []
         for member in team_members:
@@ -1434,6 +1479,7 @@ def get_admin_team_stats():
                     'claimed': size_claimed
                 },
                 'team_skills': team_skills_list,
+                'skills_needed': skills_needed_list,
                 'team_claims': {
                     'own_team': own_team_claims,
                     'other_teams': other_team_claims,

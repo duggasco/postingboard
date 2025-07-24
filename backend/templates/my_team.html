@@ -125,7 +125,7 @@
             </div>
         </div>
         
-        <!-- Team Skills Chart -->
+        <!-- Team Skills Charts -->
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin-bottom: 40px;">
             <!-- My Team's Skills -->
             <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
@@ -133,10 +133,10 @@
                 <canvas id="team-skills-chart" style="max-height: 250px;"></canvas>
             </div>
             
-            <!-- Team Claims Breakdown -->
+            <!-- Skills Needed for Team Ideas -->
             <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h4 style="margin-bottom: 20px; color: #495057;">Team Claims: Own vs Other Teams</h4>
-                <canvas id="team-claims-chart" style="max-height: 250px;"></canvas>
+                <h4 style="margin-bottom: 20px; color: #495057;">Skills Needed for Team Ideas</h4>
+                <canvas id="skills-needed-chart" style="max-height: 250px;"></canvas>
             </div>
         </div>
         
@@ -353,8 +353,6 @@ async function loadTeamStats() {
         
         // Load team members
         allMembers = data.member_activity || [];
-        filteredMembers = [...allMembers];
-        displayMembers();
         
         // Fix member data structure for display
         allMembers.forEach(member => {
@@ -362,6 +360,9 @@ async function loadTeamStats() {
             member.role = member.role || 'developer';
             member.skills = member.skills || [];
         });
+        
+        filteredMembers = [...allMembers];
+        displayMembers();
         
         // Update charts
         updateCharts();
@@ -382,7 +383,41 @@ function displayMembers() {
         return;
     }
     
-    let html = '';
+    // Calculate totals
+    let totals = {
+        submitted: 0,
+        claimed: 0,
+        own_team_claims: 0,
+        other_team_claims: 0,
+        completed: 0
+    };
+    
+    filteredMembers.forEach(member => {
+        totals.submitted += member.submitted || 0;
+        totals.claimed += member.claimed || 0;
+        totals.own_team_claims += member.own_team_claims || 0;
+        totals.other_team_claims += member.other_team_claims || 0;
+        totals.completed += member.completed || 0;
+    });
+    
+    console.log('Totals calculated:', totals);
+    console.log('Filtered members count:', filteredMembers.length);
+    
+    // Add totals row first
+    let html = `
+        <tr style="background: #f8f9fa; font-weight: bold; border-bottom: 3px solid #dee2e6;">
+            <td style="padding: 12px;">TOTALS</td>
+            <td style="padding: 12px; text-align: center;">-</td>
+            <td style="padding: 12px; text-align: center;">-</td>
+            <td style="padding: 12px; text-align: center;">${totals.submitted}</td>
+            <td style="padding: 12px; text-align: center;">${totals.claimed}</td>
+            <td style="padding: 12px; text-align: center; background: #e8f4f8;">${totals.own_team_claims}</td>
+            <td style="padding: 12px; text-align: center; background: #fef5e7;">${totals.other_team_claims}</td>
+            <td style="padding: 12px; text-align: center;">${totals.completed}</td>
+            <td style="padding: 12px; text-align: center;">-</td>
+        </tr>
+    `;
+    
     filteredMembers.forEach(member => {
         let roleDisplay = 'Developer';
         if (member.role === 'citizen_developer') {
@@ -670,12 +705,18 @@ function updateCharts() {
     }
     createBarChart('team-skills-chart', 'Team Skills', teamSkillsData, 'skills');
     
-    // Create team claims breakdown chart  
-    const claimsBreakdown = {
-        'Own Team': teamStats.breakdowns.team_claims.own_team || 0,
-        'Other Teams': teamStats.breakdowns.team_claims.other_teams || 0
-    };
-    createDoughnutChart('team-claims-chart', 'Team Claims Breakdown', claimsBreakdown);
+    // Create skills needed chart with gap highlighting
+    const skillsNeededData = {};
+    const teamSkillsSet = new Set(Object.keys(teamSkillsData));
+    
+    if (teamStats.breakdowns.skills_needed) {
+        teamStats.breakdowns.skills_needed.forEach(item => {
+            skillsNeededData[item.skill] = item.count;
+        });
+    }
+    
+    // Create custom bar chart for skills needed with gap highlighting
+    createSkillsNeededChart('skills-needed-chart', 'Skills Needed', skillsNeededData, teamSkillsSet);
 }
 
 function createDoughnutChart(canvasId, title, data) {
@@ -739,6 +780,69 @@ function createBarChart(canvasId, title, data, chartType) {
             plugins: {
                 legend: {
                     display: false
+                }
+            }
+        }
+    });
+}
+
+function createSkillsNeededChart(canvasId, title, data, teamSkills) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !data) return;
+    
+    const ctx = canvas.getContext('2d');
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+    
+    // Determine which skills are gaps (not in team skills)
+    const backgroundColors = labels.map(skill => {
+        if (teamSkills.has(skill)) {
+            // Team has this skill - use normal color
+            const colors = getChartColors([skill], 'skills');
+            return colors[0] || '#4a90e2';
+        } else {
+            // Team lacks this skill - use light red
+            return '#ffcccc';
+        }
+    });
+    
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Count',
+                data: values,
+                backgroundColor: backgroundColors,
+                borderColor: backgroundColors.map(color => color === '#ffcccc' ? '#ff6666' : color),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const skill = context.label;
+                            if (!teamSkills.has(skill)) {
+                                return 'Gap: Team lacks this skill';
+                            }
+                            return '';
+                        }
+                    }
                 }
             }
         }

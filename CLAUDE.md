@@ -128,9 +128,15 @@ templates/
   - Team overview stats: members, submissions, claims, completion rate, pending approvals
   - Recent activity tracking (last 30 days)
   - Visual charts for submitted and claimed ideas analysis
-  - Team skills distribution and claims breakdown
+  - **Team skills distribution** chart showing current team capabilities
+  - **Skills needed for team ideas** chart with gap highlighting:
+    - Shows skills required by ideas submitted by team members
+    - Highlights missing skills in light red (#ffcccc) with red border
+    - Includes "Gap: Team lacks this skill" tooltip for missing skills
+    - Helps identify training needs and hiring priorities
 - **Team Member Management**:
   - Searchable and filterable member list
+  - **Column totals row** at top showing sums for all numeric columns (bold formatting)
   - Edit team member profiles (name, role, skills)
   - View individual member activity metrics
   - Managers can only edit developers/citizen developers, not other managers
@@ -141,6 +147,10 @@ templates/
 - **API Endpoints**:
   - `GET /api/team/members/<email>` - Get team member details
   - `PUT /api/team/members/<email>` - Update team member profile
+- **Recent Updates**:
+  - Added skills gap analysis chart
+  - Removed team claims pie chart (data still in table)
+  - Added totals row to team members table
 
 #### Admin Features
 - Password authentication (password: "2929arch")
@@ -370,6 +380,7 @@ docker compose -f docker-compose-flask.yml up -d
 - `GET /api/team-stats` - Get comprehensive team statistics (manager only)
   - Returns overview metrics, breakdowns by priority/status/size/skills
   - Includes team member activity and recent activity (30 days)
+  - **skills_needed**: Array of skills required by team's submitted ideas with counts
 - `POST /idea/<id>/claim` - Request to claim an idea (requires complete profile)
   - Creates ClaimApproval record requiring dual approval
   - Only developers and citizen developers can claim
@@ -1378,6 +1389,26 @@ Fixed roles not displaying correctly in My Team users table:
 - **Fix**: Updated role display logic to handle all four role types: Manager, Idea Submitter, Citizen Developer, Developer
 - **Filter Update**: Added all role options to the role filter dropdown
 - **API**: Confirmed API was already returning correct role data, issue was only in frontend display
+
+### My Team Skills Gap Analysis Feature (July 2025)
+Added skills gap analysis to help teams identify training and hiring needs:
+- **New Chart**: "Skills Needed for Team Ideas" positioned next to "My Team's Skills" chart
+- **API Enhancement**: Added `skills_needed` field to team stats API response
+  - Aggregates all skills required by ideas submitted by team members
+  - Returns top 10 most needed skills with counts
+- **Gap Highlighting**: Skills the team lacks are highlighted in light red (#ffcccc) with red border
+- **Interactive Tooltips**: Shows "Gap: Team lacks this skill" for missing skills
+- **Use Case**: Helps managers identify skill gaps for training or recruitment planning
+
+### My Team UI Improvements (July 2025)
+Streamlined the My Team page interface:
+- **Removed**: Team Claims pie chart (Own vs Other Teams)
+  - Information still available in team members table columns
+- **Added**: Column totals row at top of team members table
+  - Bold "TOTALS" label
+  - Sums for all numeric columns (submitted, claimed, completed, etc.)
+  - Maintains column background colors (light blue/orange)
+  - Updates dynamically with filters
 
 ### Team Request Notification Fix (July 2025)
 Fixed missing notifications when users submit custom team requests:
