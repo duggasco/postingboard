@@ -321,6 +321,52 @@ def delete_team(team_id):
     finally:
         db.close()
 
+@api_bp.route('/teams/<int:team_id>/deny', methods=['POST'])
+def deny_team(team_id):
+    """Deny a team request and clear it from all users (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        team = db.query(Team).get(team_id)
+        if not team:
+            return jsonify({'success': False, 'message': 'Team not found'}), 404
+        
+        if team.is_approved:
+            return jsonify({'success': False, 'message': 'Cannot deny an already approved team'}), 400
+        
+        # Find all users who have this team assigned
+        affected_users = db.query(UserProfile).filter_by(team_id=team.id).all()
+        
+        # Clear team assignment from all affected users
+        for user in affected_users:
+            user.team_id = None
+            
+            # Create notification for each affected user
+            notification = Notification(
+                user_email=user.email,
+                type='team_denied',
+                title='Team Request Denied',
+                message=f'Your team request for "{team.name}" has been denied by an administrator. Please select a different team in your profile.',
+                related_user_email='admin@system.local'
+            )
+            db.add(notification)
+        
+        # Delete the team
+        db.delete(team)
+        db.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Team denied and removed from {len(affected_users)} user(s)'
+        })
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
 @api_bp.route('/ideas/<int:idea_id>', methods=['PUT'])
 def update_idea(idea_id):
     """Update an idea (admin only)."""

@@ -152,7 +152,8 @@ function formatNotificationType(type) {
         'manager_approved': 'Manager Approved',
         'manager_denied': 'Manager Denied',
         'team_approval_request': 'Team Request',
-        'team_approved': 'Team Approved'
+        'team_approved': 'Team Approved',
+        'team_denied': 'Team Denied'
     };
     return typeMap[type] || type;
 }

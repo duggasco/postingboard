@@ -92,7 +92,8 @@ function displayTeams() {
                 <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #fff3cd; border-radius: 4px;">
                     <input type="text" value="${utils.escapeHtml(team.name)}" class="form-control" id="team-${team.id}" style="flex: 1;">
                     <button onclick="approveTeam(${team.id})" class="btn btn-primary btn-sm">Approve</button>
-                    <button onclick="updateTeam(${team.id})" class="btn btn-success btn-sm">Save</button>
+                    <button onclick="denyTeam(${team.id})" class="btn btn-warning btn-sm">Deny</button>
+                    <button onclick="updateTeam(${team.id})" class="btn btn-success btn-sm">Save Name</button>
                     <button onclick="deleteTeam(${team.id})" class="btn btn-danger btn-sm">Delete</button>
                 </div>
             `;
@@ -153,16 +154,44 @@ async function updateTeam(teamId) {
 }
 
 async function approveTeam(teamId) {
+    // Optionally allow name change before approval
+    const input = document.getElementById(`team-${teamId}`);
+    const name = input.value.trim();
+    
     try {
         await utils.fetchJson(`/api/teams/${teamId}`, {
             method: 'PUT',
-            body: JSON.stringify({ is_approved: true })
+            body: JSON.stringify({ 
+                is_approved: true,
+                name: name  // Update name if changed
+            })
         });
         
         loadTeams();
     } catch (error) {
         console.error('Error approving team:', error);
         alert('Error approving team. Please try again.');
+    }
+}
+
+async function denyTeam(teamId) {
+    const team = allTeams.find(t => t.id === teamId);
+    if (!team) return;
+    
+    if (!confirm(`Are you sure you want to deny the team "${team.name}"? This will remove the team assignment from all users who requested it.`)) {
+        return;
+    }
+    
+    try {
+        await utils.fetchJson(`/api/teams/${teamId}/deny`, {
+            method: 'POST'
+        });
+        
+        alert('Team denied. Users have been notified and their team assignments cleared.');
+        loadTeams();
+    } catch (error) {
+        console.error('Error denying team:', error);
+        alert('Error denying team. Please try again.');
     }
 }
 
