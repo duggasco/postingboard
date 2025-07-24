@@ -20,6 +20,14 @@
         <a href="{{ url_for('admin.bulk_upload') }}" class="admin-nav-link">Bulk Upload</a>
     </div>
     
+    <!-- Admin Notifications -->
+    <div id="notifications-container" style="margin-bottom: 30px; display: none;">
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px;">
+            <h3 style="margin: 0 0 15px 0; color: #856404; font-size: 1.1rem; font-weight: 600;">Pending Admin Actions</h3>
+            <div id="notifications-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+    </div>
+    
     <div id="stats-container" class="stats-grid">
         <div class="stat-card">
             <h3 id="total-ideas">-</h3>
@@ -54,6 +62,22 @@
 {% endblock %}
 
 {% block extra_js %}
+<style>
+.notification-badge {
+    background: #dc3545;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 5px;
+    vertical-align: super;
+}
+
+.admin-nav-link {
+    position: relative;
+}
+</style>
 <script>
 // Dashboard statistics loading
 (function() {
@@ -66,6 +90,56 @@
         return element;
     }
 
+    // Load admin notifications
+    async function loadNotifications() {
+        try {
+            const response = await fetch('/api/admin/notifications');
+            const data = await response.json();
+            
+            if (data.success && data.notifications.length > 0) {
+                const container = document.getElementById('notifications-container');
+                const list = document.getElementById('notifications-list');
+                
+                // Clear existing notifications
+                list.innerHTML = '';
+                
+                // Sort by priority (high first)
+                const sortedNotifications = data.notifications.sort((a, b) => {
+                    const priorityOrder = { 'high': 0, 'medium': 1, 'low': 2 };
+                    return priorityOrder[a.priority] - priorityOrder[b.priority];
+                });
+                
+                // Create notification items
+                sortedNotifications.forEach(notification => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; border-radius: 6px; border: 1px solid #ffeaa7;';
+                    
+                    const message = document.createElement('div');
+                    message.style.cssText = 'flex: 1; color: #856404; font-weight: 500;';
+                    message.innerHTML = `<span style="color: #${notification.priority === 'high' ? 'dc3545' : '856404'};">●</span> ${notification.message}`;
+                    
+                    const action = document.createElement('a');
+                    action.href = notification.link;
+                    action.className = 'btn btn-sm btn-primary';
+                    action.textContent = 'Review';
+                    action.style.marginLeft = '10px';
+                    
+                    item.appendChild(message);
+                    item.appendChild(action);
+                    list.appendChild(item);
+                });
+                
+                // Show the container
+                container.style.display = 'block';
+            } else {
+                // Hide the container if no notifications
+                document.getElementById('notifications-container').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+        }
+    }
+    
     // Load dashboard statistics
     async function loadStats() {
         console.log('Loading stats... readyState:', document.readyState);
@@ -135,13 +209,19 @@
         // Strategy 1: If page is already complete, wait a bit then load
         if (document.readyState === 'complete') {
             console.log('Page already complete, loading stats after delay');
-            setTimeout(loadStats, 250);
+            setTimeout(() => {
+                loadStats();
+                loadNotifications();
+            }, 250);
         }
         
         // Strategy 2: Wait for window load event (includes all resources)
         window.addEventListener('load', function() {
             console.log('Window load event fired');
-            setTimeout(loadStats, 250);
+            setTimeout(() => {
+                loadStats();
+                loadNotifications();
+            }, 250);
         });
         
         // Strategy 3: Use requestAnimationFrame to ensure rendering is complete
@@ -150,6 +230,7 @@
                 requestAnimationFrame(() => {
                     console.log('RequestAnimationFrame triggered');
                     loadStats();
+                    loadNotifications();
                 });
             });
         }
@@ -163,6 +244,11 @@
         console.log('Document already loaded, initializing directly');
         initStats();
     }
+    
+    // Refresh notifications periodically (every 30 seconds)
+    setInterval(() => {
+        loadNotifications();
+    }, 30000);
 })();
 
 // Ideas management functionality

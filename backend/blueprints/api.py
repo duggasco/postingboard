@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification
 from sqlalchemy import desc, asc, func, or_
 from datetime import datetime
 from decorators import require_verified_email
@@ -293,6 +293,8 @@ def update_idea(idea_id):
             return jsonify({'success': False, 'message': 'Idea not found'}), 404
         
         data = request.json
+        old_status = idea.status
+        
         if 'title' in data:
             idea.title = data['title']
         if 'team' in data:
@@ -302,7 +304,44 @@ def update_idea(idea_id):
         if 'size' in data:
             idea.size = IdeaSize(data['size'])
         if 'status' in data:
-            idea.status = IdeaStatus(data['status'])
+            new_status = IdeaStatus(data['status'])
+            idea.status = new_status
+            
+            # Create notifications for status changes
+            if old_status != new_status:
+                # Notify submitter
+                submitter_notification = Notification(
+                    user_email=idea.email,
+                    type='status_change',
+                    title='Idea status updated',
+                    message=f'Your idea "{idea.title}" has been updated from {old_status.value} to {new_status.value}.',
+                    idea_id=idea_id
+                )
+                db.add(submitter_notification)
+                
+                # Notify claimers if any
+                for claim in idea.claims:
+                    claimer_notification = Notification(
+                        user_email=claim.claimer_email,
+                        type='status_change',
+                        title='Claimed idea status updated',
+                        message=f'The idea "{idea.title}" you claimed has been updated from {old_status.value} to {new_status.value}.',
+                        idea_id=idea_id
+                    )
+                    db.add(claimer_notification)
+                    
+                # Special notification for completion
+                if new_status == IdeaStatus.complete:
+                    # Notify the submitter about completion
+                    completion_notification = Notification(
+                        user_email=idea.email,
+                        type='idea_completed',
+                        title='Your idea has been completed!',
+                        message=f'Congratulations! Your idea "{idea.title}" has been marked as complete.',
+                        idea_id=idea_id
+                    )
+                    db.add(completion_notification)
+                    
         if 'email' in data:
             idea.email = data['email']
         
@@ -377,6 +416,175 @@ def get_stats():
             'total_skills': db.query(Skill).count()
         }
         return jsonify(stats)
+    finally:
+        db.close()
+
+@api_bp.route('/admin/notifications')
+def get_admin_notifications():
+    """Get all pending admin notifications."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        from models import ManagerRequest, Team, ClaimApproval
+        
+        notifications = []
+        
+        # Get pending manager requests
+        pending_manager_requests = db.query(ManagerRequest).filter_by(status='pending').count()
+        if pending_manager_requests > 0:
+            notifications.append({
+                'type': 'manager_request',
+                'count': pending_manager_requests,
+                'message': f'{pending_manager_requests} pending manager request{"s" if pending_manager_requests > 1 else ""}',
+                'link': '/admin/manager-requests',
+                'priority': 'high'
+            })
+        
+        # Get pending team approvals
+        pending_teams = db.query(Team).filter_by(is_approved=False).count()
+        if pending_teams > 0:
+            notifications.append({
+                'type': 'team_approval',
+                'count': pending_teams,
+                'message': f'{pending_teams} team{"s" if pending_teams > 1 else ""} pending approval',
+                'link': '/admin/teams',
+                'priority': 'medium'
+            })
+        
+        # Get pending claim approvals (where both approvals are needed)
+        pending_claims = db.query(ClaimApproval).filter_by(status='pending').count()
+        if pending_claims > 0:
+            notifications.append({
+                'type': 'claim_approval',
+                'count': pending_claims,
+                'message': f'{pending_claims} claim{"s" if pending_claims > 1 else ""} pending approval',
+                'link': '/admin/ideas',
+                'priority': 'medium'
+            })
+        
+        # Calculate total pending items
+        total_pending = sum(n['count'] for n in notifications)
+        
+        return jsonify({
+            'success': True,
+            'notifications': notifications,
+            'total_pending': total_pending
+        })
+    except Exception as e:
+        print(f"Error fetching admin notifications: {e}")
+        return jsonify({'success': False, 'error': 'Failed to fetch notifications'}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/user/notifications')
+def get_user_notifications():
+    """Get notifications for the current user."""
+    if not session.get('user_verified'):
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'success': False, 'message': 'User email not found'}), 400
+    
+    db = get_session()
+    try:
+        # Get unread notifications for the user
+        notifications = db.query(Notification).filter_by(
+            user_email=user_email,
+            is_read=False
+        ).order_by(desc(Notification.created_at)).limit(50).all()
+        
+        # Also get recent read notifications (last 7 days)
+        from datetime import timedelta
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        recent_read = db.query(Notification).filter(
+            Notification.user_email == user_email,
+            Notification.is_read == True,
+            Notification.created_at >= seven_days_ago
+        ).order_by(desc(Notification.created_at)).limit(20).all()
+        
+        # Combine and sort
+        all_notifications = notifications + recent_read
+        all_notifications.sort(key=lambda x: x.created_at, reverse=True)
+        
+        # Serialize notifications
+        notifications_data = []
+        for notif in all_notifications[:50]:  # Limit total to 50
+            notifications_data.append({
+                'id': notif.id,
+                'type': notif.type,
+                'title': notif.title,
+                'message': notif.message,
+                'idea_id': notif.idea_id,
+                'related_user': notif.related_user_email,
+                'is_read': notif.is_read,
+                'created_at': notif.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'time_ago': _get_time_ago(notif.created_at)
+            })
+        
+        unread_count = len([n for n in notifications_data if not n['is_read']])
+        
+        return jsonify({
+            'success': True,
+            'notifications': notifications_data,
+            'unread_count': unread_count
+        })
+    except Exception as e:
+        print(f"Error fetching user notifications: {e}")
+        return jsonify({'success': False, 'error': 'Failed to fetch notifications'}), 500
+    finally:
+        db.close()
+
+def _get_time_ago(timestamp):
+    """Convert timestamp to human-readable time ago format."""
+    now = datetime.utcnow()
+    diff = now - timestamp
+    
+    if diff.days > 0:
+        if diff.days == 1:
+            return "1 day ago"
+        return f"{diff.days} days ago"
+    elif diff.seconds >= 3600:
+        hours = diff.seconds // 3600
+        if hours == 1:
+            return "1 hour ago"
+        return f"{hours} hours ago"
+    elif diff.seconds >= 60:
+        minutes = diff.seconds // 60
+        if minutes == 1:
+            return "1 minute ago"
+        return f"{minutes} minutes ago"
+    else:
+        return "just now"
+
+@api_bp.route('/user/notifications/<int:notification_id>/read', methods=['POST'])
+def mark_notification_read(notification_id):
+    """Mark a notification as read."""
+    if not session.get('user_verified'):
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    user_email = session.get('user_email')
+    db = get_session()
+    try:
+        notification = db.query(Notification).filter_by(
+            id=notification_id,
+            user_email=user_email
+        ).first()
+        
+        if not notification:
+            return jsonify({'success': False, 'message': 'Notification not found'}), 404
+        
+        notification.is_read = True
+        notification.read_at = datetime.utcnow()
+        db.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        print(f"Error marking notification as read: {e}")
+        return jsonify({'success': False, 'error': 'Failed to update notification'}), 500
     finally:
         db.close()
 
@@ -990,6 +1198,30 @@ def approve_manager_request(request_id):
         if user:
             user.managed_team_id = manager_request.requested_team_id
         
+        # Create notification for the approved manager
+        if user and manager_request.team:
+            manager_notification = Notification(
+                user_email=manager_request.user_email,
+                type='manager_approved',
+                title='Manager request approved!',
+                message=f'Your request to manage team "{manager_request.team.name}" has been approved. You can now view and manage your team\'s activities.',
+                related_user_email='admin@system.local'
+            )
+            db.add(manager_notification)
+            
+            # Notify existing team members about their new manager
+            team_members = db.query(UserProfile).filter_by(team_id=manager_request.requested_team_id).all()
+            for member in team_members:
+                if member.email != manager_request.user_email:  # Don't notify the manager about themselves
+                    member_notification = Notification(
+                        user_email=member.email,
+                        type='new_manager',
+                        title='New team manager',
+                        message=f'{user.name or manager_request.user_email} is now managing your team "{manager_request.team.name}".',
+                        related_user_email=manager_request.user_email
+                    )
+                    db.add(member_notification)
+        
         db.commit()
         
         return jsonify({'success': True})
@@ -1020,6 +1252,17 @@ def deny_manager_request(request_id):
         manager_request.status = 'denied'
         manager_request.processed_at = datetime.now()
         manager_request.processed_by = session.get('user_email', 'admin@system.local')
+        
+        # Create notification for the denied request
+        if manager_request.team:
+            denial_notification = Notification(
+                user_email=manager_request.user_email,
+                type='manager_denied',
+                title='Manager request denied',
+                message=f'Your request to manage team "{manager_request.team.name}" has been denied.',
+                related_user_email='admin@system.local'
+            )
+            db.add(denial_notification)
         
         db.commit()
         
@@ -1185,6 +1428,29 @@ def approve_claim(approval_id):
             
             db.add(claim)
             
+            # Create notifications
+            # Notify claimer that their claim was approved
+            claimer_notification = Notification(
+                user_email=approval.claimer_email,
+                type='claim_approved',
+                title='Claim Approved!',
+                message=f'Your claim for "{idea.title}" has been approved. You can now start working on it.',
+                idea_id=idea.id,
+                related_user_email=idea.email
+            )
+            db.add(claimer_notification)
+            
+            # Notify idea owner that their idea was claimed
+            owner_notification = Notification(
+                user_email=idea.email,
+                type='claim_approved',
+                title='Your idea has been claimed',
+                message=f'{approval.claimer_name} has successfully claimed your idea "{idea.title}".',
+                idea_id=idea.id,
+                related_user_email=approval.claimer_email
+            )
+            db.add(owner_notification)
+            
             # Update claimer's session if they're the current user
             if approval.claimer_email == session.get('user_email'):
                 if 'claimed_ideas' not in session:
@@ -1248,6 +1514,17 @@ def deny_claim(approval_id):
         else:
             return jsonify({'success': False, 'message': 'You are not authorized to deny this claim'}), 403
         
+        # Create notification for claimer
+        claimer_notification = Notification(
+            user_email=approval.claimer_email,
+            type='claim_denied',
+            title='Claim Denied',
+            message=f'Your claim request for "{idea.title}" has been denied.',
+            idea_id=idea.id,
+            related_user_email=user_email
+        )
+        db.add(claimer_notification)
+        
         db.commit()
         
         return jsonify({'success': True, 'message': 'Claim request denied'})
@@ -1288,6 +1565,28 @@ def assign_idea(idea_id):
         idea.assigned_to_email = assignee_email
         idea.assigned_at = datetime.now()
         idea.assigned_by = session.get('user_email')
+        
+        # Create notification for assignee
+        assignee_notification = Notification(
+            user_email=assignee_email,
+            type='assigned',
+            title='New idea assigned to you',
+            message=f'{session.get("user_name", "Your manager")} has assigned the idea "{idea.title}" to you.',
+            idea_id=idea_id,
+            related_user_email=session.get('user_email')
+        )
+        db.add(assignee_notification)
+        
+        # Also notify the idea submitter
+        submitter_notification = Notification(
+            user_email=idea.email,
+            type='assigned',
+            title='Your idea has been assigned',
+            message=f'Your idea "{idea.title}" has been assigned to {assignee.name} by {session.get("user_name", "a manager")}.',
+            idea_id=idea_id,
+            related_user_email=assignee_email
+        )
+        db.add(submitter_notification)
         
         db.commit()
         

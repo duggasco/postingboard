@@ -4,7 +4,24 @@
 
 {% block content %}
 <div class="page-container">
-    <h2 class="page-title">My Ideas</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 class="page-title" style="margin: 0;">My Ideas</h2>
+        <button id="notification-bell" class="notification-bell" onclick="toggleNotifications()">
+            <span class="notification-icon">🔔</span>
+            <span id="notification-count" class="notification-badge" style="display: none;">0</span>
+        </button>
+    </div>
+    
+    <!-- Notifications Panel -->
+    <div id="notifications-panel" class="notifications-panel" style="display: none;">
+        <div class="notifications-header">
+            <h3>Notifications</h3>
+            <button class="close-btn" onclick="toggleNotifications()">×</button>
+        </div>
+        <div id="notifications-list" class="notifications-list">
+            <div class="loading">Loading notifications...</div>
+        </div>
+    </div>
     
     <!-- Email lookup section (hidden by default) -->
     <div id="email-lookup-section" style="display: none; margin-bottom: 30px; text-align: center;">
@@ -149,8 +166,276 @@
 {% endblock %}
 
 {% block extra_js %}
+<style>
+.notification-bell {
+    position: relative;
+    background: none;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.notification-bell:hover {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+.notification-icon {
+    font-size: 20px;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: bold;
+    min-width: 18px;
+    text-align: center;
+}
+
+.notifications-panel {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    width: 400px;
+    max-height: 600px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #dee2e6;
+    background: #f8f9fa;
+}
+
+.notifications-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #1a1d23;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6c757d;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notifications-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.notification-item {
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.notification-item:hover {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.notification-item.unread {
+    background: #e3f2fd;
+    border-color: #4a90e2;
+}
+
+.notification-title {
+    font-weight: 600;
+    color: #1a1d23;
+    margin-bottom: 5px;
+}
+
+.notification-message {
+    color: #6c757d;
+    font-size: 13px;
+    margin-bottom: 5px;
+}
+
+.notification-time {
+    color: #868e96;
+    font-size: 11px;
+}
+
+.notification-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.type-claim_request {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.type-claim_approved {
+    background: #d4edda;
+    color: #155724;
+}
+
+.type-claim_denied {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.type-status_change {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.type-assigned {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.empty-notifications {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
+// Notifications functionality
+let notificationsPanelOpen = false;
+
+async function loadNotifications() {
+    try {
+        const response = await fetch('/api/user/notifications');
+        const data = await response.json();
+        
+        if (data.success) {
+            const notificationsList = document.getElementById('notifications-list');
+            const notificationCount = document.getElementById('notification-count');
+            
+            if (data.notifications.length === 0) {
+                notificationsList.innerHTML = '<div class="empty-notifications">No notifications</div>';
+                notificationCount.style.display = 'none';
+            } else {
+                let html = '';
+                data.notifications.forEach(notif => {
+                    const typeClass = `type-${notif.type}`;
+                    const unreadClass = notif.is_read ? '' : 'unread';
+                    
+                    html += `
+                        <div class="notification-item ${unreadClass}" onclick="handleNotificationClick(${notif.id}, ${notif.idea_id || 'null'})">
+                            <div class="notification-title">
+                                ${notif.title}
+                                <span class="notification-type-badge ${typeClass}">${formatNotificationType(notif.type)}</span>
+                            </div>
+                            <div class="notification-message">${notif.message}</div>
+                            <div class="notification-time">${notif.time_ago}</div>
+                        </div>
+                    `;
+                });
+                notificationsList.innerHTML = html;
+                
+                // Update badge
+                if (data.unread_count > 0) {
+                    notificationCount.textContent = data.unread_count;
+                    notificationCount.style.display = 'inline-block';
+                } else {
+                    notificationCount.style.display = 'none';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+    }
+}
+
+function formatNotificationType(type) {
+    const typeMap = {
+        'claim_request': 'Claim Request',
+        'claim_approved': 'Approved',
+        'claim_denied': 'Denied',
+        'status_change': 'Status Update',
+        'assigned': 'Assigned',
+        'new_team_member': 'Team Update'
+    };
+    return typeMap[type] || type;
+}
+
+function toggleNotifications() {
+    const panel = document.getElementById('notifications-panel');
+    notificationsPanelOpen = !notificationsPanelOpen;
+    panel.style.display = notificationsPanelOpen ? 'flex' : 'none';
+    
+    if (notificationsPanelOpen) {
+        loadNotifications();
+    }
+}
+
+async function handleNotificationClick(notificationId, ideaId) {
+    // Mark as read
+    await fetch(`/api/user/notifications/${notificationId}/read`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+    
+    // Refresh notifications
+    loadNotifications();
+    
+    // Navigate to idea if applicable
+    if (ideaId) {
+        window.location.href = `/idea/${ideaId}`;
+    }
+}
+
+// Load notifications on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadNotifications();
+    
+    // Refresh notifications every 30 seconds
+    setInterval(loadNotifications, 30000);
+});
+
+// Close notifications panel when clicking outside
+document.addEventListener('click', function(event) {
+    const bell = document.getElementById('notification-bell');
+    const panel = document.getElementById('notifications-panel');
+    
+    if (notificationsPanelOpen && !bell.contains(event.target) && !panel.contains(event.target)) {
+        toggleNotifications();
+    }
+});
+
 (function() {
     // Elements
     const ideasContainer = document.getElementById('my-ideas-container');

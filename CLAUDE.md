@@ -364,6 +364,63 @@ docker compose -f docker-compose-flask.yml up -d
 - Ensure all required fields are provided
 - Validate email format on frontend
 
+## Notification System
+
+### Overview
+The application includes a comprehensive notification system that alerts users about important events and changes related to their ideas and team activities.
+
+### Notification Types
+- **Claim Requests**: When someone wants to claim your idea
+- **Claim Approvals/Denials**: When your claim request is approved or denied
+- **Status Changes**: When idea status changes (open → claimed → complete)
+- **Assignments**: When a manager assigns an idea to you
+- **Team Updates**: When new members join your team (managers only)
+- **Manager Approvals**: When your request to manage a team is approved/denied
+
+### User Interface
+- **Notification Bell**: Shows unread notification count in My Ideas page
+- **Notification Panel**: Sliding panel with all notifications
+- **Auto-refresh**: Updates every 30 seconds
+- **Mark as Read**: Click notifications to mark them as read
+- **Time Display**: Shows relative time (e.g., "5 minutes ago")
+
+### Admin Notifications
+- **Dashboard Alert**: Yellow notification box on admin dashboard
+- **Navigation Badges**: Shows pending counts next to menu items
+- **Aggregated View**: All pending requests in one place
+- **Quick Actions**: Direct links to approval pages
+
+### API Endpoints
+- `GET /api/user/notifications` - Get user notifications (requires authentication)
+  - Returns unread notifications and recent read notifications (last 7 days)
+- `GET /api/admin/notifications` - Get admin notifications (admin only)
+  - Returns counts of pending manager requests, team approvals, and claim approvals
+- `POST /api/user/notifications/<id>/read` - Mark notification as read
+
+### Database Schema
+```python
+class Notification(Base):
+    __tablename__ = 'notifications'
+    
+    id = Column(Integer, primary_key=True)
+    user_email = Column(String(120), nullable=False, index=True)
+    type = Column(String(50), nullable=False)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    idea_id = Column(Integer, ForeignKey('ideas.id'))
+    related_user_email = Column(String(120))
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    read_at = Column(DateTime)
+```
+
+### Implementation Details
+- Notifications are created automatically when relevant events occur
+- Unread notifications are highlighted with a blue background
+- Read notifications are shown with a gray background
+- Notifications include links to related ideas when applicable
+- System automatically notifies all relevant parties (submitters, claimers, managers)
+
 ## Future Enhancements
 1. WebSocket support for real-time updates
 2. File upload capabilities
@@ -374,7 +431,7 @@ docker compose -f docker-compose-flask.yml up -d
 7. Audit logging
 8. Performance monitoring
 9. OAuth integration (Google, GitHub)
-10. Notification system for approvals and assignments
+10. Email notifications (in addition to in-app notifications)
 
 ## Debug Tips
 - Enable Flask debug mode in `dash_app.py`
@@ -507,6 +564,7 @@ Notes:
   - Remove existing managers from their teams
   - Track request history
 - **Email Settings**: Configure SMTP settings for verification emails
+- **Notification System**: Admin dashboard displays all pending requests requiring attention
 
 ### Admin Dashboard Statistics Fix
 The admin dashboard statistics may show blank values on page refresh due to timing issues. This was fixed by implementing a robust retry mechanism with multiple loading strategies:

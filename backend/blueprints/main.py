@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from database import get_session
-from models import Idea, Skill, Claim, IdeaStatus, PriorityLevel, IdeaSize
+from models import Idea, Skill, Claim, IdeaStatus, PriorityLevel, IdeaSize, Notification
 from sqlalchemy import desc, asc
 from datetime import datetime
 from email_utils import send_claim_notification
@@ -157,6 +157,39 @@ def claim_idea(idea_id):
                 claim_approval.manager_approved_by = 'system_auto'
         
         db.add(claim_approval)
+        
+        # Create notifications
+        # Notify idea owner about the claim request
+        owner_notification = Notification(
+            user_email=idea.email,
+            type='claim_request',
+            title='New claim request',
+            message=f'{claim_approval.claimer_name} wants to claim your idea "{idea.title}". Please review and approve/deny the request.',
+            idea_id=idea_id,
+            related_user_email=claim_approval.claimer_email
+        )
+        db.add(owner_notification)
+        
+        # If claimer has a manager, notify them too
+        if user_profile and user_profile.team_id:
+            # Get team manager
+            manager = db.query(UserProfile).filter_by(
+                team_id=user_profile.team_id,
+                role='manager',
+                managed_team_id=user_profile.team_id
+            ).first()
+            
+            if manager:
+                manager_notification = Notification(
+                    user_email=manager.email,
+                    type='claim_request',
+                    title='Team member claim request',
+                    message=f'{claim_approval.claimer_name} from your team wants to claim "{idea.title}". Please review and approve/deny the request.',
+                    idea_id=idea_id,
+                    related_user_email=claim_approval.claimer_email
+                )
+                db.add(manager_notification)
+        
         db.commit()
         
         # Update session with pending claim
@@ -166,8 +199,6 @@ def claim_idea(idea_id):
             session['pending_claims'].append(idea_id)
         
         session.permanent = True
-        
-        # TODO: Send notification emails to idea owner and manager
         
         return jsonify({'success': True, 'message': 'Claim request submitted! Waiting for approvals.'})
         

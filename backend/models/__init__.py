@@ -187,3 +187,20 @@ class EmailSettings(Base):
     from_name = Column(String(255), default='Posting Board')
     is_active = Column(Boolean, default=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Notification(Base):
+    __tablename__ = 'notifications'
+    
+    id = Column(Integer, primary_key=True)
+    user_email = Column(String(120), nullable=False, index=True)
+    type = Column(String(50), nullable=False)  # claim_request, claim_approved, claim_denied, status_change, assigned, new_team_member
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    idea_id = Column(Integer, ForeignKey('ideas.id'))
+    related_user_email = Column(String(120))  # Email of the other user involved (claimer, assigner, etc.)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    read_at = Column(DateTime)
+    
+    # Relationships
+    idea = relationship('Idea', foreign_keys=[idea_id])

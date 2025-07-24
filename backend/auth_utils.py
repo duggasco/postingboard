@@ -129,7 +129,31 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
         user.role = role
         
     if team_id is not None:
+        old_team_id = user.team_id
         user.team_id = team_id
+        
+        # If team changed, notify the manager of the new team
+        if old_team_id != team_id and team_id is not None:
+            from models import UserProfile, Team, Notification
+            # Get the team name
+            team = db.query(Team).get(team_id)
+            if team:
+                # Find the manager of this team
+                manager = db.query(UserProfile).filter_by(
+                    managed_team_id=team_id,
+                    role='manager'
+                ).first()
+                
+                if manager:
+                    # Create notification for the manager
+                    notification = Notification(
+                        user_email=manager.email,
+                        type='new_team_member',
+                        title='New team member joined',
+                        message=f'{name or email} has joined your team "{team.name}".',
+                        related_user_email=email
+                    )
+                    db.add(notification)
     
     # Handle manager team assignment
     if managed_team_id is not None and create_manager_request:
