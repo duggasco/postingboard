@@ -337,20 +337,27 @@ async function loadTeamStats() {
         teamStats = data;
         
         // Update overview stats
-        document.getElementById('team-members-count').textContent = data.overview.member_count;
-        document.getElementById('team-submitted-count').textContent = data.overview.submitted_count;
-        document.getElementById('team-claimed-count').textContent = data.overview.claimed_count;
+        document.getElementById('team-members-count').textContent = data.overview.total_members;
+        document.getElementById('team-submitted-count').textContent = data.overview.ideas_submitted;
+        document.getElementById('team-claimed-count').textContent = data.overview.ideas_claimed;
         document.getElementById('team-completion-rate').textContent = data.overview.completion_rate + '%';
         document.getElementById('team-pending-approvals').textContent = data.overview.pending_approvals;
         
         // Update recent activity
-        document.getElementById('recent-submissions').textContent = data.recent_activity.recent_submissions;
-        document.getElementById('recent-claims').textContent = data.recent_activity.recent_claims;
+        document.getElementById('recent-submissions').textContent = data.recent_activity.submissions_30d;
+        document.getElementById('recent-claims').textContent = data.recent_activity.claims_30d;
         
         // Load team members
         allMembers = data.member_activity || [];
         filteredMembers = [...allMembers];
         displayMembers();
+        
+        // Fix member data structure for display
+        allMembers.forEach(member => {
+            // Add missing fields from the API response
+            member.role = member.role || 'developer';
+            member.skills = member.skills || [];
+        });
         
         // Update charts
         updateCharts();
@@ -537,30 +544,10 @@ async function saveMember(event) {
 }
 
 async function loadTeamIdeas() {
-    try {
-        const response = await fetch('/api/my-ideas');
-        const data = await response.json();
-        
-        if (data.team_ideas) {
-            const container = document.getElementById('team-ideas-container');
-            const ideas = data.team_ideas;
-            
-            if (ideas.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #6c757d;">No team ideas found.</p>';
-                return;
-            }
-            
-            let html = '<div class="ideas-grid">';
-            ideas.forEach(idea => {
-                html += createIdeaCard(idea);
-            });
-            html += '</div>';
-            
-            container.innerHTML = html;
-        }
-    } catch (error) {
-        console.error('Error loading team ideas:', error);
-    }
+    // Team ideas section removed as it's not part of the team analytics dashboard
+    // Team members can view all ideas on the Browse Ideas page
+    const container = document.getElementById('team-ideas-container');
+    container.innerHTML = '<p style="text-align: center; color: #6c757d;">To view team ideas, please visit the <a href="/">Browse Ideas</a> page and filter by your team.</p>';
 }
 
 function createIdeaCard(idea) {
@@ -610,20 +597,30 @@ function updateCharts() {
     chartInstances = {};
     
     // Create submitted ideas charts
-    createDoughnutChart('submitted-status-chart', 'Submitted by Status', teamStats.submitted_by_status);
-    createDoughnutChart('submitted-priority-chart', 'Submitted by Priority', teamStats.submitted_by_priority);
-    createDoughnutChart('submitted-size-chart', 'Submitted by Size', teamStats.submitted_by_size);
+    createDoughnutChart('submitted-status-chart', 'Submitted by Status', teamStats.breakdowns.submitted_status);
+    createDoughnutChart('submitted-priority-chart', 'Submitted by Priority', teamStats.breakdowns.priority.submitted);
+    createDoughnutChart('submitted-size-chart', 'Submitted by Size', teamStats.breakdowns.size.submitted);
     
     // Create claimed ideas charts
-    createDoughnutChart('claimed-status-chart', 'Claimed by Status', teamStats.claimed_by_status);
-    createDoughnutChart('claimed-priority-chart', 'Claimed by Priority', teamStats.claimed_by_priority);
-    createDoughnutChart('claimed-size-chart', 'Claimed by Size', teamStats.claimed_by_size);
+    createDoughnutChart('claimed-status-chart', 'Claimed by Status', teamStats.breakdowns.status);
+    createDoughnutChart('claimed-priority-chart', 'Claimed by Priority', teamStats.breakdowns.priority.claimed);
+    createDoughnutChart('claimed-size-chart', 'Claimed by Size', teamStats.breakdowns.size.claimed);
     
     // Create team skills chart
-    createBarChart('team-skills-chart', 'Team Skills', teamStats.team_skills);
+    const teamSkillsData = {};
+    if (teamStats.breakdowns.team_skills) {
+        teamStats.breakdowns.team_skills.forEach(skill => {
+            teamSkillsData[skill] = (teamSkillsData[skill] || 0) + 1;
+        });
+    }
+    createBarChart('team-skills-chart', 'Team Skills', teamSkillsData);
     
-    // Create team claims breakdown chart
-    createDoughnutChart('team-claims-chart', 'Team Claims Breakdown', teamStats.team_claims_breakdown);
+    // Create team claims breakdown chart  
+    const claimsBreakdown = {
+        'Own Team': teamStats.breakdowns.team_claims.own_team || 0,
+        'Other Teams': teamStats.breakdowns.team_claims.other_teams || 0
+    };
+    createDoughnutChart('team-claims-chart', 'Team Claims Breakdown', claimsBreakdown);
 }
 
 function createDoughnutChart(canvasId, title, data) {

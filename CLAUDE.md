@@ -1223,3 +1223,31 @@ All potentially truncated fields show full content on hover:
 - Teams endpoint returns direct array: `[{id, name, is_approved}, ...]`
 - Skills endpoint returns direct array: `[{id, name}, ...]`
 - Users endpoint returns wrapped object: `{success: true, users: [...]}`
+
+## Recent Fixes and Updates
+
+### My Team Page Data Display Fix (July 2025)
+Fixed missing data and charts on the My Team page:
+- **API Response Mismatch**: Updated JavaScript to use correct field names from API (`total_members` instead of `member_count`, etc.)
+- **Chart Data Paths**: Fixed nested data structure access (`teamStats.breakdowns.submitted_status` instead of `teamStats.submitted_by_status`)
+- **Member Data**: Added role and skills fields to member activity API response
+- **Team Ideas Section**: Replaced broken loader with link to Browse Ideas page
+
+### Admin Team Member Edit Access (July 2025)
+Fixed admin access to team member editing:
+- **API Authorization**: Updated `/api/team/members/<email>` endpoints to check for both manager role and admin access
+- **Teams Endpoint**: Modified `/api/teams/<team_id>/members` to allow admin access
+- **Session Checks**: Added `is_admin` session check alongside manager role verification
+
+### JavaScript Utils Consolidation (July 2025)
+Fixed duplicate utils definitions causing conflicts:
+- **Removed Duplicate**: Deleted local utils object from `my_team.html` template
+- **Global Utils**: All pages now use the shared utils from `/static/js/main.js`
+- **Date Formatting**: Consistent date formatting across all pages using timezone-aware parser
+- **HTML Escaping**: Unified XSS protection through single escapeHtml implementation
+
+### My Ideas Page Formatting Fix (July 2025)
+Fixed empty state and error message formatting:
+- **Empty State**: Properly styled "No ideas found" message with grid-spanning div and centered layout
+- **Error Messages**: Consistent styling for error states with red color indicator
+- **Grid Layout**: Messages now properly integrate with CSS grid structure

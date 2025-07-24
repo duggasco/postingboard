@@ -182,8 +182,11 @@ def delete_skill(skill_id):
 
 @api_bp.route('/teams/<int:team_id>/members')
 def get_team_members(team_id):
-    """Get members of a team (manager only for their own team)."""
-    if session.get('user_role') != 'manager' or session.get('user_managed_team_id') != team_id:
+    """Get members of a team (manager only for their own team, or admin for any team)."""
+    is_admin = session.get('is_admin')
+    is_manager_of_team = session.get('user_role') == 'manager' and session.get('user_managed_team_id') == team_id
+    
+    if not is_admin and not is_manager_of_team:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
     
     db = get_session()
@@ -626,10 +629,13 @@ def mark_notification_read(notification_id):
 
 @api_bp.route('/team/members/<email>')
 def get_team_member(email):
-    """Get details of a specific team member (manager only)."""
-    # Check if user is a manager with a team
-    if session.get('user_role') != 'manager' or not session.get('user_managed_team_id'):
-        return jsonify({'success': False, 'error': 'Unauthorized. Manager role required.'}), 403
+    """Get details of a specific team member (manager or admin only)."""
+    # Check if user is a manager with a team or an admin
+    is_admin = session.get('is_admin')
+    is_manager = session.get('user_role') == 'manager' and session.get('user_managed_team_id')
+    
+    if not is_admin and not is_manager:
+        return jsonify({'success': False, 'error': 'Unauthorized. Manager role or admin access required.'}), 403
     
     db = get_session()
     try:
@@ -638,8 +644,8 @@ def get_team_member(email):
         if not member:
             return jsonify({'success': False, 'error': 'Team member not found'}), 404
         
-        # Verify the member belongs to the manager's team
-        if member.team_id != session.get('user_managed_team_id'):
+        # Verify the member belongs to the manager's team (skip for admins)
+        if not is_admin and member.team_id != session.get('user_managed_team_id'):
             return jsonify({'success': False, 'error': 'Member not in your team'}), 403
         
         # Count submitted and claimed ideas
@@ -687,10 +693,13 @@ def get_team_member(email):
 
 @api_bp.route('/team/members/<email>', methods=['PUT'])
 def update_team_member(email):
-    """Update a team member's profile (manager only)."""
-    # Check if user is a manager with a team
-    if session.get('user_role') != 'manager' or not session.get('user_managed_team_id'):
-        return jsonify({'success': False, 'error': 'Unauthorized. Manager role required.'}), 403
+    """Update a team member's profile (manager or admin only)."""
+    # Check if user is a manager with a team or an admin
+    is_admin = session.get('is_admin')
+    is_manager = session.get('user_role') == 'manager' and session.get('user_managed_team_id')
+    
+    if not is_admin and not is_manager:
+        return jsonify({'success': False, 'error': 'Unauthorized. Manager role or admin access required.'}), 403
     
     db = get_session()
     try:
@@ -699,12 +708,12 @@ def update_team_member(email):
         if not member:
             return jsonify({'success': False, 'error': 'Team member not found'}), 404
         
-        # Verify the member belongs to the manager's team
-        if member.team_id != session.get('user_managed_team_id'):
+        # Verify the member belongs to the manager's team (skip for admins)
+        if not is_admin and member.team_id != session.get('user_managed_team_id'):
             return jsonify({'success': False, 'error': 'Member not in your team'}), 403
         
-        # Managers can only manage developers, not other managers
-        if member.role == 'manager':
+        # Managers can only manage developers, not other managers (admins can edit anyone)
+        if not is_admin and member.role == 'manager':
             return jsonify({'success': False, 'error': 'Cannot edit other managers'}), 403
         
         data = request.json
@@ -883,9 +892,14 @@ def get_team_stats():
                 Idea.status == IdeaStatus.complete
             ).count()
             
+            # Get member skills
+            member_skills = [skill.name for skill in member.skills] if member.skills else []
+            
             member_activity.append({
                 'name': member.name,
                 'email': member.email,
+                'role': member.role,
+                'skills': member_skills,
                 'submitted': submitted_count,
                 'claimed': claimed_count,
                 'completed': completed_count,
@@ -1190,9 +1204,14 @@ def get_admin_team_stats():
                 Idea.status == IdeaStatus.complete
             ).count()
             
+            # Get member skills
+            member_skills = [skill.name for skill in member.skills] if member.skills else []
+            
             member_activity.append({
                 'name': member.name,
                 'email': member.email,
+                'role': member.role,
+                'skills': member_skills,
                 'submitted': submitted_count,
                 'claimed': claimed_count,
                 'completed': completed_count,

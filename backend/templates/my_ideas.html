@@ -59,7 +59,13 @@ async function loadMyIdeas() {
         
         if (data.error) {
             console.error('Error:', data.error);
-            document.getElementById('ideas-container').innerHTML = '<p>Error loading ideas. Please try again.</p>';
+            document.getElementById('ideas-container').innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                    <p style="font-size: 16px; color: #dc3545; margin: 0;">
+                        Error loading ideas. Please try again.
+                    </p>
+                </div>
+            `;
             return;
         }
         
@@ -108,7 +114,16 @@ function displayIdeas(ideas) {
     const container = document.getElementById('ideas-container');
     
     if (ideas.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #6c757d;">No ideas found. <a href="/submit">Submit your first idea!</a></p>';
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                <p style="font-size: 16px; color: #6c757d; margin: 0;">
+                    No ideas found. 
+                    <a href="/submit" style="color: #4a90e2; text-decoration: none; font-weight: 500;">
+                        Submit your first idea!
+                    </a>
+                </p>
+            </div>
+        `;
         return;
     }
     
