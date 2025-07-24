@@ -1305,4 +1305,8 @@ Fixed "Failed to update profile" error for bulk uploaded users:
 - **Session Initialization**: Added `update_session_from_db()` call in the profile route to ensure session is populated with user data
 - **Enhanced Logging**: Added detailed error logging with traceback and form data to help diagnose profile update failures
 - **Manager Request Fix**: Added null check for pending manager request team relationship to prevent errors
-- **Impact**: Bulk uploaded users can now successfully update their profiles without needing to go through email verification first
+- **Python Scoping Fix**: Resolved `UnboundLocalError` in `update_user_profile` function caused by local imports shadowing module-level imports
+  - Moved all model imports (`UserProfile`, `VerificationCode`, `Skill`, `Team`, `Notification`, `ManagerRequest`) to top of file
+  - Removed all `from models import ...` statements inside functions
+  - This fixed the "cannot access local variable 'UserProfile'" error
+- **Impact**: All users, including bulk uploaded ones, can now successfully update their profiles

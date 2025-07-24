@@ -2,7 +2,7 @@ import random
 import string
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from models import UserProfile, VerificationCode
+from models import UserProfile, VerificationCode, Skill, Team, Notification, ManagerRequest
 from email_utils import send_verification_code
 
 def generate_verification_code():
@@ -134,7 +134,7 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
         
         # If team changed, notify the manager of the new team
         if old_team_id != team_id and team_id is not None:
-            from models import UserProfile, Team, Notification
+            # Team and Notification already imported at top
             # Get the team name
             team = db.query(Team).filter_by(id=team_id).first()
             if team:
@@ -158,7 +158,7 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
     # Handle manager team assignment
     if managed_team_id is not None and create_manager_request:
         # Create a manager request instead of direct assignment
-        from models import ManagerRequest
+        # ManagerRequest already imported at top
         
         # Check if there's already a pending request
         existing_request = db.query(ManagerRequest).filter_by(
@@ -184,7 +184,7 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
         # Clear existing skills
         user.skills = []
         # Add new skills
-        from models import Skill
+        # Skill already imported at top
         for skill_id in skill_ids:
             skill = db.query(Skill).filter_by(id=skill_id).first()
             if skill:
