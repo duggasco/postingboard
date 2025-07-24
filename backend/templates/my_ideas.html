@@ -23,16 +23,6 @@
         </div>
     </div>
     
-    <!-- Email lookup section (hidden by default) -->
-    <div id="email-lookup-section" style="display: none; margin-bottom: 30px; text-align: center;">
-        <p>Or lookup your ideas by email:</p>
-        <div style="display: flex; justify-content: center; gap: 10px; max-width: 500px; margin: 0 auto;">
-            <input type="email" id="email-lookup" placeholder="Enter your email address" style="flex: 1; padding: 8px;">
-            <button id="lookup-btn" class="btn btn-primary">Lookup Ideas</button>
-        </div>
-        <div id="lookup-error" style="color: red; margin-top: 10px; display: none;"></div>
-    </div>
-    
     <div id="stats-container" class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
         <div class="stat-card">
             <h3 id="submitted-count">0</h3>
@@ -443,22 +433,11 @@ document.addEventListener('click', function(event) {
     const claimedByMeCount = document.getElementById('claimed-by-me-count');
     const openCount = document.getElementById('open-count');
     const completeCount = document.getElementById('complete-count');
-    const emailLookupSection = document.getElementById('email-lookup-section');
-    const emailInput = document.getElementById('email-lookup');
-    const lookupBtn = document.getElementById('lookup-btn');
-    const lookupError = document.getElementById('lookup-error');
-    
-    // Track current email for auto-refresh
-    let currentEmail = null;
     
     // Load user's ideas
-    async function loadMyIdeas(email = null) {
+    async function loadMyIdeas() {
         try {
-            let url = '/api/my-ideas';
-            if (email) {
-                url += `?email=${encodeURIComponent(email)}`;
-            }
-            const response = await utils.fetchJson(url);
+            const response = await utils.fetchJson('/api/my-ideas');
             
             // Check if response is an object with user_ideas and team_ideas
             const isManagerResponse = response && typeof response === 'object' && 'user_ideas' in response;
@@ -468,12 +447,12 @@ document.addEventListener('click', function(event) {
             const pendingClaims = isManagerResponse ? response.pending_claims : [];
             const pendingApprovals = isManagerResponse ? response.pending_approvals : [];
             
-            if (ideas.length === 0 && !email) {
-                // Show email lookup option when no session ideas found
-                emailLookupSection.style.display = 'block';
+            if (ideas.length === 0) {
+                // No ideas found
                 ideasContainer.innerHTML = `
                     <div class="empty-state">
-                        <h3>No ideas found in your current session</h3>
+                        <h3>No ideas found</h3>
+                        <p>You haven't submitted or claimed any ideas yet.</p>
                         <p><a href="/submit" class="btn btn-primary">Submit your first idea</a></p>
                     </div>
                 `;
@@ -482,25 +461,6 @@ document.addEventListener('click', function(event) {
                 openCount.textContent = '0';
                 completeCount.textContent = '0';
                 return;
-            } else if (ideas.length === 0 && email) {
-                // No ideas found for this email
-                ideasContainer.innerHTML = `
-                    <div class="empty-state">
-                        <h3>No ideas found for email: ${utils.escapeHtml(email)}</h3>
-                        <p><a href="/submit" class="btn btn-primary">Submit your first idea</a></p>
-                    </div>
-                `;
-                submittedCount.textContent = '0';
-                claimedByMeCount.textContent = '0';
-                openCount.textContent = '0';
-                completeCount.textContent = '0';
-                return;
-            }
-            
-            // Hide email lookup section when ideas are found
-            if (ideas.length > 0) {
-                emailLookupSection.style.display = 'none';
-                currentEmail = email; // Track current email for auto-refresh
             }
             
             // Calculate stats
@@ -801,36 +761,6 @@ document.addEventListener('click', function(event) {
         `;
     }
     
-    // Handle email lookup
-    lookupBtn.addEventListener('click', async () => {
-        const email = emailInput.value.trim();
-        if (!email) {
-            lookupError.textContent = 'Please enter a valid email address';
-            lookupError.style.display = 'block';
-            return;
-        }
-        
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            lookupError.textContent = 'Please enter a valid email address';
-            lookupError.style.display = 'block';
-            return;
-        }
-        
-        lookupError.style.display = 'none';
-        ideasContainer.innerHTML = '<div class="loading">Loading your ideas...</div>';
-        
-        // Load ideas for this email
-        await loadMyIdeas(email);
-    });
-    
-    // Handle enter key in email input
-    emailInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            lookupBtn.click();
-        }
-    });
     
     // Load team statistics for managers
     async function loadTeamStats() {
@@ -1048,7 +978,7 @@ document.addEventListener('click', function(event) {
             const data = await response.json();
             if (data.success) {
                 alert('Claim approved successfully!');
-                loadMyIdeas(currentEmail);  // Refresh the page
+                loadMyIdeas();  // Refresh the page
             } else {
                 alert('Error: ' + data.message);
             }
@@ -1075,7 +1005,7 @@ document.addEventListener('click', function(event) {
             const data = await response.json();
             if (data.success) {
                 alert('Claim denied');
-                loadMyIdeas(currentEmail);  // Refresh the page
+                loadMyIdeas();  // Refresh the page
             } else {
                 alert('Error: ' + data.message);
             }
@@ -1148,7 +1078,7 @@ document.addEventListener('click', function(event) {
             if (data.success) {
                 alert(data.message);
                 closeAssignmentModal();
-                loadMyIdeas(currentEmail);  // Refresh
+                loadMyIdeas();  // Refresh
             } else {
                 alert('Error: ' + data.message);
             }
@@ -1177,13 +1107,9 @@ document.addEventListener('click', function(event) {
         }
     }
     
-    // Auto-refresh every 30 seconds (only if not using email lookup)
+    // Auto-refresh every 30 seconds
     setInterval(() => {
-        if (!currentEmail) {
-            loadMyIdeas();
-        } else {
-            loadMyIdeas(currentEmail);
-        }
+        loadMyIdeas();
     }, 30000);
 })();
 </script>

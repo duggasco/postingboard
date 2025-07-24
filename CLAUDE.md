@@ -668,21 +668,20 @@ Users and ideas are associated with teams:
   - Team selection persisted in localStorage for convenience
 
 ### My Ideas Functionality
-The application includes a "My Ideas" feature that allows users to track both submitted and claimed ideas without requiring user accounts.
+The application includes a "My Ideas" feature that allows authenticated users to track both submitted and claimed ideas.
 
 #### Implementation Details
-- **Hybrid tracking approach**: Combines session-based and email-based tracking
-- **Session storage**: 
-  - Submitted idea IDs stored in `session['submitted_ideas']`
-  - Claimed idea IDs stored in `session['claimed_ideas']`
-  - User email stored in `session['user_email']`
+- **Authentication required**: Users must verify their email before accessing My Ideas
+- **Session-based tracking**: 
+  - User email stored in `session['user_email']` after verification
+  - Ideas retrieved based on authenticated user's email
 - **Database persistence**:
   - Ideas table stores submitter email in `email` column
   - Claims table stores claimer email in `claimer_email` column
-  - All data permanently accessible via email lookup
-- **Query logic**: Shows ideas that match:
-  - Session IDs (immediate access)
-  - Database email matches (cross-session access)
+  - All data permanently associated with user's verified email
+- **Query logic**: Shows ideas where:
+  - User's email matches idea's submitter email (submitted ideas)
+  - User's email matches claim's claimer email (claimed ideas)
   - Identifies relationship: submitted, claimed, or both
 
 #### Key Files Modified
@@ -692,14 +691,13 @@ The application includes a "My Ideas" feature that allows users to track both su
    - Email always saved to database for persistence
 
 2. **`blueprints/api.py`**:
-   - `/api/my-ideas` endpoint enhanced to return both submitted and claimed ideas
-   - Accepts optional `email` parameter for cross-session lookup
+   - `/api/my-ideas` endpoint returns both submitted and claimed ideas for authenticated user
+   - No email parameter accepted - only shows ideas for the verified session user
    - Returns relationship type and claim info for each idea
 
 3. **`templates/my_ideas.html`**:
    - Displays both submitted and claimed ideas with visual distinction
    - Shows 4 stats: Submitted, Claimed by Me, Open, Complete
-   - Email lookup form when no session data exists
    - Color-coded borders and relationship badges
    - Auto-refreshes every 30 seconds
    - **Manager Dashboard**: Comprehensive team performance KPIs section
@@ -709,11 +707,10 @@ The application includes a "My Ideas" feature that allows users to track both su
      - Recent activity tracking (last 30 days)
 
 #### Usage
-- Users can access their submitted and claimed ideas by clicking "My Ideas" in the navigation
-- Within same browser session: Instant access via session storage
-- Across different sessions: Email lookup retrieves full history from database
-- No login required - completely session/email based
-- Data is never lost - emails are permanently stored in database
+- Users must verify their email before accessing My Ideas
+- Shows only ideas associated with the verified user's email
+- No cross-user access allowed for security
+- Data is permanently stored in database and retrieved based on authenticated session
 - **Manager View**: Managers with approved team assignments see a separate "Team Ideas" section showing:
   - Ideas submitted by their team members
   - Ideas claimed by their team members

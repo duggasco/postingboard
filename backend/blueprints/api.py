@@ -756,105 +756,39 @@ def get_my_ideas():
     """Get ideas submitted or claimed by the current user."""
     db = get_session()
     try:
-        # Check if email parameter is provided (for email lookup)
-        email_param = request.args.get('email')
+        # Get the authenticated user's email from session
+        user_email = session.get('user_email')
+        if not user_email:
+            return jsonify({"error": "Authentication required. Please verify your email."}), 401
         
         # Dictionary to track ideas and their relationship to user
         ideas_dict = {}
         
-        if email_param:
-            # Email lookup mode - search by email for both submitted and claimed
-            # Get submitted ideas
-            submitted_ideas = db.query(Idea).filter(
-                Idea.email == email_param
-            ).all()
-            
-            for idea in submitted_ideas:
-                ideas_dict[idea.id] = {
+        # Get submitted ideas for the authenticated user
+        submitted_ideas = db.query(Idea).filter(
+            Idea.email == user_email
+        ).all()
+        
+        for idea in submitted_ideas:
+            ideas_dict[idea.id] = {
                     'idea': idea,
                     'relationship': 'submitted'
                 }
             
-            # Get claimed ideas
-            claimed_ideas = db.query(Idea).join(Claim).filter(
-                Claim.claimer_email == email_param
-            ).all()
-            
-            for idea in claimed_ideas:
-                if idea.id in ideas_dict:
-                    # User both submitted and claimed this idea
-                    ideas_dict[idea.id]['relationship'] = 'both'
-                else:
-                    ideas_dict[idea.id] = {
-                        'idea': idea,
-                        'relationship': 'claimed'
-                    }
-        else:
-            # Session mode - search by session IDs or stored email
-            idea_ids = session.get('submitted_ideas', [])
-            user_email = session.get('user_email')
-            claimed_idea_ids = session.get('claimed_ideas', [])
-            
-            # For admin, show all their activities
-            if session.get('is_admin'):
-                user_email = 'admin@system.local'
-            
-            if idea_ids or user_email:
-                query = db.query(Idea)
-                conditions = []
-                
-                if idea_ids:
-                    conditions.append(Idea.id.in_(idea_ids))
-                if user_email:
-                    conditions.append(Idea.email == user_email)
-                
-                if conditions:
-                    from sqlalchemy import or_
-                    query = query.filter(or_(*conditions))
-                    submitted_ideas = query.all()
-                    
-                    for idea in submitted_ideas:
-                        ideas_dict[idea.id] = {
-                            'idea': idea,
-                            'relationship': 'submitted'
-                        }
-            
-            # Get claimed ideas from session or by email
-            if claimed_idea_ids or user_email:
-                conditions = []
-                
-                if claimed_idea_ids:
-                    conditions.append(Idea.id.in_(claimed_idea_ids))
-                if user_email:
-                    # Also get ideas claimed by this email
-                    claimed_by_email = db.query(Idea).join(Claim).filter(
-                        Claim.claimer_email == user_email
-                    ).all()
-                    
-                    for idea in claimed_by_email:
-                        if idea.id in ideas_dict:
-                            ideas_dict[idea.id]['relationship'] = 'both'
-                        else:
-                            ideas_dict[idea.id] = {
-                                'idea': idea,
-                                'relationship': 'claimed'
-                            }
-                
-                if claimed_idea_ids:
-                    # Get ideas by claimed IDs from session
-                    claimed_ideas = db.query(Idea).filter(
-                        Idea.id.in_(claimed_idea_ids)
-                    ).all()
-                    
-                    for idea in claimed_ideas:
-                        if idea.id in ideas_dict:
-                            if ideas_dict[idea.id]['relationship'] == 'submitted':
-                                ideas_dict[idea.id]['relationship'] = 'both'
-                        else:
-                            ideas_dict[idea.id] = {
-                                'idea': idea,
-                                'relationship': 'claimed'
-                            }
+        # Get claimed ideas
+        claimed_ideas = db.query(Idea).join(Claim).filter(
+            Claim.claimer_email == user_email
+        ).all()
+        
+        for idea in claimed_ideas:
+            if idea.id in ideas_dict:
+                # User both submitted and claimed this idea
+                ideas_dict[idea.id]['relationship'] = 'both'
+            else:
+                ideas_dict[idea.id] = {
+                    'idea': idea,
+                    'relationship': 'claimed'
+                }
         
         # Get team members' ideas if user is a manager
         team_ideas_dict = {}
@@ -921,7 +855,7 @@ def get_my_ideas():
             if item['relationship'] in ['claimed', 'both']:
                 claim = db.query(Claim).filter(
                     Claim.idea_id == idea.id,
-                    Claim.claimer_email == (email_param or user_email)
+                    Claim.claimer_email == user_email
                 ).first()
                 if claim:
                     claim_info = {
