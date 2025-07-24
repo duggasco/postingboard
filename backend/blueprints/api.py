@@ -624,6 +624,117 @@ def mark_notification_read(notification_id):
     finally:
         db.close()
 
+@api_bp.route('/team/members/<email>')
+def get_team_member(email):
+    """Get details of a specific team member (manager only)."""
+    # Check if user is a manager with a team
+    if session.get('user_role') != 'manager' or not session.get('user_managed_team_id'):
+        return jsonify({'success': False, 'error': 'Unauthorized. Manager role required.'}), 403
+    
+    db = get_session()
+    try:
+        # Get the team member
+        member = db.query(UserProfile).filter_by(email=email).first()
+        if not member:
+            return jsonify({'success': False, 'error': 'Team member not found'}), 404
+        
+        # Verify the member belongs to the manager's team
+        if member.team_id != session.get('user_managed_team_id'):
+            return jsonify({'success': False, 'error': 'Member not in your team'}), 403
+        
+        # Count submitted and claimed ideas
+        submitted_count = db.query(Idea).filter_by(email=member.email).count()
+        claimed_count = db.query(Claim).filter_by(claimer_email=member.email).count()
+        
+        # Count complete ideas
+        complete_submitted = db.query(Idea).filter(
+            Idea.email == member.email,
+            Idea.status == IdeaStatus.complete
+        ).count()
+        
+        complete_claimed = db.query(Claim).join(Idea).filter(
+            Claim.claimer_email == member.email,
+            Idea.status == IdeaStatus.complete
+        ).count()
+        
+        # Count pending claims
+        pending_claims = db.query(ClaimApproval).filter(
+            ClaimApproval.claimer_email == member.email,
+            ClaimApproval.status == 'pending'
+        ).count()
+        
+        user_data = {
+            'email': member.email,
+            'name': member.name,
+            'role': member.role,
+            'team_id': member.team_id,
+            'team_name': member.team.name if member.team else None,
+            'skills': [{'id': s.id, 'name': s.name} for s in member.skills],
+            'is_verified': member.is_verified,
+            'created_at': member.created_at.isoformat() if member.created_at else None,
+            'last_verified_at': member.last_verified_at.isoformat() if member.last_verified_at else None,
+            'submitted_ideas_count': submitted_count,
+            'claimed_ideas_count': claimed_count,
+            'complete_submitted_count': complete_submitted,
+            'complete_claimed_count': complete_claimed,
+            'pending_claims_count': pending_claims
+        }
+        
+        return jsonify({'success': True, 'user': user_data})
+    finally:
+        db.close()
+
+
+@api_bp.route('/team/members/<email>', methods=['PUT'])
+def update_team_member(email):
+    """Update a team member's profile (manager only)."""
+    # Check if user is a manager with a team
+    if session.get('user_role') != 'manager' or not session.get('user_managed_team_id'):
+        return jsonify({'success': False, 'error': 'Unauthorized. Manager role required.'}), 403
+    
+    db = get_session()
+    try:
+        # Get the team member
+        member = db.query(UserProfile).filter_by(email=email).first()
+        if not member:
+            return jsonify({'success': False, 'error': 'Team member not found'}), 404
+        
+        # Verify the member belongs to the manager's team
+        if member.team_id != session.get('user_managed_team_id'):
+            return jsonify({'success': False, 'error': 'Member not in your team'}), 403
+        
+        # Managers can only manage developers, not other managers
+        if member.role == 'manager':
+            return jsonify({'success': False, 'error': 'Cannot edit other managers'}), 403
+        
+        data = request.json
+        
+        # Update allowed fields
+        if 'name' in data:
+            member.name = data['name']
+        
+        if 'role' in data and data['role'] in ['citizen_developer', 'developer']:
+            member.role = data['role']
+        
+        # Update skills
+        if 'skill_ids' in data:
+            # Clear existing skills
+            member.skills = []
+            # Add new skills
+            skill_ids = data['skill_ids']
+            if skill_ids:
+                skills = db.query(Skill).filter(Skill.id.in_(skill_ids)).all()
+                member.skills = skills
+        
+        db.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
 @api_bp.route('/team-stats')
 def get_team_stats():
     """Get team statistics for managers."""
@@ -1232,47 +1343,6 @@ def get_my_ideas():
                     'relationship': 'claimed'
                 }
         
-        # Get team members' ideas if user is a manager
-        team_ideas_dict = {}
-        if session.get('user_role') == 'manager' and session.get('user_managed_team_id'):
-            managed_team_id = session.get('user_managed_team_id')
-            
-            # Get all users in the managed team
-            from models import UserProfile
-            team_members = db.query(UserProfile).filter(
-                UserProfile.team_id == managed_team_id,
-                UserProfile.email != session.get('user_email')  # Exclude the manager
-            ).all()
-            
-            for member in team_members:
-                # Get ideas submitted by team members
-                member_submitted = db.query(Idea).filter(
-                    Idea.email == member.email
-                ).all()
-                
-                for idea in member_submitted:
-                    team_ideas_dict[idea.id] = {
-                        'idea': idea,
-                        'relationship': 'team_submitted',
-                        'member_name': member.name,
-                        'member_email': member.email
-                    }
-                
-                # Get ideas claimed by team members
-                member_claimed = db.query(Idea).join(Claim).filter(
-                    Claim.claimer_email == member.email
-                ).all()
-                
-                for idea in member_claimed:
-                    if idea.id in team_ideas_dict:
-                        team_ideas_dict[idea.id]['relationship'] = 'team_both'
-                    else:
-                        team_ideas_dict[idea.id] = {
-                            'idea': idea,
-                            'relationship': 'team_claimed',
-                            'member_name': member.name,
-                            'member_email': member.email
-                        }
         
         # Sort ideas by date (newest first)
         sorted_items = sorted(
@@ -1281,11 +1351,6 @@ def get_my_ideas():
             reverse=True
         )
         
-        sorted_team_items = sorted(
-            team_ideas_dict.values(),
-            key=lambda x: x['idea'].date_submitted,
-            reverse=True
-        )
         
         # Serialize ideas
         ideas_data = []
@@ -1323,43 +1388,6 @@ def get_my_ideas():
             }
             ideas_data.append(idea_dict)
         
-        # Serialize team ideas
-        team_ideas_data = []
-        for item in sorted_team_items:
-            idea = item['idea']
-            
-            # Get claim info for team member claims
-            claim_info = None
-            if item['relationship'] in ['team_claimed', 'team_both']:
-                claim = db.query(Claim).filter(
-                    Claim.idea_id == idea.id,
-                    Claim.claimer_email == item.get('member_email')
-                ).first()
-                if claim:
-                    claim_info = {
-                        'claim_date': claim.claim_date.strftime('%Y-%m-%d'),
-                        'claimer_team': claim.claimer_team
-                    }
-            
-            idea_dict = {
-                'id': idea.id,
-                'title': idea.title,
-                'description': idea.description,
-                'email': idea.email,
-                'submitter_name': idea.submitter.name if idea.submitter else None,
-                'priority': idea.priority.value,
-                'size': idea.size.value,
-                'status': idea.status.value,
-                'benefactor_team': idea.benefactor_team,
-                'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
-                'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],
-                'claims': [{'name': c.claimer_name, 'email': c.claimer_email, 'date': c.claim_date.strftime('%Y-%m-%d')} for c in idea.claims],
-                'relationship': item['relationship'],
-                'member_name': item.get('member_name'),
-                'member_email': item.get('member_email'),
-                'claim_info': claim_info
-            }
-            team_ideas_data.append(idea_dict)
         
         # Get pending claim approvals for the user
         from models import ClaimApproval
@@ -1406,24 +1434,31 @@ def get_my_ideas():
         # Serialize pending approvals
         pending_approvals_data = []
         for approval in pending_owner_approvals:
+            idea = approval.idea
             pending_approvals_data.append({
                 'id': approval.id,
                 'idea_id': approval.idea_id,
-                'idea_title': approval.idea.title,
                 'claimer_name': approval.claimer_name,
                 'claimer_email': approval.claimer_email,
                 'claimer_team': approval.claimer_team,
+                'claimer_skills': approval.claimer_skills,
                 'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'owner_approved': approval.idea_owner_approved,
-                'manager_approved': approval.manager_approved
+                'manager_approved': approval.manager_approved,
+                'idea': {
+                    'id': idea.id,
+                    'title': idea.title,
+                    'description': idea.description,
+                    'benefactor_team': idea.benefactor_team,
+                    'priority': idea.priority.value,
+                    'status': idea.status.value
+                }
             })
         
         return jsonify({
-            'user_ideas': ideas_data,
-            'team_ideas': team_ideas_data,
+            'ideas': ideas_data,
             'pending_claims': pending_claims_data,
-            'pending_approvals': pending_approvals_data,
-            'managed_team': session.get('user_managed_team')
+            'pending_approvals': pending_approvals_data
         })
     finally:
         db.close()

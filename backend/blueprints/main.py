@@ -82,6 +82,18 @@ def my_ideas():
     """Show ideas submitted by the current user."""
     return render_template('my_ideas.html')
 
+
+@main_bp.route('/my-team')
+@require_verified_email
+def my_team():
+    """Show team management page for managers and admins."""
+    # Check if user is a manager or admin
+    if session.get('user_role') != 'manager' and not session.get('is_admin'):
+        flash('Access denied. Manager or admin role required.', 'error')
+        return redirect(url_for('main.home'))
+    
+    return render_template('my_team.html')
+
 @main_bp.route('/idea/<int:idea_id>')
 def idea_detail(idea_id):
     """Show individual idea details."""

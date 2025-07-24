@@ -25,1578 +25,260 @@
         </div>
     </div>
     
-    <!-- Team KPIs Section (for managers only) -->
-    <div id="team-kpis-section" style="display: none;">
-        <h3 style="margin: 40px 0 20px 0; color: #1a1d23;">Team Performance Dashboard</h3>
-        
-        <!-- Team Overview Stats -->
-        <div class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px;">
-            <div class="stat-card">
-                <h3 id="team-members-count">0</h3>
-                <p>Team Members</p>
-            </div>
-            <div class="stat-card">
-                <h3 id="team-submitted-count">0</h3>
-                <p>Ideas Submitted</p>
-            </div>
-            <div class="stat-card">
-                <h3 id="team-claimed-count">0</h3>
-                <p>Ideas Claimed</p>
-            </div>
-            <div class="stat-card">
-                <h3 id="team-completion-rate">0%</h3>
-                <p>Completion Rate</p>
-            </div>
-            <div class="stat-card">
-                <h3 id="team-pending-approvals">0</h3>
-                <p>Pending Approvals</p>
-            </div>
-        </div>
-        
-        <!-- Recent Activity -->
-        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 40px;">
-            <h4 style="margin-bottom: 20px; color: #495057;">Recent Team Activity (Last 30 Days)</h4>
-            <div style="display: flex; gap: 40px;">
-                <div>
-                    <h2 id="recent-submissions" style="color: #4a90e2; margin: 0;">0</h2>
-                    <p style="margin: 5px 0 0 0; color: #6c757d;">Submissions</p>
-                </div>
-                <div>
-                    <h2 id="recent-claims" style="color: #28a745; margin: 0;">0</h2>
-                    <p style="margin: 5px 0 0 0; color: #6c757d;">Claims</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Submitted Ideas Charts -->
-        <h4 style="margin: 30px 0 20px 0; color: #1a1d23;">Submitted Ideas Analysis</h4>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 40px;">
-            <!-- Submitted Ideas by Status -->
-            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h4 style="margin-bottom: 20px; color: #495057;">Submitted by Status</h4>
-                <canvas id="submitted-status-chart" style="max-height: 250px;"></canvas>
-            </div>
-            
-            <!-- Submitted Ideas by Priority -->
-            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h4 style="margin-bottom: 20px; color: #495057;">Submitted by Priority</h4>
-                <canvas id="submitted-priority-chart" style="max-height: 250px;"></canvas>
-            </div>
-            
-            <!-- Submitted Ideas by Size -->
-            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h4 style="margin-bottom: 20px; color: #495057;">Submitted by Size</h4>
-                <canvas id="submitted-size-chart" style="max-height: 250px;"></canvas>
-            </div>
-        </div>
-        
-        <!-- Claimed Ideas Charts -->
-        <h4 style="margin: 30px 0 20px 0; color: #1a1d23;">Claimed Ideas Analysis</h4>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 40px;">
-            <!-- Claimed Ideas by Status -->
-            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h4 style="margin-bottom: 20px; color: #495057;">Claimed by Status</h4>
-                <canvas id="claimed-status-chart" style="max-height: 250px;"></canvas>
-            </div>
-            
-            <!-- Claimed Ideas by Priority -->
-            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h4 style="margin-bottom: 20px; color: #495057;">Claimed by Priority</h4>
-                <canvas id="claimed-priority-chart" style="max-height: 250px;"></canvas>
-            </div>
-            
-            <!-- Claimed Ideas by Size -->
-            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h4 style="margin-bottom: 20px; color: #495057;">Claimed by Size</h4>
-                <canvas id="claimed-size-chart" style="max-height: 250px;"></canvas>
-            </div>
-        </div>
-        
-        <!-- Team Skills Chart -->
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin-bottom: 40px;">
-            <!-- My Team's Skills -->
-            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h4 style="margin-bottom: 20px; color: #495057;">My Team's Skills</h4>
-                <canvas id="team-skills-chart" style="max-height: 250px;"></canvas>
-            </div>
-            
-            <!-- Team Claims Breakdown -->
-            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h4 style="margin-bottom: 20px; color: #495057;">Team Claims: Own vs Other Teams</h4>
-                <canvas id="team-claims-chart" style="max-height: 250px;"></canvas>
-            </div>
-        </div>
-        
-        
-        <!-- Team Member Activity Table -->
-        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 40px;">
-            <h4 style="margin-bottom: 20px; color: #495057;">Team Member Activity</h4>
-            <table class="data-table" style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: #f8f9fa;">
-                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Team Member</th>
-                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Ideas<br>Submitted</th>
-                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Total<br>Claimed</th>
-                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6; background: #e8f4f8;">Claims for<br>Own Team</th>
-                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6; background: #fef5e7;">Claims for<br>Other Teams</th>
-                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Total<br>Completed</th>
-                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Total<br>Activity</th>
-                    </tr>
-                </thead>
-                <tbody id="team-activity-tbody">
-                    <!-- Populated by JavaScript -->
-                </tbody>
-            </table>
+    <!-- Pending Approvals Section -->
+    <div id="pending-approvals-section" style="display: none;">
+        <h3>Pending Approvals</h3>
+        <div id="pending-approvals-container" class="ideas-grid">
+            <!-- Populated by JavaScript -->
         </div>
     </div>
     
-    <!-- Admin Team KPIs Section (for admins only) -->
-    <div id="admin-team-kpis-section" style="display: none;">
-        <h3 style="margin: 40px 0 20px 0; color: #1a1d23;">Admin Team Performance Dashboard</h3>
-        
-        <!-- Team Selector -->
-        <div style="margin-bottom: 30px;">
-            <label for="admin-team-select" style="font-weight: 500; margin-right: 10px;">Select Team:</label>
-            <select id="admin-team-select" class="form-control" style="width: 300px; display: inline-block;">
-                <option value="">All Teams (Overview)</option>
-            </select>
-        </div>
-        
-        <!-- All Teams Overview (shown when no team selected) -->
-        <div id="all-teams-overview" style="display: none;">
-            <div class="table-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 30px;">
-                <h4 style="margin-bottom: 20px; color: #495057;">All Teams Overview</h4>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Team Name</th>
-                            <th>Status</th>
-                            <th>Members</th>
-                            <th>Ideas Submitted</th>
-                            <th>Ideas Claimed</th>
-                            <th>Completion Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody id="all-teams-table">
-                        <tr>
-                            <td colspan="6" style="text-align: center; padding: 20px;">Loading teams data...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Individual Team Stats (shown when team selected) -->
-        <div id="admin-team-stats" style="display: none;">
-            <!-- Team Overview Stats -->
-            <div class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px;">
-                <div class="stat-card">
-                    <h3 id="admin-team-members-count">0</h3>
-                    <p>Team Members</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="admin-team-submitted-count">0</h3>
-                    <p>Ideas Submitted</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="admin-team-claimed-count">0</h3>
-                    <p>Ideas Claimed</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="admin-team-completion-rate">0%</h3>
-                    <p>Completion Rate</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="admin-team-pending-approvals">0</h3>
-                    <p>Pending Approvals</p>
-                </div>
-            </div>
-            
-            <!-- Recent Activity -->
-            <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 40px;">
-                <h4 style="margin-bottom: 20px; color: #495057;">Recent Team Activity (Last 30 Days)</h4>
-                <div style="display: flex; gap: 40px;">
-                    <div>
-                        <h2 id="admin-recent-submissions" style="color: #4a90e2; margin: 0;">0</h2>
-                        <p style="margin: 5px 0 0 0; color: #6c757d;">Submissions</p>
-                    </div>
-                    <div>
-                        <h2 id="admin-recent-claims" style="color: #28a745; margin: 0;">0</h2>
-                        <p style="margin: 5px 0 0 0; color: #6c757d;">Claims</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Submitted Ideas Charts -->
-            <h4 style="margin: 30px 0 20px 0; color: #1a1d23;">Submitted Ideas Analysis</h4>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 40px;">
-                <!-- Submitted Ideas by Status -->
-                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                    <h4 style="margin-bottom: 20px; color: #495057;">Submitted by Status</h4>
-                    <canvas id="admin-submitted-status-chart" style="max-height: 250px;"></canvas>
-                </div>
-                
-                <!-- Submitted Ideas by Priority -->
-                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                    <h4 style="margin-bottom: 20px; color: #495057;">Submitted by Priority</h4>
-                    <canvas id="admin-submitted-priority-chart" style="max-height: 250px;"></canvas>
-                </div>
-                
-                <!-- Submitted Ideas by Size -->
-                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                    <h4 style="margin-bottom: 20px; color: #495057;">Submitted by Size</h4>
-                    <canvas id="admin-submitted-size-chart" style="max-height: 250px;"></canvas>
-                </div>
-            </div>
-            
-            <!-- Claimed Ideas Charts -->
-            <h4 style="margin: 30px 0 20px 0; color: #1a1d23;">Claimed Ideas Analysis</h4>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 40px;">
-                <!-- Claimed Ideas by Status -->
-                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                    <h4 style="margin-bottom: 20px; color: #495057;">Claimed by Status</h4>
-                    <canvas id="admin-claimed-status-chart" style="max-height: 250px;"></canvas>
-                </div>
-                
-                <!-- Claimed Ideas by Priority -->
-                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                    <h4 style="margin-bottom: 20px; color: #495057;">Claimed by Priority</h4>
-                    <canvas id="admin-claimed-priority-chart" style="max-height: 250px;"></canvas>
-                </div>
-                
-                <!-- Claimed Ideas by Size -->
-                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                    <h4 style="margin-bottom: 20px; color: #495057;">Claimed by Size</h4>
-                    <canvas id="admin-claimed-size-chart" style="max-height: 250px;"></canvas>
-                </div>
-            </div>
-            
-            <!-- Team Skills and Claims Charts -->
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin-bottom: 40px;">
-                <!-- Team Skills -->
-                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                    <h4 style="margin-bottom: 20px; color: #495057;">Team Skills</h4>
-                    <canvas id="admin-team-skills-chart" style="max-height: 250px;"></canvas>
-                </div>
-                
-                <!-- Team Claims Breakdown -->
-                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                    <h4 style="margin-bottom: 20px; color: #495057;">Team Claims: Own vs Other Teams</h4>
-                    <canvas id="admin-team-claims-chart" style="max-height: 250px;"></canvas>
-                </div>
-            </div>
-            
-            <!-- Team Member Activity -->
-            <div class="table-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 30px;">
-                <h4 style="margin-bottom: 20px; color: #495057;">Team Member Activity</h4>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Team Member</th>
-                            <th>Ideas<br>Submitted</th>
-                            <th>Total<br>Claimed</th>
-                            <th style="background: #e8f4f8;">Claims for<br>Own Team</th>
-                            <th style="background: #fef5e7;">Claims for<br>Other Teams</th>
-                            <th>Total<br>Completed</th>
-                            <th>Total<br>Activity</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-team-activity-table">
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 20px;">No team member activity found</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <!-- My Pending Claims Section -->
+    <div id="my-pending-claims-section" style="display: none;">
+        <h3>My Pending Claims</h3>
+        <div id="my-pending-claims-container" class="ideas-grid">
+            <!-- Populated by JavaScript -->
         </div>
     </div>
     
-    <div id="my-ideas-container" class="ideas-grid">
+    <!-- My Ideas Section -->
+    <h3>My Ideas</h3>
+    <div id="ideas-container" class="ideas-grid">
         <div class="loading">Loading your ideas...</div>
     </div>
 </div>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-.relationship-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 4px;
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
-    margin-top: 5px;
-}
-</style>
-{% endblock %}
-
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
-(function() {
-    // Elements
-    const ideasContainer = document.getElementById('my-ideas-container');
-    const submittedCount = document.getElementById('submitted-count');
-    const claimedByMeCount = document.getElementById('claimed-by-me-count');
-    const openCount = document.getElementById('open-count');
-    const completeCount = document.getElementById('complete-count');
-    
-    // Load user's ideas
-    async function loadMyIdeas() {
-        try {
-            const response = await utils.fetchJson('/api/my-ideas');
-            
-            // Check if response is an object with user_ideas and team_ideas
-            const isManagerResponse = response && typeof response === 'object' && 'user_ideas' in response;
-            const ideas = isManagerResponse ? response.user_ideas : response;
-            const teamIdeas = isManagerResponse ? response.team_ideas : [];
-            const managedTeam = isManagerResponse ? response.managed_team : null;
-            const pendingClaims = isManagerResponse ? response.pending_claims : [];
-            const pendingApprovals = isManagerResponse ? response.pending_approvals : [];
-            
-            if (ideas.length === 0) {
-                // No ideas found
-                ideasContainer.innerHTML = `
-                    <div class="empty-state">
-                        <h3>No ideas found</h3>
-                        <p>You haven't submitted or claimed any ideas yet.</p>
-                        <p><a href="/submit" class="btn btn-primary">Submit your first idea</a></p>
-                    </div>
-                `;
-                submittedCount.textContent = '0';
-                claimedByMeCount.textContent = '0';
-                openCount.textContent = '0';
-                completeCount.textContent = '0';
-                return;
-            }
-            
-            // Calculate stats
-            const stats = {
-                submitted: 0,
-                claimedByMe: 0,
-                open: 0,
-                complete: 0
-            };
-            
-            ideas.forEach(idea => {
-                // Count by relationship
-                if (idea.relationship === 'submitted' || idea.relationship === 'both') {
-                    stats.submitted++;
-                }
-                if (idea.relationship === 'claimed' || idea.relationship === 'both') {
-                    stats.claimedByMe++;
-                }
-                
-                // Count by status
-                if (idea.status === 'open') {
-                    stats.open++;
-                } else if (idea.status === 'complete') {
-                    stats.complete++;
-                }
-            });
-            
-            // Update stats
-            submittedCount.textContent = stats.submitted;
-            claimedByMeCount.textContent = stats.claimedByMe;
-            openCount.textContent = stats.open;
-            completeCount.textContent = stats.complete;
-            
-            // Display ideas
-            let html = '';
-            
-            // Pending approvals section (for idea owners)
-            if (pendingApprovals && pendingApprovals.length > 0) {
-                html += '<div class="approval-section" style="margin-bottom: 40px;">';
-                html += '<h3 style="margin-bottom: 20px; color: #f0ad4e;">Pending Approvals</h3>';
-                html += '<div class="approval-cards">';
-                pendingApprovals.forEach(approval => {
-                    html += createApprovalCard(approval);
-                });
-                html += '</div>';
-                html += '</div>';
-            }
-            
-            // Pending claims section
-            if (pendingClaims && pendingClaims.length > 0) {
-                html += '<div class="pending-claims-section" style="margin-bottom: 40px;">';
-                html += '<h3 style="margin-bottom: 20px; color: #17a2b8;">My Pending Claims</h3>';
-                html += '<div class="ideas-grid">' + pendingClaims.map(idea => createPendingClaimCard(idea)).join('') + '</div>';
-                html += '</div>';
-            }
-            
-            // User's own ideas
-            if (ideas.length > 0) {
-                html += '<h3 style="margin-bottom: 20px;">My Ideas</h3>';
-                html += '<div class="ideas-grid">' + ideas.map(idea => createIdeaCard(idea)).join('') + '</div>';
-            }
-            
-            // Team members' ideas (for managers)
-            if (teamIdeas && teamIdeas.length > 0 && managedTeam) {
-                html += '<h3 style="margin-top: 40px; margin-bottom: 20px;">Team Members\' Ideas (' + utils.escapeHtml(managedTeam) + ')</h3>';
-                html += '<div class="ideas-grid">' + teamIdeas.map(idea => createTeamIdeaCard(idea)).join('') + '</div>';
-            }
-            
-            ideasContainer.innerHTML = html;
-            
-        } catch (error) {
-            console.error('Error loading ideas:', error);
-            ideasContainer.innerHTML = '<div class="error">Error loading your ideas. Please try again.</div>';
-        }
-    }
-    
-    // Create idea card HTML (similar to home page)
-    function createIdeaCard(idea) {
-        const statusClass = `status-${idea.status}`;
-        const priorityClass = `priority-${idea.priority}`;
+// Load user's personal ideas
+async function loadMyIdeas() {
+    try {
+        const response = await fetch('/api/my-ideas');
+        const data = await response.json();
         
-        const skillsHtml = idea.skills.map(skill => 
-            `<span class="skill-tag">${utils.escapeHtml(skill.name)}</span>`
-        ).join('');
-        
-        // Relationship indicator
-        let relationshipBadge = '';
-        let borderColor = '';
-        if (idea.relationship === 'submitted') {
-            relationshipBadge = '<span class="relationship-badge" style="background-color: #007bff;">Submitted by Me</span>';
-            borderColor = '#007bff';
-        } else if (idea.relationship === 'claimed') {
-            relationshipBadge = '<span class="relationship-badge" style="background-color: #28a745;">Claimed by Me</span>';
-            borderColor = '#28a745';
-            // Add claim date if available
-            if (idea.claim_info && idea.claim_info.claim_date) {
-                relationshipBadge += `<span style="font-size: 12px; color: #666; margin-left: 10px;">Claimed: ${utils.formatDate(idea.claim_info.claim_date)}</span>`;
-            }
-        } else if (idea.relationship === 'both') {
-            relationshipBadge = '<span class="relationship-badge" style="background-color: #6c757d;">Submitted & Claimed by Me</span>';
-            borderColor = '#6c757d';
+        if (data.error) {
+            console.error('Error:', data.error);
+            document.getElementById('ideas-container').innerHTML = '<p>Error loading ideas. Please try again.</p>';
+            return;
         }
         
-        return `
-            <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'" style="border-left: 4px solid ${borderColor};">
-                <div class="idea-header">
-                    <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
-                    <span class="status-badge ${statusClass}">${idea.status.toUpperCase()}</span>
-                </div>
-                
-                ${relationshipBadge}
-                
-                <div class="idea-meta" style="margin-top: 10px;">
-                    <span class="priority-badge ${priorityClass}">Priority: ${idea.priority}</span>
-                    <span>Size: ${idea.size.replace('_', ' ')}</span>
-                    <span>Team: ${utils.escapeHtml(idea.benefactor_team)}</span>
-                </div>
-                
-                ${skillsHtml ? `<div class="skills-tags">${skillsHtml}</div>` : ''}
-                
-                <p class="idea-description">
-                    ${utils.escapeHtml(idea.description.substring(0, 150))}${idea.description.length > 150 ? '...' : ''}
-                </p>
-                
-                <div class="idea-footer">
-                    <span>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</span>
-                    ${idea.claims && idea.claims.length > 0 ? `<span>Claimed by: ${utils.escapeHtml(idea.claims[0].name)}</span>` : ''}
-                    ${idea.claim_info && idea.claim_info.claimer_team ? `<span>Team: ${utils.escapeHtml(idea.claim_info.claimer_team)}</span>` : ''}
-                </div>
-                
-                <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
-            </div>
-        `;
-    }
-    
-    // Create team idea card HTML
-    function createTeamIdeaCard(idea) {
-        const statusClass = `status-${idea.status}`;
-        const priorityClass = `priority-${idea.priority}`;
+        // Update stats
+        updateStats(data.ideas);
         
-        const skillsHtml = idea.skills.map(skill => 
-            `<span class="skill-tag">${utils.escapeHtml(skill.name)}</span>`
-        ).join('');
+        // Display ideas
+        displayIdeas(data.ideas);
         
-        // Relationship indicator for team member
-        let relationshipBadge = '';
-        let borderColor = '#28a745'; // Green for team ideas
-        if (idea.relationship === 'team_submitted') {
-            relationshipBadge = `<span class="relationship-badge" style="background-color: #28a745;">Submitted by ${utils.escapeHtml(idea.member_name)}</span>`;
-        } else if (idea.relationship === 'team_claimed') {
-            relationshipBadge = `<span class="relationship-badge" style="background-color: #ffc107; color: #212529;">Claimed by ${utils.escapeHtml(idea.member_name)}</span>`;
-        } else if (idea.relationship === 'team_both') {
-            relationshipBadge = `<span class="relationship-badge" style="background-color: #17a2b8;">Submitted & Claimed by ${utils.escapeHtml(idea.member_name)}</span>`;
+        // Display pending approvals if user has any ideas that need approval
+        if (data.pending_approvals && data.pending_approvals.length > 0) {
+            displayPendingApprovals(data.pending_approvals);
         }
         
-        // Add assignment button for open ideas
-        let assignmentButton = '';
-        if (idea.status === 'open') {
-            assignmentButton = `
-                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); showAssignmentModal(${idea.id}, '${utils.escapeHtml(idea.title).replace(/'/g, "\\'")}')" style="margin-top: 10px;">
-                    Assign to Team Member
-                </button>
-            `;
+    } catch (error) {
+        console.error('Error loading ideas:', error);
+        document.getElementById('ideas-container').innerHTML = '<p>Error loading ideas. Please try again.</p>';
+    }
+}
+
+function updateStats(ideas) {
+    let submitted = 0;
+    let claimedByMe = 0;
+    let open = 0;
+    let complete = 0;
+    
+    ideas.forEach(idea => {
+        if (idea.relationship === 'submitted' || idea.relationship === 'both') {
+            submitted++;
+            if (idea.status === 'open') open++;
+            if (idea.status === 'complete') complete++;
         }
-        
-        return `
-            <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'" style="border-left: 4px solid ${borderColor};">
-                <div class="idea-header">
-                    <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
-                    <span class="status-badge ${statusClass}">${idea.status.toUpperCase()}</span>
-                </div>
-                
-                ${relationshipBadge}
-                
-                <div class="idea-meta" style="margin-top: 10px;">
-                    <span class="priority-badge ${priorityClass}">Priority: ${idea.priority}</span>
-                    <span>Size: ${idea.size.replace('_', ' ')}</span>
-                    <span>Team: ${utils.escapeHtml(idea.benefactor_team)}</span>
-                </div>
-                
-                ${skillsHtml ? `<div class="skills-tags">${skillsHtml}</div>` : ''}
-                
-                <p class="idea-description">
-                    ${utils.escapeHtml(idea.description.substring(0, 150))}${idea.description.length > 150 ? '...' : ''}
-                </p>
-                
-                <div class="idea-footer">
-                    <span>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</span>
-                    ${idea.claims && idea.claims.length > 0 ? `<span>Claimed by: ${utils.escapeHtml(idea.claims[0].name)}</span>` : ''}
-                    ${idea.claim_info && idea.claim_info.claimer_team ? `<span>Team: ${utils.escapeHtml(idea.claim_info.claimer_team)}</span>` : ''}
-                </div>
-                
-                ${assignmentButton}
-                
-                <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
-            </div>
-        `;
-    }
-    
-    // Create approval card HTML
-    function createApprovalCard(approval) {
-        return `
-            <div class="approval-card" style="border: 1px solid #f0ad4e; border-radius: 8px; padding: 20px; margin-bottom: 15px; background-color: #fff;">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div style="flex: 1;">
-                        <h4 style="margin: 0 0 10px 0; color: #333;">
-                            <a href="/idea/${approval.idea_id}" style="color: #4a90e2; text-decoration: none;">${utils.escapeHtml(approval.idea_title)}</a>
-                        </h4>
-                        <p style="margin: 5px 0; color: #666;">
-                            <strong>Requested by:</strong> ${utils.escapeHtml(approval.claimer_name)} (${utils.escapeHtml(approval.claimer_email)})
-                        </p>
-                        <p style="margin: 5px 0; color: #666;">
-                            <strong>Team:</strong> ${utils.escapeHtml(approval.claimer_team || 'N/A')}
-                        </p>
-                        <p style="margin: 5px 0; color: #666; font-size: 0.9em;">
-                            <strong>Submitted:</strong> ${utils.escapeHtml(approval.created_at)}
-                        </p>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-success" onclick="approveClaimRequest(${approval.id})" style="padding: 8px 16px;">
-                            Approve
-                        </button>
-                        <button class="btn btn-danger" onclick="denyClaimRequest(${approval.id})" style="padding: 8px 16px;">
-                            Deny
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Create pending claim card HTML
-    function createPendingClaimCard(idea) {
-        const isDenied = idea.pending_approval && idea.pending_approval.status === 'denied';
-        const statusClass = isDenied ? 'status-denied' : 'status-pending';
-        const borderColor = isDenied ? '#dc3545' : '#17a2b8';
-        const statusText = isDenied ? 'CLAIM DENIED' : 'PENDING CLAIM';
-        const priorityClass = `priority-${idea.priority}`;
-        
-        const skillsHtml = idea.skills.map(skill => 
-            `<span class="skill-tag">${utils.escapeHtml(skill.name)}</span>`
-        ).join('');
-        
-        // Show approval status
-        let approvalStatus = '';
-        if (idea.pending_approval) {
-            const ownerStatus = idea.pending_approval.owner_approved === null ? 'Pending' : 
-                               idea.pending_approval.owner_approved ? 'Approved' : 'Denied';
-            const managerStatus = idea.pending_approval.manager_approved === null ? 'Pending' : 
-                                 idea.pending_approval.manager_approved ? 'Approved' : 'Denied';
-            
-            approvalStatus = `
-                <div style="margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 0.9em;">
-                    <p style="margin: 3px 0;"><strong>Idea Owner:</strong> 
-                        <span style="color: ${ownerStatus === 'Approved' ? '#28a745' : ownerStatus === 'Denied' ? '#dc3545' : '#f0ad4e'}">
-                            ${ownerStatus}
-                        </span>
-                    </p>
-                    <p style="margin: 3px 0;"><strong>Your Manager:</strong> 
-                        <span style="color: ${managerStatus === 'Approved' ? '#28a745' : managerStatus === 'Denied' ? '#dc3545' : '#f0ad4e'}">
-                            ${managerStatus}
-                        </span>
-                    </p>
-                    ${isDenied && idea.pending_approval.denied_at ? 
-                        `<p style="margin: 3px 0; color: #dc3545;"><strong>Denied on:</strong> ${utils.formatDate(idea.pending_approval.denied_at)}</p>` : ''}
-                </div>
-            `;
+        if (idea.relationship === 'claimed' || idea.relationship === 'both') {
+            claimedByMe++;
+            if (idea.status === 'complete') complete++;
         }
-        
-        return `
-            <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'" style="border-left: 4px solid ${borderColor};">
-                <div class="idea-header">
-                    <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
-                    <span class="status-badge ${statusClass}">${statusText}</span>
-                </div>
-                
-                <div class="idea-meta">
-                    <span class="priority-badge ${priorityClass}">Priority: ${idea.priority}</span>
-                    <span>Size: ${idea.size.replace('_', ' ')}</span>
-                    <span>Team: ${utils.escapeHtml(idea.benefactor_team)}</span>
-                </div>
-                
-                ${approvalStatus}
-                
-                ${skillsHtml ? `<div class="skills-tags">${skillsHtml}</div>` : ''}
-                
-                <p class="idea-description">
-                    ${utils.escapeHtml(idea.description.substring(0, 150))}${idea.description.length > 150 ? '...' : ''}
-                </p>
-                
-                <div class="idea-footer">
-                    <span>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</span>
-                    <span>Claim requested: ${utils.formatDate(idea.pending_approval.created_at)}</span>
-                </div>
-                
-                <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
-            </div>
-        `;
-    }
-    
-    
-    // Load team statistics for managers
-    async function loadTeamStats() {
-        try {
-            const response = await utils.fetchJson('/api/team-stats');
-            const stats = response;
-            
-            // Update overview stats
-            document.getElementById('team-members-count').textContent = stats.overview.total_members;
-            document.getElementById('team-submitted-count').textContent = stats.overview.ideas_submitted;
-            document.getElementById('team-claimed-count').textContent = stats.overview.ideas_claimed;
-            document.getElementById('team-completion-rate').textContent = stats.overview.completion_rate + '%';
-            document.getElementById('team-pending-approvals').textContent = stats.overview.pending_approvals;
-            
-            // Update recent activity
-            document.getElementById('recent-submissions').textContent = stats.recent_activity.submissions_30d;
-            document.getElementById('recent-claims').textContent = stats.recent_activity.claims_30d;
-            
-            // Create charts
-            createTeamCharts(stats.breakdowns);
-            
-            // Populate team member activity table
-            populateTeamActivityTable(stats.member_activity);
-            
-            // Show the KPIs section
-            document.getElementById('team-kpis-section').style.display = 'block';
-            
-        } catch (error) {
-            console.error('Error loading team stats:', error);
-            // Don't show error to user, just hide the section
-            document.getElementById('team-kpis-section').style.display = 'none';
-        }
-    }
-    
-    // Create team performance charts
-    function createTeamCharts(breakdowns) {
-        // Submitted Ideas by Status
-        const submittedStatusCtx = document.getElementById('submitted-status-chart').getContext('2d');
-        new Chart(submittedStatusCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Open', 'Claimed', 'Complete'],
-                datasets: [{
-                    data: [
-                        breakdowns.submitted_status.open || 0,
-                        breakdowns.submitted_status.claimed || 0,
-                        breakdowns.submitted_status.complete || 0
-                    ],
-                    backgroundColor: ['#17a2b8', '#f0ad4e', '#28a745']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Submitted Ideas by Priority
-        const submittedPriorityCtx = document.getElementById('submitted-priority-chart').getContext('2d');
-        new Chart(submittedPriorityCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['High', 'Medium', 'Low'],
-                datasets: [{
-                    data: [
-                        breakdowns.priority.submitted.high || 0,
-                        breakdowns.priority.submitted.medium || 0,
-                        breakdowns.priority.submitted.low || 0
-                    ],
-                    backgroundColor: ['#dc3545', '#f0ad4e', '#28a745']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Submitted Ideas by Size
-        const submittedSizeCtx = document.getElementById('submitted-size-chart').getContext('2d');
-        new Chart(submittedSizeCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Small', 'Medium', 'Large', 'Extra Large'],
-                datasets: [{
-                    label: 'Submitted Ideas',
-                    data: [
-                        breakdowns.size.submitted.small || 0,
-                        breakdowns.size.submitted.medium || 0,
-                        breakdowns.size.submitted.large || 0,
-                        breakdowns.size.submitted.extra_large || 0
-                    ],
-                    backgroundColor: '#4a90e2'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-        
-        // Claimed Ideas by Status
-        const claimedStatusCtx = document.getElementById('claimed-status-chart').getContext('2d');
-        new Chart(claimedStatusCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Open', 'Claimed', 'Complete'],
-                datasets: [{
-                    data: [
-                        breakdowns.status.open || 0,
-                        breakdowns.status.claimed || 0,
-                        breakdowns.status.complete || 0
-                    ],
-                    backgroundColor: ['#17a2b8', '#f0ad4e', '#28a745']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Claimed Ideas by Priority
-        const claimedPriorityCtx = document.getElementById('claimed-priority-chart').getContext('2d');
-        new Chart(claimedPriorityCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['High', 'Medium', 'Low'],
-                datasets: [{
-                    data: [
-                        breakdowns.priority.claimed.high || 0,
-                        breakdowns.priority.claimed.medium || 0,
-                        breakdowns.priority.claimed.low || 0
-                    ],
-                    backgroundColor: ['#dc3545', '#f0ad4e', '#28a745']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Claimed Ideas by Size
-        const claimedSizeCtx = document.getElementById('claimed-size-chart').getContext('2d');
-        new Chart(claimedSizeCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Small', 'Medium', 'Large', 'Extra Large'],
-                datasets: [{
-                    label: 'Claimed Ideas',
-                    data: [
-                        breakdowns.size.claimed.small || 0,
-                        breakdowns.size.claimed.medium || 0,
-                        breakdowns.size.claimed.large || 0,
-                        breakdowns.size.claimed.extra_large || 0
-                    ],
-                    backgroundColor: '#28a745'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-        
-        // Team Skills chart
-        const teamSkillsCtx = document.getElementById('team-skills-chart').getContext('2d');
-        const skillLabels = breakdowns.team_skills.map(s => s.skill);
-        const skillCounts = breakdowns.team_skills.map(s => s.count);
-        
-        new Chart(teamSkillsCtx, {
-            type: 'bar',
-            data: {
-                labels: skillLabels,
-                datasets: [{
-                    label: 'Count',
-                    data: skillCounts,
-                    backgroundColor: '#6c757d'
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-        
-        // Team Claims Chart
-        const teamClaimsCtx = document.getElementById('team-claims-chart').getContext('2d');
-        new Chart(teamClaimsCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Claims', 'Completed'],
-                datasets: [
-                    {
-                        label: 'Own Team',
-                        data: [
-                            breakdowns.team_claims.own_team || 0,
-                            breakdowns.team_claims.own_team_completed || 0
-                        ],
-                        backgroundColor: '#4a90e2'
-                    },
-                    {
-                        label: 'Other Teams',
-                        data: [
-                            breakdowns.team_claims.other_teams || 0,
-                            breakdowns.team_claims.other_teams_completed || 0
-                        ],
-                        backgroundColor: '#f0ad4e'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        stacked: true
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            afterLabel: function(context) {
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = Math.round((context.parsed.y / total) * 100);
-                                return percentage + '% of ' + context.dataset.label.toLowerCase();
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-    
-    // Populate team member activity table
-    function populateTeamActivityTable(memberActivity) {
-        const tbody = document.getElementById('team-activity-tbody');
-        tbody.innerHTML = '';
-        
-        memberActivity.forEach(member => {
-            const row = document.createElement('tr');
-            const totalActivity = member.submitted + member.claimed;
-            
-            row.innerHTML = `
-                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">
-                    <strong>${utils.escapeHtml(member.name)}</strong><br>
-                    <small style="color: #6c757d;">${utils.escapeHtml(member.email)}</small>
-                </td>
-                <td style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6;">${member.submitted}</td>
-                <td style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6;">${member.claimed}</td>
-                <td style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6; background: #f0f8ff;">${member.own_team_claims || 0}</td>
-                <td style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6; background: #fffaf0;">${member.other_team_claims || 0}</td>
-                <td style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6;">${member.completed}</td>
-                <td style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6;"><strong>${totalActivity}</strong></td>
-            `;
-            
-            tbody.appendChild(row);
-        });
-        
-        if (memberActivity.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center; color: #6c757d;">No team member activity found</td></tr>';
-        }
-    }
-    
-    // Check if user is a manager and load team stats
-    async function checkManagerAndLoadStats() {
-        // This will be called after loading my ideas
-        const userRole = '{{ session.get("user_role", "") }}';
-        const hasManagedTeam = '{{ session.get("user_managed_team_id", "") }}';
-        
-        if (userRole === 'manager' && hasManagedTeam) {
-            await loadTeamStats();
-        }
-        
-        // Also check for admin
-        await checkAdminAndLoadStats();
-    }
-    
-    // Initialize
-    loadMyIdeas().then(() => {
-        checkManagerAndLoadStats();
     });
     
-    // Approve claim request
-    window.approveClaimRequest = async function(approvalId) {
-        try {
-            const response = await fetch(`/api/claim-approvals/${approvalId}/approve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                alert('Claim approved successfully!');
-                loadMyIdeas();  // Refresh the page
-            } else {
-                alert('Error: ' + data.message);
-            }
-        } catch (error) {
-            console.error('Error approving claim:', error);
-            alert('Failed to approve claim request');
-        }
-    };
+    document.getElementById('submitted-count').textContent = submitted;
+    document.getElementById('claimed-by-me-count').textContent = claimedByMe;
+    document.getElementById('open-count').textContent = open;
+    document.getElementById('complete-count').textContent = complete;
+}
+
+function displayIdeas(ideas) {
+    const container = document.getElementById('ideas-container');
     
-    // Deny claim request
-    window.denyClaimRequest = async function(approvalId) {
-        if (!confirm('Are you sure you want to deny this claim request?')) {
-            return;
+    if (ideas.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #6c757d;">No ideas found. <a href="/submit">Submit your first idea!</a></p>';
+        return;
+    }
+    
+    let html = '';
+    ideas.forEach(idea => {
+        html += createIdeaCard(idea);
+    });
+    
+    container.innerHTML = html;
+}
+
+function createIdeaCard(idea) {
+    const statusClass = `status-${idea.status}`;
+    const priorityClass = `priority-${idea.priority}`;
+    const sizeClass = `size-${idea.size}`;
+    
+    let borderClass = '';
+    if (idea.relationship === 'submitted') borderClass = 'idea-submitted';
+    else if (idea.relationship === 'claimed') borderClass = 'idea-claimed';
+    else if (idea.relationship === 'both') borderClass = 'idea-both';
+    
+    let relationshipBadge = '';
+    if (idea.relationship === 'both') {
+        relationshipBadge = '<span class="relationship-badge both">Submitted & Claimed</span>';
+    } else if (idea.relationship === 'submitted') {
+        relationshipBadge = '<span class="relationship-badge submitted">Submitted</span>';
+    } else if (idea.relationship === 'claimed') {
+        relationshipBadge = '<span class="relationship-badge claimed">Claimed</span>';
+    }
+    
+    // Handle pending claims
+    let claimStatus = '';
+    if (idea.pending_claims && idea.pending_claims.length > 0) {
+        const pendingClaim = idea.pending_claims.find(c => c.claimer_email === '{{ session.get("user_email") }}');
+        if (pendingClaim) {
+            claimStatus = `<div class="claim-status pending">Claim Status: Pending Approvals</div>`;
         }
+    }
+    
+    // Show claim denied status
+    if (idea.denied_claims && idea.denied_claims.length > 0) {
+        const deniedClaim = idea.denied_claims.find(c => c.claimer_email === '{{ session.get("user_email") }}');
+        if (deniedClaim) {
+            claimStatus = `<div class="claim-status denied">Claim Status: Denied</div>`;
+        }
+    }
+    
+    return `
+        <div class="idea-card ${borderClass}">
+            ${relationshipBadge}
+            <h3 class="idea-title">
+                <a href="/idea/${idea.id}">${utils.escapeHtml(idea.title)}</a>
+            </h3>
+            <p class="idea-description">${utils.escapeHtml(idea.description)}</p>
+            <div class="idea-meta">
+                <span class="team">${utils.escapeHtml(idea.benefactor_team)}</span>
+                <span class="priority-badge ${priorityClass}">${idea.priority}</span>
+                <span class="size-badge ${sizeClass}">${idea.size.replace('_', ' ')}</span>
+                <span class="status-badge ${statusClass}">${idea.status}</span>
+            </div>
+            ${claimStatus}
+            <div class="idea-footer">
+                Submitted: ${utils.formatDate(idea.date_submitted)}
+                ${idea.needed_by ? ` • Needed by: ${utils.formatDate(idea.needed_by)}` : ''}
+            </div>
+            ${idea.claim_info ? `
+                <div class="claim-info">
+                    Claimed by ${utils.escapeHtml(idea.claim_info.name)} on ${utils.formatDate(idea.claim_info.date)}
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function displayPendingApprovals(approvals) {
+    const section = document.getElementById('pending-approvals-section');
+    const container = document.getElementById('pending-approvals-container');
+    
+    section.style.display = 'block';
+    
+    let html = '';
+    approvals.forEach(approval => {
+        const idea = approval.idea;
+        const statusClass = `status-${idea.status}`;
+        const priorityClass = `priority-${idea.priority}`;
         
-        try {
-            const response = await fetch(`/api/claim-approvals/${approvalId}/deny`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                alert('Claim denied');
-                loadMyIdeas();  // Refresh the page
-            } else {
-                alert('Error: ' + data.message);
-            }
-        } catch (error) {
-            console.error('Error denying claim:', error);
-            alert('Failed to deny claim request');
-        }
-    };
-    
-    // Show assignment modal
-    window.showAssignmentModal = function(ideaId, ideaTitle) {
-        // Get team members for assignment
-        fetchTeamMembers().then(members => {
-            const memberOptions = members.map(m => 
-                `<option value="${m.email}">${utils.escapeHtml(m.name)} (${utils.escapeHtml(m.email)})</option>`
-            ).join('');
-            
-            const modalHtml = `
-                <div id="assignmentModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-                    <div style="background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%;">
-                        <h3 style="margin-top: 0;">Assign Idea</h3>
-                        <p style="color: #666; margin-bottom: 20px;">Assign "${utils.escapeHtml(ideaTitle)}" to a team member</p>
-                        
-                        <div style="margin-bottom: 20px;">
-                            <label for="assignee" style="display: block; margin-bottom: 5px; font-weight: 600;">Select Team Member:</label>
-                            <select id="assignee" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                                <option value="">-- Select a team member --</option>
-                                ${memberOptions}
-                            </select>
-                        </div>
-                        
-                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                            <button onclick="closeAssignmentModal()" style="padding: 8px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
-                            <button onclick="assignIdea(${ideaId})" style="padding: 8px 20px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;">Assign</button>
-                        </div>
+        html += `
+            <div class="idea-card idea-pending-approval">
+                <span class="relationship-badge pending">Pending Your Approval</span>
+                <h3 class="idea-title">
+                    <a href="/idea/${idea.id}">${utils.escapeHtml(idea.title)}</a>
+                </h3>
+                <p class="idea-description">${utils.escapeHtml(idea.description)}</p>
+                <div class="idea-meta">
+                    <span class="team">${utils.escapeHtml(idea.benefactor_team)}</span>
+                    <span class="priority-badge ${priorityClass}">${idea.priority}</span>
+                    <span class="status-badge ${statusClass}">${idea.status}</span>
+                </div>
+                <div class="approval-request">
+                    <p><strong>${utils.escapeHtml(approval.claimer_name)}</strong> wants to claim this idea</p>
+                    <p>Team: ${utils.escapeHtml(approval.claimer_team || 'N/A')}</p>
+                    <p>Skills: ${utils.escapeHtml(approval.claimer_skills || 'N/A')}</p>
+                    <div class="approval-actions">
+                        <button class="btn btn-primary btn-sm" onclick="approveClaimRequest(${approval.id})">Approve</button>
+                        <button class="btn btn-danger btn-sm" onclick="denyClaimRequest(${approval.id})">Deny</button>
                     </div>
                 </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function approveClaimRequest(approvalId) {
+    if (!confirm('Are you sure you want to approve this claim request?')) return;
+    
+    try {
+        const response = await fetch(`/api/claim-approvals/${approvalId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
-    };
-    
-    // Close assignment modal
-    window.closeAssignmentModal = function() {
-        const modal = document.getElementById('assignmentModal');
-        if (modal) {
-            modal.remove();
-        }
-    };
-    
-    // Assign idea to team member
-    window.assignIdea = async function(ideaId) {
-        const assigneeEmail = document.getElementById('assignee').value;
-        if (!assigneeEmail) {
-            alert('Please select a team member');
-            return;
-        }
         
-        try {
-            const response = await fetch(`/api/ideas/${ideaId}/assign`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ assignee_email: assigneeEmail })
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                alert(data.message);
-                closeAssignmentModal();
-                loadMyIdeas();  // Refresh
-            } else {
-                alert('Error: ' + data.message);
-            }
-        } catch (error) {
-            console.error('Error assigning idea:', error);
-            alert('Failed to assign idea');
-        }
-    };
-    
-    // Fetch team members for assignment
-    async function fetchTeamMembers() {
-        const managedTeamId = {{ session.get('user_managed_team_id', 'null') }};
-        if (!managedTeamId) {
-            return [];
-        }
+        const result = await response.json();
         
-        try {
-            const response = await fetch(`/api/teams/${managedTeamId}/members`);
-            if (response.ok) {
-                return await response.json();
-            }
-            return [];
-        } catch (error) {
-            console.error('Error fetching team members:', error);
-            return [];
+        if (result.success) {
+            alert(result.message || 'Claim request approved!');
+            loadMyIdeas(); // Reload to update the display
+        } else {
+            alert('Failed to approve claim request: ' + result.error);
         }
+    } catch (error) {
+        console.error('Error approving claim request:', error);
+        alert('Failed to approve claim request');
     }
+}
+
+async function denyClaimRequest(approvalId) {
+    if (!confirm('Are you sure you want to deny this claim request?')) return;
     
-    // Admin Team Stats Functions
-    let adminChartInstances = {
-        priority: null,
-        status: null,
-        size: null,
-        skills: null,
-        teamClaims: null
-    };
-    
-    // Load teams for admin dropdown
-    async function loadAdminTeams() {
-        try {
-            const response = await fetch('/api/teams');
-            if (response.ok) {
-                const teams = await response.json();
-                const select = document.getElementById('admin-team-select');
-                
-                // Keep the "All Teams" option
-                select.innerHTML = '<option value="">All Teams (Overview)</option>';
-                
-                // Add each team
-                teams.forEach(team => {
-                    const option = document.createElement('option');
-                    option.value = team.id;
-                    option.textContent = team.name;
-                    if (team.is_approved === false) {
-                        option.textContent += ' (Pending)';
-                    }
-                    select.appendChild(option);
-                });
+    try {
+        const response = await fetch(`/api/claim-approvals/${approvalId}/deny`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             }
-        } catch (error) {
-            console.error('Error loading teams:', error);
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message || 'Claim request denied.');
+            loadMyIdeas(); // Reload to update the display
+        } else {
+            alert('Failed to deny claim request: ' + result.error);
         }
+    } catch (error) {
+        console.error('Error denying claim request:', error);
+        alert('Failed to deny claim request');
     }
-    
-    // Load admin team stats
-    async function loadAdminTeamStats(teamId = null) {
-        try {
-            const url = teamId ? `/api/admin/team-stats?team_id=${teamId}` : '/api/admin/team-stats';
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                console.error('Failed to load admin team stats');
-                return;
-            }
-            
-            const data = await response.json();
-            
-            if (teamId) {
-                // Show individual team stats
-                document.getElementById('all-teams-overview').style.display = 'none';
-                document.getElementById('admin-team-stats').style.display = 'block';
-                
-                // Update overview stats
-                document.getElementById('admin-team-members-count').textContent = data.overview.total_members;
-                document.getElementById('admin-team-submitted-count').textContent = data.overview.ideas_submitted;
-                document.getElementById('admin-team-claimed-count').textContent = data.overview.ideas_claimed;
-                document.getElementById('admin-team-completion-rate').textContent = data.overview.completion_rate + '%';
-                document.getElementById('admin-team-pending-approvals').textContent = data.overview.pending_approvals;
-                
-                // Update recent activity
-                document.getElementById('admin-recent-submissions').textContent = data.recent_activity.submissions_30d;
-                document.getElementById('admin-recent-claims').textContent = data.recent_activity.claims_30d;
-                
-                // Populate team activity table
-                populateAdminTeamActivityTable(data.member_activity);
-                
-                // Create charts
-                createAdminTeamCharts(data.breakdowns);
-            } else {
-                // Show all teams overview
-                document.getElementById('all-teams-overview').style.display = 'block';
-                document.getElementById('admin-team-stats').style.display = 'none';
-                
-                populateAllTeamsTable(data.teams);
-            }
-        } catch (error) {
-            console.error('Error loading admin team stats:', error);
-        }
-    }
-    
-    // Populate all teams overview table
-    function populateAllTeamsTable(teams) {
-        const tbody = document.getElementById('all-teams-table');
-        
-        if (!teams || teams.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No teams found</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = teams.map(team => `
-            <tr>
-                <td>${utils.escapeHtml(team.team_name)}</td>
-                <td>
-                    <span class="status-badge ${team.is_approved ? 'status-complete' : 'status-pending'}">
-                        ${team.is_approved ? 'Approved' : 'Pending'}
-                    </span>
-                </td>
-                <td>${team.total_members}</td>
-                <td>${team.ideas_submitted}</td>
-                <td>${team.ideas_claimed}</td>
-                <td>${team.completion_rate}%</td>
-            </tr>
-        `).join('');
-    }
-    
-    // Populate admin team activity table
-    function populateAdminTeamActivityTable(memberActivity) {
-        const tbody = document.getElementById('admin-team-activity-table');
-        
-        if (!memberActivity || memberActivity.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">No team member activity found</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = memberActivity.map(member => `
-            <tr>
-                <td>${utils.escapeHtml(member.name)} (${utils.escapeHtml(member.email)})</td>
-                <td>${member.submitted}</td>
-                <td>${member.claimed}</td>
-                <td style="background: #f0f8ff;">${member.own_team_claims || 0}</td>
-                <td style="background: #fffaf0;">${member.other_team_claims || 0}</td>
-                <td>${member.completed}</td>
-                <td>${member.submitted + member.claimed}</td>
-            </tr>
-        `).join('');
-    }
-    
-    // Create admin team charts
-    function createAdminTeamCharts(breakdowns) {
-        // Destroy existing charts
-        Object.values(adminChartInstances).forEach(chart => {
-            if (chart) chart.destroy();
-        });
-        
-        // Submitted Ideas by Status
-        const submittedStatusCtx = document.getElementById('admin-submitted-status-chart').getContext('2d');
-        adminChartInstances.submittedStatus = new Chart(submittedStatusCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Open', 'Claimed', 'Complete'],
-                datasets: [{
-                    data: [
-                        breakdowns.submitted_status.open || 0,
-                        breakdowns.submitted_status.claimed || 0,
-                        breakdowns.submitted_status.complete || 0
-                    ],
-                    backgroundColor: ['#17a2b8', '#f0ad4e', '#28a745']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Submitted Ideas by Priority
-        const submittedPriorityCtx = document.getElementById('admin-submitted-priority-chart').getContext('2d');
-        adminChartInstances.submittedPriority = new Chart(submittedPriorityCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['High', 'Medium', 'Low'],
-                datasets: [{
-                    data: [
-                        breakdowns.priority.submitted.high || 0,
-                        breakdowns.priority.submitted.medium || 0,
-                        breakdowns.priority.submitted.low || 0
-                    ],
-                    backgroundColor: ['#dc3545', '#f0ad4e', '#28a745']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Submitted Ideas by Size
-        const submittedSizeCtx = document.getElementById('admin-submitted-size-chart').getContext('2d');
-        adminChartInstances.submittedSize = new Chart(submittedSizeCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Small', 'Medium', 'Large', 'Extra Large'],
-                datasets: [{
-                    label: 'Submitted Ideas',
-                    data: [
-                        breakdowns.size.submitted.small || 0,
-                        breakdowns.size.submitted.medium || 0,
-                        breakdowns.size.submitted.large || 0,
-                        breakdowns.size.submitted.extra_large || 0
-                    ],
-                    backgroundColor: '#4a90e2'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-        
-        // Claimed Ideas by Status
-        const claimedStatusCtx = document.getElementById('admin-claimed-status-chart').getContext('2d');
-        adminChartInstances.claimedStatus = new Chart(claimedStatusCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Open', 'Claimed', 'Complete'],
-                datasets: [{
-                    data: [
-                        breakdowns.status.open || 0,
-                        breakdowns.status.claimed || 0,
-                        breakdowns.status.complete || 0
-                    ],
-                    backgroundColor: ['#17a2b8', '#f0ad4e', '#28a745']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Claimed Ideas by Priority
-        const claimedPriorityCtx = document.getElementById('admin-claimed-priority-chart').getContext('2d');
-        adminChartInstances.claimedPriority = new Chart(claimedPriorityCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['High', 'Medium', 'Low'],
-                datasets: [{
-                    data: [
-                        breakdowns.priority.claimed.high || 0,
-                        breakdowns.priority.claimed.medium || 0,
-                        breakdowns.priority.claimed.low || 0
-                    ],
-                    backgroundColor: ['#dc3545', '#f0ad4e', '#28a745']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Claimed Ideas by Size
-        const claimedSizeCtx = document.getElementById('admin-claimed-size-chart').getContext('2d');
-        adminChartInstances.claimedSize = new Chart(claimedSizeCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Small', 'Medium', 'Large', 'Extra Large'],
-                datasets: [{
-                    label: 'Claimed Ideas',
-                    data: [
-                        breakdowns.size.claimed.small || 0,
-                        breakdowns.size.claimed.medium || 0,
-                        breakdowns.size.claimed.large || 0,
-                        breakdowns.size.claimed.extra_large || 0
-                    ],
-                    backgroundColor: '#28a745'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-        
-        // Team Skills chart
-        const teamSkillsCtx = document.getElementById('admin-team-skills-chart').getContext('2d');
-        const skillLabels = breakdowns.team_skills.map(s => s.skill);
-        const skillCounts = breakdowns.team_skills.map(s => s.count);
-        
-        adminChartInstances.teamSkills = new Chart(teamSkillsCtx, {
-            type: 'bar',
-            data: {
-                labels: skillLabels,
-                datasets: [{
-                    label: 'Count',
-                    data: skillCounts,
-                    backgroundColor: '#6c757d'
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-        
-        // Admin Team Claims Chart
-        const adminTeamClaimsCtx = document.getElementById('admin-team-claims-chart').getContext('2d');
-        adminChartInstances.teamClaims = new Chart(adminTeamClaimsCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Claims', 'Completed'],
-                datasets: [
-                    {
-                        label: 'Own Team',
-                        data: [
-                            breakdowns.team_claims.own_team || 0,
-                            breakdowns.team_claims.own_team_completed || 0
-                        ],
-                        backgroundColor: '#4a90e2'
-                    },
-                    {
-                        label: 'Other Teams',
-                        data: [
-                            breakdowns.team_claims.other_teams || 0,
-                            breakdowns.team_claims.other_teams_completed || 0
-                        ],
-                        backgroundColor: '#f0ad4e'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        stacked: true
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            afterLabel: function(context) {
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = Math.round((context.parsed.y / total) * 100);
-                                return percentage + '% of ' + context.dataset.label.toLowerCase();
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-    
-    // Check if admin and load admin features
-    async function checkAdminAndLoadStats() {
-        const isAdmin = {{ 'true' if session.get('is_admin') else 'false' }};
-        
-        if (isAdmin) {
-            // Show admin section
-            document.getElementById('admin-team-kpis-section').style.display = 'block';
-            
-            // Load teams for dropdown
-            await loadAdminTeams();
-            
-            // Load all teams overview by default
-            await loadAdminTeamStats();
-            
-            // Setup team selector change handler
-            document.getElementById('admin-team-select').addEventListener('change', function(e) {
-                const teamId = e.target.value;
-                loadAdminTeamStats(teamId || null);
-            });
-        }
-    }
-    
+}
+
+// Load ideas on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadMyIdeas();
     
     // Auto-refresh every 30 seconds
-    setInterval(() => {
-        loadMyIdeas();
-    }, 30000);
-})();
+    setInterval(loadMyIdeas, 30000);
+});
 </script>
 {% endblock %}
