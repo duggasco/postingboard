@@ -1501,3 +1501,13 @@ Fixed My Team page showing blank and team ideas not loading:
   - Stacked priority/size badges
   - Description tooltips for truncated text
   - Consistent styling with rest of application
+- **Team Ideas Filtering**: Fixed issue where team ideas showed all ideas instead of team-specific
+  - Added missing `benefactor_team` filter to `/api/ideas` endpoint
+  - API now properly filters when `?benefactor_team=TeamName` parameter is provided
+  - Both admin and manager views now show only the selected team's ideas
+- **Team Ideas Styling**: Updated to match Browse Ideas page exactly
+  - Implemented identical card structure with idea-header containing title and status badge
+  - Added skills tags display
+  - Included reward field display
+  - Added clickable cards with View Details link
+  - Consistent hover effects and interactions

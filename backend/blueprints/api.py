@@ -55,6 +55,10 @@ def get_ideas():
         if status_filter:
             query = query.filter(Idea.status == IdeaStatus(status_filter))
         
+        team_filter = request.args.get('benefactor_team')
+        if team_filter:
+            query = query.filter(Idea.benefactor_team == team_filter)
+        
         # Apply sorting
         sort_by = request.args.get('sort', 'date_desc')
         if sort_by == 'date_desc':
