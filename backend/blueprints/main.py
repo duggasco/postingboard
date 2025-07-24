@@ -74,7 +74,9 @@ def submit():
         finally:
             db.close()
     
-    return render_template('submit.html')
+    # Get user's assigned team from session
+    user_team = session.get('user_team')
+    return render_template('submit.html', user_team=user_team)
 
 @main_bp.route('/my-ideas')
 @require_verified_email

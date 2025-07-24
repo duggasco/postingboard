@@ -1251,3 +1251,35 @@ Fixed empty state and error message formatting:
 - **Empty State**: Properly styled "No ideas found" message with grid-spanning div and centered layout
 - **Error Messages**: Consistent styling for error states with red color indicator
 - **Grid Layout**: Messages now properly integrate with CSS grid structure
+
+### All Teams Overview Data Fix (July 2025)
+Fixed "All Teams (Overview)" selection returning no data in admin My Team page:
+- **API Response Structure**: Changed from `{teams: ...}` to `{teams_overview: ...}` to match frontend expectations
+- **Field Names**: Updated API to return consistent field names (`member_count`, `submitted_count`, `claimed_count`)
+- **Display Control**: Added logic to hide individual team stats cards when viewing all teams overview
+
+### Team-Based Submit Form Enhancement (July 2025)
+Implemented automatic team assignment for users submitting ideas:
+- **Pre-filled Teams**: Users with assigned teams see their team pre-filled and read-only on submit form
+- **Disabled Selection**: Team dropdown and custom input are hidden for users with assigned teams
+- **Session Integration**: Submit route now passes `user_team` from session to template
+- **Visual Indicators**: Read-only fields have gray background with explanatory text
+- **Conditional JavaScript**: Event listeners only attach when team selection is available
+
+### Skill Persistence Clarification (July 2025)
+Updated messaging about skill persistence on submit form:
+- **Clear Messaging**: Skills field now states "Skills are required for this idea only and will not be saved to your profile"
+- **Team-Only Persistence**: Moved "Clear saved data" link to team field only
+- **Correct Behavior**: Verified that idea skills and user profile skills remain separate as intended
+
+### Chart Color Consistency (July 2025)
+Implemented consistent color mapping across all charts in My Team page:
+- **Structured Color System**: Created category-based color mappings for status, priority, size, and team claims
+- **Context-Aware Colors**: "medium" shows as orange in priority charts and blue in size charts
+- **Auto-Detection**: Chart type is automatically determined based on label content
+- **Visual Consistency**: Same categories now use identical colors across all chart types
+- **Color Scheme**:
+  - Status: open=green, claimed=yellow, complete=gray
+  - Priority: high=red, medium=orange, low=green  
+  - Size: small=teal, medium=blue, large=purple, extra_large=pink
+  - Team Claims: Own Team=blue, Other Teams=orange

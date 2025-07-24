@@ -1058,16 +1058,16 @@ def get_admin_team_stats():
                 completion_rate = round((completed_ideas / team_claimed * 100) if team_claimed > 0 else 0, 1)
                 
                 all_teams_stats.append({
-                    'team_id': team.id,
-                    'team_name': team.name,
+                    'id': team.id,
+                    'name': team.name,
                     'is_approved': team.is_approved,
-                    'total_members': len(team_members),
-                    'ideas_submitted': team_submitted,
-                    'ideas_claimed': team_claimed,
+                    'member_count': len(team_members),
+                    'submitted_count': team_submitted,
+                    'claimed_count': team_claimed,
                     'completion_rate': completion_rate
                 })
             
-            return jsonify({'teams': all_teams_stats})
+            return jsonify({'teams_overview': all_teams_stats})
         
         # Get stats for specific team
         team = db.query(Team).filter(Team.id == team_id).first()

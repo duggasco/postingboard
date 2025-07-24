@@ -35,10 +35,16 @@
         }
         
         await loadSkills();
-        await loadTeams();
         
-        // Load persisted data
-        loadPersistedData();
+        // Only load teams if user doesn't have an assigned team
+        if (teamSelect) {
+            await loadTeams();
+        }
+        
+        // Load persisted data only if user doesn't have an assigned team
+        if (!teamInput || !teamInput.hasAttribute('readonly')) {
+            loadPersistedData();
+        }
         
         // Event listeners
         addSkillBtn.addEventListener('click', handleAddSkill);
@@ -64,7 +70,7 @@
             }
         });
         
-        // Handle team selection mutual exclusivity
+        // Handle team selection mutual exclusivity (only if user doesn't have assigned team)
         if (teamSelect) {
             teamSelect.addEventListener('change', function() {
                 if (this.value) {
@@ -74,7 +80,7 @@
             });
         }
         
-        if (teamInput) {
+        if (teamInput && !teamInput.hasAttribute('readonly')) {
             teamInput.addEventListener('input', function() {
                 if (this.value) {
                     teamSelect.value = '';
@@ -91,7 +97,7 @@
         if (clearLink) {
             clearLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                if (confirm('Clear all saved team name and skills?')) {
+                if (confirm('Clear saved team name?')) {
                     clearPersistedData();
                 }
             });
@@ -216,7 +222,7 @@
             teamInput.value = '';
         }
         
-        alert('Saved team name has been cleared.');
+        alert('Saved team has been cleared.');
     }
     
     // Update the display of selected skills

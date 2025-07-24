@@ -7,7 +7,7 @@
     <h2 class="page-title">My Team</h2>
     
     <!-- Team Overview Stats -->
-    <div class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px;">
+    <div id="team-stats-cards" class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px;">
         <div class="stat-card">
             <h3 id="team-members-count">0</h3>
             <p>Team Members</p>
@@ -250,11 +250,13 @@ async function loadTeamData() {
         // Show all teams overview by default
         document.getElementById('all-teams-overview').style.display = 'block';
         document.getElementById('team-stats-container').style.display = 'none';
+        document.getElementById('team-stats-cards').style.display = 'none';
         loadAllTeamsOverview();
     } else {
         // Manager - load their team data directly
         currentTeamId = {{ session.get('user_managed_team_id') or 'null' }};
         if (currentTeamId) {
+            document.getElementById('team-stats-cards').style.display = 'grid';
             loadTeamStats();
         }
     }
@@ -637,7 +639,7 @@ function createDoughnutChart(canvasId, title, data) {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: getChartColors(labels.length)
+                backgroundColor: getChartColors(labels)
             }]
         },
         options: {
@@ -667,7 +669,7 @@ function createBarChart(canvasId, title, data) {
             datasets: [{
                 label: 'Count',
                 data: values,
-                backgroundColor: '#4a90e2'
+                backgroundColor: getChartColors(labels)
             }]
         },
         options: {
@@ -690,19 +692,101 @@ function createBarChart(canvasId, title, data) {
     });
 }
 
-function getChartColors(count) {
-    const colors = [
-        '#4a90e2', // blue
-        '#28a745', // green
-        '#ffc107', // yellow
-        '#dc3545', // red
-        '#6f42c1', // purple
-        '#20c997', // teal
-        '#fd7e14', // orange
-        '#e83e8c'  // pink
-    ];
+// Define consistent color mappings for categories
+const COLOR_MAPPINGS = {
+    // Status colors
+    'status': {
+        'open': '#28a745',      // green
+        'claimed': '#ffc107',   // yellow/amber
+        'complete': '#6c757d',  // gray
+    },
     
-    return colors.slice(0, count);
+    // Priority colors
+    'priority': {
+        'high': '#dc3545',      // red
+        'medium': '#fd7e14',    // orange
+        'low': '#28a745',       // green
+    },
+    
+    // Size colors
+    'size': {
+        'small': '#20c997',     // teal
+        'medium': '#4a90e2',    // blue
+        'large': '#6f42c1',     // purple
+        'extra_large': '#e83e8c', // pink
+    },
+    
+    // Team claims colors
+    'team': {
+        'Own Team': '#4a90e2',   // blue
+        'Other Teams': '#fd7e14', // orange
+    },
+    
+    // Default fallback colors for unmapped items
+    '_default': ['#4a90e2', '#28a745', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c']
+};
+
+function getChartColors(labels, chartType) {
+    // If labels is a number (old behavior), return default colors
+    if (typeof labels === 'number') {
+        return COLOR_MAPPINGS._default.slice(0, labels);
+    }
+    
+    // Determine chart type from labels if not provided
+    if (!chartType) {
+        // Auto-detect chart type based on common labels
+        const labelsStr = labels.join(',').toLowerCase();
+        if (labelsStr.includes('high') || labelsStr.includes('low')) {
+            chartType = 'priority';
+        } else if (labelsStr.includes('open') || labelsStr.includes('claimed') || labelsStr.includes('complete')) {
+            chartType = 'status';
+        } else if (labelsStr.includes('small') || labelsStr.includes('large') || labelsStr.includes('extra_large')) {
+            chartType = 'size';
+        } else if (labelsStr.includes('own team') || labelsStr.includes('other teams')) {
+            chartType = 'team';
+        }
+    }
+    
+    // Map each label to its consistent color
+    const colors = [];
+    let defaultIndex = 0;
+    
+    labels.forEach(label => {
+        const lowerLabel = label.toLowerCase();
+        let color = null;
+        
+        // First check specific chart type mapping
+        if (chartType && COLOR_MAPPINGS[chartType]) {
+            if (COLOR_MAPPINGS[chartType][lowerLabel]) {
+                color = COLOR_MAPPINGS[chartType][lowerLabel];
+            } else if (COLOR_MAPPINGS[chartType][label]) {
+                color = COLOR_MAPPINGS[chartType][label];
+            }
+        }
+        
+        // If no color found, check all mappings
+        if (!color) {
+            for (const category of ['status', 'priority', 'size', 'team']) {
+                if (COLOR_MAPPINGS[category][lowerLabel]) {
+                    color = COLOR_MAPPINGS[category][lowerLabel];
+                    break;
+                } else if (COLOR_MAPPINGS[category][label]) {
+                    color = COLOR_MAPPINGS[category][label];
+                    break;
+                }
+            }
+        }
+        
+        // If still no color, use default
+        if (!color) {
+            color = COLOR_MAPPINGS._default[defaultIndex % COLOR_MAPPINGS._default.length];
+            defaultIndex++;
+        }
+        
+        colors.push(color);
+    });
+    
+    return colors;
 }
 
 // Event listeners
@@ -727,12 +811,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentTeamId = parseInt(teamId);
                 document.getElementById('all-teams-overview').style.display = 'none';
                 document.getElementById('team-stats-container').style.display = 'block';
+                document.getElementById('team-stats-cards').style.display = 'grid';
                 loadTeamStats();
             } else {
                 // Show all teams overview
                 currentTeamId = null;
                 document.getElementById('all-teams-overview').style.display = 'block';
                 document.getElementById('team-stats-container').style.display = 'none';
+                document.getElementById('team-stats-cards').style.display = 'none';
                 loadAllTeamsOverview();
             }
         });
