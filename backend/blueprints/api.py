@@ -13,6 +13,28 @@ from werkzeug.datastructures import FileStorage
 
 api_bp = Blueprint('api', __name__)
 
+@api_bp.route('/health')
+def health_check():
+    """Health check endpoint for monitoring."""
+    try:
+        # Basic health check - verify database connection
+        db = get_session()
+        # Run a simple query to verify database is accessible
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
+        db.close()
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 503
+
 @api_bp.route('/ideas')
 def get_ideas():
     """Get filtered and sorted ideas."""
