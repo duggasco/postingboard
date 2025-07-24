@@ -78,6 +78,7 @@
     function createIdeaCard(idea) {
         const statusClass = `status-${idea.status}`;
         const priorityClass = `priority-${idea.priority}`;
+        const sizeClass = `size-${idea.size}`;
         
         const skillsHtml = idea.skills.map(skill => 
             `<span class="skill-tag">${utils.escapeHtml(skill.name)}</span>`
@@ -87,6 +88,12 @@
             ? `<div class="claim-info">Claimed by ${utils.escapeHtml(idea.claims[0].name)}</div>`
             : '';
         
+        // Create full description for tooltip
+        const fullDescription = utils.escapeHtml(idea.description);
+        const truncatedDescription = idea.description.length > 150 
+            ? utils.escapeHtml(idea.description.substring(0, 150)) + '...'
+            : fullDescription;
+        
         return `
             <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'">
                 <div class="idea-header">
@@ -95,22 +102,22 @@
                 </div>
                 
                 <div class="idea-meta">
-                    <span class="priority-badge ${priorityClass}">Priority: ${idea.priority}</span>
-                    <span>Size: ${idea.size.replace('_', ' ')}</span>
-                    <span>Team: ${utils.escapeHtml(idea.benefactor_team)}</span>
+                    <div class="priority-badge ${priorityClass}">Priority: ${idea.priority}</div>
+                    <div class="size-badge ${sizeClass}">Size: ${idea.size.replace('_', ' ')}</div>
                 </div>
                 
                 ${skillsHtml ? `<div class="skills-tags">${skillsHtml}</div>` : ''}
                 
-                <p class="idea-description">
-                    ${utils.escapeHtml(idea.description.substring(0, 150))}${idea.description.length > 150 ? '...' : ''}
+                <p class="idea-description" ${idea.description.length > 150 ? `title="${fullDescription}"` : ''}>
+                    ${truncatedDescription}
                 </p>
                 
                 ${idea.reward ? `<div class="reward">Reward: ${utils.escapeHtml(idea.reward)}</div>` : ''}
                 
                 <div class="idea-footer">
-                    <span>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</span>
-                    ${idea.needed_by ? `<span>Needed by: ${utils.formatDate(idea.needed_by)}</span>` : ''}
+                    <div>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</div>
+                    <div>Team: ${utils.escapeHtml(idea.benefactor_team)}</div>
+                    ${idea.needed_by ? `<div>Needed by: ${utils.formatDate(idea.needed_by)}</div>` : ''}
                 </div>
                 
                 ${claimInfo}

@@ -396,33 +396,69 @@ body {
 
 .idea-meta {
     display: flex;
-    gap: 12px;
+    flex-direction: column;
+    gap: 6px;
     margin-bottom: 10px;
     font-size: 12px;
     color: #6c757d;
-    align-items: center;
-    flex-wrap: wrap;
 }
 
-.idea-meta > span {
-    display: flex;
-    align-items: center;
+.idea-meta > div {
+    display: block;
 }
 
 .priority-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .priority-high {
-    color: #dc3545;
+    background-color: #fce4e4;
+    color: #cc0000;
 }
 
 .priority-medium {
-    color: #f0ad4e;
+    background-color: #fff4e5;
+    color: #d94b00;
 }
 
 .priority-low {
-    color: #28a745;
+    background-color: #e8f5e8;
+    color: #2e7d2e;
+}
+
+/* Size badge styling to match priority badges */
+.size-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.size-small {
+    background-color: #e0f7fa;
+    color: #00796b;
+}
+
+.size-medium {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.size-large {
+    background-color: #ede7f6;
+    color: #5e35b1;
+}
+
+.size-extra_large {
+    background-color: #fce4ec;
+    color: #c2185b;
 }
 
 .skills-tags {
@@ -447,19 +483,27 @@ body {
     margin-bottom: 12px;
     font-size: 13px;
     flex-grow: 1;
+    cursor: help;  /* Show help cursor when hovering over truncated descriptions */
+}
+
+/* Enhanced tooltip styling for descriptions */
+.idea-description[title]:hover {
+    color: #495057;  /* Slightly darker on hover to indicate interactivity */
 }
 
 .idea-footer {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 4px;
     font-size: 11px;
     color: #868e96;
     margin-top: auto;
     padding-top: 12px;
     border-top: 1px solid #f1f3f5;
-    flex-wrap: wrap;
-    gap: 8px;
+}
+
+.idea-footer > div {
+    display: block;
 }
 
 .view-details-link {

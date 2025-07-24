@@ -195,6 +195,21 @@ templates/
   - Buttons with hover transforms
   - Modal dialogs with backdrop blur
   - Smooth 0.2s ease transitions
+- **Browse Ideas Cards**:
+  - Team name displayed below "Submitted by" in footer
+  - Priority and Size badges styled like status badges with background colors
+  - Priority badges (Traffic Light Convention):
+    - High: #fce4e4 background, #cc0000 text (urgent/critical)
+    - Medium: #fff4e5 background, #d94b00 text (moderate urgency)
+    - Low: #e8f5e8 background, #2e7d2e text (can wait)
+  - Size badges (Cool-to-Warm Gradient):
+    - Small: #e0f7fa background, #00796b text (quick task)
+    - Medium: #e3f2fd background, #1565c0 text (moderate effort)
+    - Large: #ede7f6 background, #5e35b1 text (significant effort)
+    - Extra Large: #fce4ec background, #c2185b text (major undertaking)
+  - Chart colors refined for consistency:
+    - Size: small=#26a69a, medium=#42a5f5, large=#7e57c2, extra_large=#ec407a
+  - Truncated descriptions show full text on mouseover via title attribute
 
 ## Docker Configuration
 
@@ -1245,6 +1260,27 @@ All potentially truncated fields show full content on hover:
 - Users endpoint returns wrapped object: `{success: true, users: [...]}`
 
 ## Recent Fixes and Updates
+
+### Browse Ideas Cards Updates (July 2025)
+Enhanced the browse ideas cards layout and styling for better consistency and usability:
+- **Layout Changes**:
+  - Moved team name from meta section to footer section below "Submitted by"
+  - Stacked priority and size badges vertically instead of side-by-side
+  - Team always appears on its own line below submitter information
+- **Professional Color Scheme**:
+  - Priority and size badges now styled like status badges with background colors
+  - Priority uses traffic light convention for intuitive urgency understanding
+  - Size uses cool-to-warm gradient showing increasing effort/scope
+  - Chart colors refined for better visual harmony while maintaining distinction
+- **Badge Colors**:
+  - Priority: High (red tones), Medium (orange tones), Low (green tones)
+  - Size: Small (teal), Medium (blue), Large (purple), Extra Large (pink)
+- **Description Tooltips**: Added mouseover tooltips for truncated descriptions
+- **Files Updated**:
+  - `static/js/home.js`: Restructured card layout, stacked badges, implemented tooltips
+  - `static/css/styles.css`: Added background colors for priority/size badges
+  - `templates/my_team.html`: Updated chart colors for consistency
+- **Visual Consistency**: All components now use the same refined color palette
 
 ### Team Request Notification Fix (July 2025)
 Fixed missing notifications when users submit custom team requests:
