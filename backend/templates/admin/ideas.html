@@ -125,6 +125,32 @@
                 <input type="text" id="edit-bounty" name="bounty" class="form-control">
             </div>
             <div class="form-group">
+                <label>
+                    <input type="checkbox" id="edit-is-monetary" name="is_monetary" onchange="toggleMonetaryFields()">
+                    This idea has a monetary bounty
+                </label>
+            </div>
+            <div id="monetary-fields" style="display: none;">
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="edit-is-expensed" name="is_expensed" onchange="toggleAmountField()">
+                        Will be expensed
+                    </label>
+                </div>
+                <div id="amount-field" class="form-group" style="display: none;">
+                    <label for="edit-amount">Amount ($)</label>
+                    <input type="number" id="edit-amount" name="amount" class="form-control" min="0" step="0.01">
+                    <small id="approval-note" class="text-muted" style="display: none;">Amounts over $50 require manager/admin approval</small>
+                </div>
+                <div id="approval-status" class="form-group" style="display: none;">
+                    <label>Approval Status</label>
+                    <div class="approval-info">
+                        <span id="approval-status-text"></span>
+                        <button type="button" id="approve-bounty-btn" class="btn btn-sm btn-success" style="display: none;" onclick="approveBounty()">Approve</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
                 <label for="edit-email">Submitter Email</label>
                 <input type="email" id="edit-email" name="email" class="form-control" required>
             </div>
@@ -139,6 +165,30 @@
         </form>
     </div>
 </div>
+
+<style>
+.approval-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.approval-info span {
+    font-weight: 500;
+}
+
+.text-warning {
+    color: #856404;
+}
+
+.text-success {
+    color: #155724;
+}
+
+.text-danger {
+    color: #721c24;
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -397,6 +447,57 @@ async function editIdea(ideaId) {
     
     // Count pending approvals
     const pendingApprovals = await getPendingApprovalsCount(ideaId);
+    
+    // Fetch and populate bounty details
+    try {
+        const bountyResponse = await fetch(`/api/ideas/${ideaId}/bounty`);
+        if (bountyResponse.ok) {
+            const bountyData = await bountyResponse.json();
+            if (bountyData.bounty) {
+                document.getElementById('edit-is-monetary').checked = bountyData.bounty.is_monetary;
+                document.getElementById('edit-is-expensed').checked = bountyData.bounty.is_expensed;
+                document.getElementById('edit-amount').value = bountyData.bounty.amount || '';
+                
+                // Show/hide fields based on current state
+                toggleMonetaryFields();
+                if (bountyData.bounty.is_monetary) {
+                    toggleAmountField();
+                }
+                
+                // Show approval status if applicable
+                const approvalStatus = document.getElementById('approval-status');
+                const approvalStatusText = document.getElementById('approval-status-text');
+                const approveBtn = document.getElementById('approve-bounty-btn');
+                
+                if (bountyData.bounty.requires_approval) {
+                    approvalStatus.style.display = 'block';
+                    if (bountyData.bounty.is_approved === null) {
+                        approvalStatusText.textContent = 'Pending approval';
+                        approvalStatusText.className = 'text-warning';
+                        approveBtn.style.display = 'inline-block';
+                    } else if (bountyData.bounty.is_approved) {
+                        approvalStatusText.textContent = `Approved by ${bountyData.bounty.approved_by || 'admin'}`;
+                        approvalStatusText.className = 'text-success';
+                        approveBtn.style.display = 'none';
+                    } else {
+                        approvalStatusText.textContent = 'Denied';
+                        approvalStatusText.className = 'text-danger';
+                        approveBtn.style.display = 'none';
+                    }
+                } else {
+                    approvalStatus.style.display = 'none';
+                }
+            } else {
+                // No bounty record, reset fields
+                document.getElementById('edit-is-monetary').checked = false;
+                document.getElementById('edit-is-expensed').checked = false;
+                document.getElementById('edit-amount').value = '';
+                toggleMonetaryFields();
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching bounty details:', error);
+    }
     document.getElementById('info-pending').textContent = pendingApprovals;
     
     // Show assignment info if assigned
@@ -470,7 +571,11 @@ async function saveIdea(event) {
         status: formData.get('status'),
         bounty: formData.get('bounty'),
         email: formData.get('email'),
-        skill_ids: formData.getAll('skills[]').map(id => parseInt(id))
+        skill_ids: formData.getAll('skills[]').map(id => parseInt(id)),
+        // Bounty fields
+        is_monetary: document.getElementById('edit-is-monetary').checked,
+        is_expensed: document.getElementById('edit-is-expensed').checked,
+        amount: parseFloat(document.getElementById('edit-amount').value) || 0
     };
     
     try {
@@ -545,6 +650,64 @@ async function unclaimIdea(ideaId) {
     }
 }
 
+// Monetary bounty field handlers
+function toggleMonetaryFields() {
+    const isMonetary = document.getElementById('edit-is-monetary').checked;
+    const monetaryFields = document.getElementById('monetary-fields');
+    monetaryFields.style.display = isMonetary ? 'block' : 'none';
+    
+    if (!isMonetary) {
+        // Reset fields when unchecked
+        document.getElementById('edit-is-expensed').checked = false;
+        document.getElementById('edit-amount').value = '';
+        toggleAmountField();
+    }
+}
+
+function toggleAmountField() {
+    const isExpensed = document.getElementById('edit-is-expensed').checked;
+    const amountField = document.getElementById('amount-field');
+    amountField.style.display = isExpensed ? 'block' : 'none';
+    
+    if (!isExpensed) {
+        document.getElementById('edit-amount').value = '';
+    }
+    
+    // Check amount for approval note
+    checkApprovalRequired();
+}
+
+function checkApprovalRequired() {
+    const amount = parseFloat(document.getElementById('edit-amount').value) || 0;
+    const approvalNote = document.getElementById('approval-note');
+    approvalNote.style.display = amount > 50 ? 'block' : 'none';
+}
+
+async function approveBounty() {
+    const ideaId = document.getElementById('edit-idea-id').value;
+    
+    try {
+        const response = await fetch(`/api/ideas/${ideaId}/approve-bounty`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Bounty approved successfully!');
+            // Refresh the approval status
+            await editIdea(ideaId);
+        } else {
+            alert('Error approving bounty: ' + result.message);
+        }
+    } catch (error) {
+        alert('Error approving bounty: ' + error.message);
+    }
+}
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     loadTeams();
@@ -558,6 +721,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('team-filter').addEventListener('change', applyFilters);
     document.getElementById('clear-filters').addEventListener('click', clearFilters);
     document.getElementById('edit-idea-form').addEventListener('submit', saveIdea);
+    document.getElementById('edit-amount').addEventListener('input', checkApprovalRequired);
     
     // Close modal when clicking outside
     document.getElementById('edit-idea-modal').onclick = function(event) {

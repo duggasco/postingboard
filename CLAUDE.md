@@ -39,7 +39,8 @@ The `start-flask.sh` script handles Python version detection and virtual environ
 - **Monetary bounties**: Optional checkbox system with expense tracking
   - Checkbox for "This idea has a monetary bounty"
   - If checked, shows "Will be expensed" option
-  - If expensed, shows amount input field ($)
+  - Shows amount input field ($) for monetary bounties
+  - Amount is tracked regardless of expense status
   - Amounts over $50 require manager/admin approval
   - Creates notifications for approval workflow
 - **Database**: Separate `bounties` table tracks monetary details
@@ -47,9 +48,10 @@ The `start-flask.sh` script handles Python version detection and virtual environ
   - `is_approved`, `approved_by`, `approved_at` for approval tracking
 - **Bulk Upload Support**: CSV imports can include bounty fields
   - `is_monetary`: true/false for monetary bounties
-  - `is_expensed`: true/false (requires is_monetary=true)
-  - `amount`: Dollar amount (requires is_expensed=true)
-  - Amounts over $50 automatically set to require approval
+  - `is_expensed`: true/false (optional expense flag)
+  - `amount`: Dollar amount (tracked for all monetary bounties)
+  - Amounts over $50 automatically require approval
+  - Amounts ≤ $50 are auto-approved
 
 #### Blueprint Structure
 ```
@@ -1085,8 +1087,14 @@ The admin ideas management page (`/admin/ideas`) provides a comprehensive interf
   - Clear all filters button
 - **Modal-Based Editing**: Click "Edit" to open comprehensive edit modal with:
   - Idea analytics section showing ID, dates, submitter, claims, pending approvals, assignment info
-  - All fields editable: title, description, team, priority, size, status, reward, email
+  - All fields editable: title, description, team, priority, size, status, bounty, email
   - Skills selection with checkboxes for all available skills
+  - **Monetary Bounty Management**:
+    - Checkbox for "This idea has a monetary bounty"
+    - Checkbox for "Will be expensed"
+    - Amount input field for monetary bounties
+    - Approval status display with approve button for amounts over $50
+    - Automatic tracking of amounts regardless of expense status
 - **Bulk Actions**: 
   - Unclaim button for claimed/complete ideas (removes all claims, resets to open)
   - Delete button with confirmation
@@ -1628,6 +1636,21 @@ Added comprehensive spending analytics for monetary bounty tracking:
 - **Database Compatibility**:
   - Supports both native and Docker deployments with automatic path detection
   - Created sync_database.sh script for database synchronization
+
+### Database Consolidation and Bounty Fixes (July 2025)
+Consolidated database to single location and fixed bounty amount persistence:
+- **Database Consolidation**:
+  - Single database location: `backend/data/posting_board_uuid.db`
+  - Works seamlessly for both native and Docker deployments
+  - Updated all references to use the data directory
+- **Bounty Amount Fix**:
+  - Fixed issue where bulk uploaded bounty amounts weren't persisting
+  - Amount now tracked for all monetary bounties regardless of expense status
+  - Auto-approval for amounts ≤ $50, manual approval required for amounts > $50
+- **Admin Bounty Management**:
+  - Added monetary bounty fields to admin edit modals (Dashboard and Manage Ideas)
+  - Admins can approve bounties directly from the edit interface
+  - Complete tracking of approval status and history
 
 ### Codebase Cleanup (July 2025)
 Removed test files and migration documents no longer in use:

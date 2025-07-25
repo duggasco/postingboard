@@ -596,6 +596,91 @@ def deny_team(identifier):
     finally:
         db.close()
 
+@api_bp.route('/ideas/<identifier>/bounty', methods=['GET'])
+def get_idea_bounty(identifier):
+    """Get bounty details for an idea."""
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
+    
+    db = get_session()
+    try:
+        idea = get_by_identifier(Idea, identifier, db)
+        if not idea:
+            return jsonify({'error': 'Idea not found'}), 404
+        
+        bounty = db.query(Bounty).filter_by(idea_uuid=idea.uuid).first()
+        if bounty:
+            return jsonify({
+                'bounty': {
+                    'is_monetary': bounty.is_monetary,
+                    'is_expensed': bounty.is_expensed,
+                    'amount': bounty.amount,
+                    'requires_approval': bounty.requires_approval,
+                    'is_approved': bounty.is_approved,
+                    'approved_by': bounty.approved_by,
+                    'approved_at': bounty.approved_at.isoformat() if bounty.approved_at else None
+                }
+            })
+        else:
+            return jsonify({'bounty': None})
+    finally:
+        db.close()
+
+@api_bp.route('/ideas/<identifier>/approve-bounty', methods=['POST'])
+def approve_bounty(identifier):
+    """Approve a monetary bounty (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    if not is_valid_uuid(identifier):
+        return jsonify({'success': False, 'message': 'Invalid identifier'}), 400
+    
+    db = get_session()
+    try:
+        idea = get_by_identifier(Idea, identifier, db)
+        if not idea:
+            return jsonify({'success': False, 'message': 'Idea not found'}), 404
+        
+        bounty = db.query(Bounty).filter_by(idea_uuid=idea.uuid).first()
+        if not bounty:
+            return jsonify({'success': False, 'message': 'No bounty found for this idea'}), 404
+        
+        if not bounty.requires_approval:
+            return jsonify({'success': False, 'message': 'This bounty does not require approval'}), 400
+        
+        if bounty.is_approved is not None:
+            return jsonify({'success': False, 'message': 'Bounty has already been processed'}), 400
+        
+        # Approve the bounty
+        bounty.is_approved = True
+        bounty.approved_by = session.get('user_email', 'admin')
+        bounty.approved_at = datetime.utcnow()
+        
+        # Remove any pending approval notifications
+        db.query(Notification).filter_by(
+            idea_uuid=idea.uuid,
+            type='bounty_approval',
+            is_read=False
+        ).update({'is_read': True, 'read_at': datetime.utcnow()})
+        
+        # Notify the submitter
+        notification = Notification(
+            user_email=idea.email,
+            type='bounty_approved',
+            title='Bounty approved!',
+            message=f'The ${bounty.amount:.2f} bounty for "{idea.title}" has been approved.',
+            idea_uuid=idea.uuid
+        )
+        db.add(notification)
+        
+        db.commit()
+        return jsonify({'success': True, 'message': 'Bounty approved successfully'})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
 @api_bp.route('/ideas/<identifier>', methods=['PUT'])
 def update_idea(identifier):
     """Update an idea (admin only)."""
@@ -666,6 +751,33 @@ def update_idea(identifier):
             idea.description = data['description']
         if 'bounty' in data:
             idea.bounty = data['bounty']
+        
+        # Handle monetary bounty fields
+        if any(key in data for key in ['is_monetary', 'is_expensed', 'amount']):
+            # Get or create bounty record
+            bounty = db.query(Bounty).filter_by(idea_uuid=idea.uuid).first()
+            
+            if data.get('is_monetary', False):
+                if not bounty:
+                    bounty = Bounty(idea_uuid=idea.uuid)
+                    db.add(bounty)
+                
+                bounty.is_monetary = data.get('is_monetary', False)
+                bounty.is_expensed = data.get('is_expensed', False)
+                bounty.amount = data.get('amount', 0.0)  # Store amount regardless of is_expensed
+                
+                # Set approval requirement for amounts over $50
+                if bounty.amount > 50:
+                    # Only set requires_approval if not already approved
+                    if bounty.is_approved is None:
+                        bounty.requires_approval = True
+                else:
+                    bounty.requires_approval = False
+                    bounty.is_approved = True  # Auto-approve small amounts
+            else:
+                # If not monetary, remove bounty record if it exists
+                if bounty:
+                    db.delete(bounty)
         
         # Handle skills update
         if 'skill_ids' in data:
@@ -3021,7 +3133,7 @@ def bulk_upload_ideas():
                         is_expensed=is_expensed,
                         amount=amount,
                         requires_approval=amount > 50,
-                        is_approved=None  # Pending approval if over $50
+                        is_approved=True if amount <= 50 else None  # Auto-approve amounts <= $50
                     )
                     db.add(bounty)
                 

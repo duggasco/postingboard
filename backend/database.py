@@ -6,12 +6,15 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 # Support both native and Docker deployments
+# Use data directory for database persistence
 if os.path.exists('/app/data'):
-    # Docker environment
+    # Docker environment - /app/data is mounted from ./backend/data
     DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:////app/data/posting_board_uuid.db')
 else:
-    # Native environment
-    DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///posting_board_uuid.db')
+    # Native environment - use backend/data directory
+    data_dir = os.path.join(os.path.dirname(__file__), 'data')
+    os.makedirs(data_dir, exist_ok=True)
+    DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{data_dir}/posting_board_uuid.db')
 # For SQLite, use StaticPool to avoid isolation issues
 from sqlalchemy.pool import StaticPool
 if DATABASE_URL.startswith('sqlite'):

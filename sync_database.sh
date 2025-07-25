@@ -10,18 +10,18 @@ if [ -f /.dockerenv ]; then
     DB_PATH="/app/data/posting_board_uuid.db"
 else
     echo "Running in native environment"
-    DB_PATH="backend/posting_board_uuid.db"
+    DB_PATH="backend/data/posting_board_uuid.db"
 fi
 
 # For Docker deployment preparation
 if [ "$1" == "docker-prep" ]; then
     echo "Preparing database for Docker deployment..."
-    if [ -f "backend/posting_board_uuid.db" ]; then
-        echo "Database found at backend/posting_board_uuid.db"
-        echo "When deploying to Docker, this will be copied to /app/data/"
-        echo "Size: $(ls -lh backend/posting_board_uuid.db | awk '{print $5}')"
+    if [ -f "backend/data/posting_board_uuid.db" ]; then
+        echo "Database found at backend/data/posting_board_uuid.db"
+        echo "When deploying to Docker, this will be mounted to /app/data/"
+        echo "Size: $(ls -lh backend/data/posting_board_uuid.db | awk '{print $5}')"
     else
-        echo "Warning: No database found at backend/posting_board_uuid.db"
+        echo "Warning: No database found at backend/data/posting_board_uuid.db"
     fi
 fi
 
@@ -30,7 +30,8 @@ if [ "$1" == "native-prep" ]; then
     echo "Preparing database for native deployment..."
     if [ -f "/app/data/posting_board_uuid.db" ]; then
         echo "Copying Docker database to native location..."
-        cp /app/data/posting_board_uuid.db backend/posting_board_uuid.db
+        mkdir -p backend/data
+        cp /app/data/posting_board_uuid.db backend/data/posting_board_uuid.db
         echo "Database copied successfully"
     else
         echo "No Docker database found to copy"

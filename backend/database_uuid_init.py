@@ -20,8 +20,12 @@ from models import (
 
 def init_database():
     """Initialize database with UUID-only schema."""
-    # Create database
-    db_path = 'posting_board_uuid.db'
+    # Create data directory if it doesn't exist
+    data_dir = os.path.join(os.path.dirname(__file__), 'data')
+    os.makedirs(data_dir, exist_ok=True)
+    
+    # Create database in data directory
+    db_path = os.path.join(data_dir, 'posting_board_uuid.db')
     if os.path.exists(db_path):
         os.remove(db_path)
         print(f"Removed existing database: {db_path}")

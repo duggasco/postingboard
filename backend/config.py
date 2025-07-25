@@ -4,7 +4,8 @@ from datetime import timedelta
 class Config:
     """Base configuration."""
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///posting_board.db')
+    # This is not used - database.py handles the database URL
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///data/posting_board_uuid.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Session configuration
