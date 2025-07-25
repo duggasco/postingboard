@@ -68,63 +68,6 @@
         <p style="white-space: pre-wrap;">{{ idea.description }}</p>
     </div>
     
-    {% if idea.status.value == 'claimed' and idea.sub_status %}
-    <div style="margin-bottom: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #4a90e2;">
-        <h3 style="margin-top: 0; margin-bottom: 15px;">Development Progress</h3>
-        
-        <div style="margin-bottom: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-weight: 600; color: #495057;">Status: 
-                    <span class="sub-status-badge sub-status-{{ idea.sub_status.value }}">
-                        {{ idea.sub_status.value.replace('_', ' ').title() }}
-                    </span>
-                </span>
-                <span style="font-size: 14px; color: #6c757d;">{{ idea.progress_percentage }}% Complete</span>
-            </div>
-            
-            <!-- Progress bar -->
-            <div style="background-color: #e9ecef; border-radius: 4px; height: 20px; position: relative; overflow: hidden;">
-                <div style="background-color: {% if idea.sub_status.value in ['blocked', 'on_hold'] %}#dc3545{% elif idea.sub_status.value == 'verified' %}#28a745{% else %}#4a90e2{% endif %}; 
-                           height: 100%; width: {{ idea.progress_percentage }}%; transition: width 0.3s ease;"></div>
-            </div>
-        </div>
-        
-        {% if idea.expected_completion %}
-        <div style="margin-bottom: 10px;">
-            <strong>Expected Completion:</strong> {{ idea.expected_completion.strftime('%B %d, %Y') }}
-        </div>
-        {% endif %}
-        
-        {% if idea.blocked_reason and idea.sub_status.value in ['blocked', 'on_hold'] %}
-        <div style="margin-bottom: 10px; padding: 10px; background-color: #fff3cd; border-radius: 4px; border-left: 3px solid #ffc107;">
-            <strong>Reason:</strong> {{ idea.blocked_reason }}
-        </div>
-        {% endif %}
-        
-        {% if idea.sub_status_updated_at %}
-        <div style="font-size: 12px; color: #6c757d;">
-            Last updated: {{ idea.sub_status_updated_at.strftime('%B %d, %Y at %I:%M %p') }}
-            {% if idea.sub_status_updated_by %} by {{ idea.sub_status_updated_by }}{% endif %}
-        </div>
-        {% endif %}
-        
-        <!-- Update controls for authorized users -->
-        {% set is_claimer = false %}
-        {% for claim in idea.claims %}
-            {% if claim.claimer_email == session.get('user_email') %}
-                {% set is_claimer = true %}
-            {% endif %}
-        {% endfor %}
-        {% if session.get('user_email') and (is_claimer or 
-              session.get('is_admin') or 
-              (session.get('user_managed_team_id') and idea.claims and idea.claims[0].claimer_team == session.get('user_team'))) %}
-        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
-            <button class="btn btn-sm btn-secondary" onclick="showUpdateSubStatusModal()">Update Status</button>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
-    
     {% if idea.claims %}
     <div style="margin-bottom: 30px;">
         <h3>Claim History</h3>
@@ -140,14 +83,167 @@
     </div>
     {% endif %}
     
-    {% if idea.status_history and idea.status_history|length > 0 %}
-    <div style="margin-bottom: 30px;">
-        <h3>Status History</h3>
-        <div id="status-history-timeline" style="position: relative; padding-left: 30px;">
-            <!-- Timeline will be populated by JavaScript -->
+    <!-- Enhanced SDLC Tracking Tabs -->
+    <div style="margin-top: 40px; margin-bottom: 30px;">
+        <div style="border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; gap: 20px;">
+                <li style="display: inline-block;">
+                    <button class="tab-button active" onclick="showTab('overview')" data-tab="overview" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; border-bottom: 3px solid #4a90e2; color: #4a90e2;">Overview</button>
+                </li>
+                <li style="display: inline-block;">
+                    <button class="tab-button" onclick="showTab('comments')" data-tab="comments" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; color: #6c757d;">Comments <span id="comments-count" style="background: #6c757d; color: white; border-radius: 10px; padding: 2px 6px; font-size: 12px; margin-left: 5px;">0</span></button>
+                </li>
+                <li style="display: inline-block;">
+                    <button class="tab-button" onclick="showTab('links')" data-tab="links" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; color: #6c757d;">Links & Resources</button>
+                </li>
+                <li style="display: inline-block;">
+                    <button class="tab-button" onclick="showTab('activity')" data-tab="activity" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; color: #6c757d;">Activity</button>
+                </li>
+                {% if idea.status_history and idea.status_history|length > 0 %}
+                <li style="display: inline-block;">
+                    <button class="tab-button" onclick="showTab('history')" data-tab="history" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; color: #6c757d;">Status History</button>
+                </li>
+                {% endif %}
+            </ul>
         </div>
+        
+        <!-- Tab Content -->
+        <div id="tab-overview" class="tab-content" style="display: block;">
+            {% if idea.status.value == 'claimed' and idea.sub_status %}
+            <div style="margin-bottom: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #4a90e2;">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">Development Progress</h3>
+                
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 600; color: #495057;">Status: 
+                            <span class="sub-status-badge sub-status-{{ idea.sub_status.value }}">
+                                {{ idea.sub_status.value.replace('_', ' ').title() }}
+                            </span>
+                        </span>
+                        <span style="font-size: 14px; color: #6c757d;">{{ idea.progress_percentage }}% Complete</span>
+                    </div>
+                    
+                    <!-- Progress bar -->
+                    <div style="background-color: #e9ecef; border-radius: 4px; height: 20px; position: relative; overflow: hidden;">
+                        <div style="background-color: {% if idea.sub_status.value in ['blocked', 'on_hold'] %}#dc3545{% elif idea.sub_status.value == 'verified' %}#28a745{% else %}#4a90e2{% endif %}; 
+                                   height: 100%; width: {{ idea.progress_percentage }}%; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                
+                {% if idea.expected_completion %}
+                <div style="margin-bottom: 10px;">
+                    <strong>Expected Completion:</strong> {{ idea.expected_completion.strftime('%B %d, %Y') }}
+                </div>
+                {% endif %}
+                
+                {% if idea.blocked_reason and idea.sub_status.value in ['blocked', 'on_hold'] %}
+                <div style="margin-bottom: 10px; padding: 10px; background-color: #fff3cd; border-radius: 4px; border-left: 3px solid #ffc107;">
+                    <strong>Reason:</strong> {{ idea.blocked_reason }}
+                </div>
+                {% endif %}
+                
+                {% if idea.sub_status_updated_at %}
+                <div style="font-size: 12px; color: #6c757d;">
+                    Last updated: {{ idea.sub_status_updated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                    {% if idea.sub_status_updated_by %} by {{ idea.sub_status_updated_by }}{% endif %}
+                </div>
+                {% endif %}
+                
+                <!-- Update controls for authorized users -->
+                {% set is_claimer = false %}
+                {% for claim in idea.claims %}
+                    {% if claim.claimer_email == session.get('user_email') %}
+                        {% set is_claimer = true %}
+                    {% endif %}
+                {% endfor %}
+                {% if session.get('user_email') and (is_claimer or 
+                      session.get('is_admin') or 
+                      (session.get('user_managed_team_id') and idea.claims and idea.claims[0].claimer_team == session.get('user_team'))) %}
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                    <button class="btn btn-sm btn-secondary" onclick="showUpdateSubStatusModal()">Update Status</button>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <!-- GANTT Chart Section -->
+            {% if idea.status.value == 'claimed' %}
+            <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #4a90e2;">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">Project Timeline</h3>
+                
+                <div id="gantt-chart-container" style="position: relative; min-height: 200px; background: white; border: 1px solid #dee2e6; border-radius: 4px; padding: 20px;">
+                    <!-- GANTT Chart will be rendered here -->
+                    <canvas id="gantt-canvas" style="width: 100%; height: 100%;"></canvas>
+                </div>
+                
+                <div style="margin-top: 15px; font-size: 12px; color: #6c757d;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #4a90e2; border-radius: 2px;"></span> Planned</span>
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #28a745; border-radius: 2px;"></span> Completed</span>
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #ffc107; border-radius: 2px;"></span> In Progress</span>
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #dc3545; border-radius: 2px;"></span> Blocked/Delayed</span>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        Timeline based on: {{ idea.size.value.replace('_', ' ').title() }} size idea • Due by {{ idea.needed_by.strftime('%B %d, %Y') if idea.needed_by else 'No deadline set' }}
+                    </div>
+                    {% if session.get('user_email') %}
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="exportGanttChart()">Export Timeline</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="showGanttSettingsModal()">Customize Timeline</button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div id="tab-comments" class="tab-content" style="display: none;">
+            <div style="margin-bottom: 20px;">
+                {% if session.get('user_email') %}
+                <form id="add-comment-form" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <textarea id="comment-content" class="form-control" rows="3" placeholder="Add a comment..." style="resize: vertical;"></textarea>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="margin: 0;">
+                            <input type="checkbox" id="comment-internal" style="margin-right: 5px;">
+                            Internal note (only visible to team)
+                        </label>
+                        <button type="submit" class="btn btn-primary btn-sm">Add Comment</button>
+                    </div>
+                </form>
+                {% endif %}
+                <div id="comments-container">
+                    <div class="loading">Loading comments...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="tab-links" class="tab-content" style="display: none;">
+            <div style="margin-bottom: 20px;">
+                {% if session.get('user_email') %}
+                <button class="btn btn-primary btn-sm" onclick="showAddLinkModal()">Add Link</button>
+                {% endif %}
+            </div>
+            <div id="external-links-container">
+                <div class="loading">Loading links...</div>
+            </div>
+        </div>
+        
+        <div id="tab-activity" class="tab-content" style="display: none;">
+            <div id="activity-feed-container">
+                <div class="loading">Loading activity...</div>
+            </div>
+        </div>
+        
+        {% if idea.status_history and idea.status_history|length > 0 %}
+        <div id="tab-history" class="tab-content" style="display: none;">
+            <div id="status-history-timeline" style="position: relative; padding-left: 30px;">
+                <!-- Timeline will be populated by JavaScript -->
+            </div>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
     
     {% if idea.status.value == 'open' and session.get('user_role') in ['citizen_developer', 'developer'] %}
     <div style="margin-top: 30px;">
@@ -211,6 +307,54 @@
             <div style="margin-top: 20px;">
                 <button type="submit" class="btn btn-primary">Update Status</button>
                 <button type="button" class="btn btn-secondary" onclick="closeUpdateSubStatusModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add External Link Modal -->
+<div id="add-link-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Add External Link</h3>
+            <button class="modal-close" onclick="closeAddLinkModal()">&times;</button>
+        </div>
+        
+        <form id="add-link-form">
+            <div class="form-group">
+                <label for="link-type">Link Type <span style="color: red;">*</span></label>
+                <select id="link-type" class="form-control" required>
+                    <option value="">Select type...</option>
+                    <option value="repository">Repository</option>
+                    <option value="pull_request">Pull Request</option>
+                    <option value="ado_work_item">ADO Work Item</option>
+                    <option value="documentation">Documentation</option>
+                    <option value="gantt_chart">GANTT Chart</option>
+                    <option value="test_results">Test Results</option>
+                    <option value="deployment_guide">Deployment Guide</option>
+                    <option value="design_doc">Design Document</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="link-title">Title <span style="color: red;">*</span></label>
+                <input type="text" id="link-title" class="form-control" required placeholder="e.g., Main Repository, PR #123">
+            </div>
+            
+            <div class="form-group">
+                <label for="link-url">URL <span style="color: red;">*</span></label>
+                <input type="url" id="link-url" class="form-control" required placeholder="https://...">
+            </div>
+            
+            <div class="form-group">
+                <label for="link-description">Description (Optional)</label>
+                <textarea id="link-description" class="form-control" rows="2" placeholder="Brief description of this resource..."></textarea>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Add Link</button>
+                <button type="button" class="btn btn-secondary" onclick="closeAddLinkModal()">Cancel</button>
             </div>
         </form>
     </div>
@@ -355,38 +499,593 @@ if (updateSubStatusForm) {
     });
 }
 
-// Display status history timeline if available
-const statusHistory = {{ status_history_json | tojson }};
-if (statusHistory.length > 0) {
-    const timeline = document.getElementById('status-history-timeline');
-    if (timeline) {
-        let timelineHtml = '';
-        statusHistory.forEach((entry, index) => {
-            const isLast = index === statusHistory.length - 1;
-            const fromStatus = entry.from_sub_status || entry.from_status;
-            const toStatus = entry.to_sub_status || entry.to_status;
-            
-            timelineHtml += `
-                <div style="position: relative; margin-bottom: ${isLast ? '0' : '20px'};">
-                    <div style="position: absolute; left: -30px; top: 5px; width: 12px; height: 12px; 
-                               background-color: ${isLast ? '#4a90e2' : '#dee2e6'}; 
-                               border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 3px #f8f9fa;"></div>
-                    ${!isLast ? '<div style="position: absolute; left: -25px; top: 17px; width: 2px; height: calc(100% + 20px); background-color: #dee2e6;"></div>' : ''}
-                    <div style="background-color: #f8f9fa; padding: 12px 16px; border-radius: 8px; border-left: 3px solid ${isLast ? '#4a90e2' : '#dee2e6'};">
-                        <div style="font-weight: 600; margin-bottom: 4px;">
-                            ${fromStatus ? `${fromStatus.replace(/_/g, ' ')} → ` : ''}${toStatus.replace(/_/g, ' ')}
-                        </div>
-                        <div style="font-size: 12px; color: #6c757d;">
-                            ${new Date(entry.changed_at).toLocaleString()} by ${entry.changed_by}
-                            ${entry.duration_minutes ? ` • Duration: ${entry.duration_minutes} minutes` : ''}
-                        </div>
-                        ${entry.comment ? `<div style="margin-top: 4px; font-size: 13px; color: #495057;">${entry.comment}</div>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-        timeline.innerHTML = timelineHtml;
+// Enhanced SDLC Tracking Functions
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.borderBottom = 'none';
+        btn.style.color = '#6c757d';
+    });
+    
+    // Show selected tab
+    document.getElementById(`tab-${tabName}`).style.display = 'block';
+    
+    // Set active button
+    const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+    activeBtn.classList.add('active');
+    activeBtn.style.borderBottom = '3px solid #4a90e2';
+    activeBtn.style.color = '#4a90e2';
+    
+    // Load content if needed
+    if (tabName === 'comments' && !document.getElementById('comments-container').dataset.loaded) {
+        loadComments();
+    } else if (tabName === 'links' && !document.getElementById('external-links-container').dataset.loaded) {
+        loadExternalLinks();
+    } else if (tabName === 'activity' && !document.getElementById('activity-feed-container').dataset.loaded) {
+        loadActivityFeed();
+    } else if (tabName === 'history') {
+        displayStatusHistory();
     }
+}
+
+// Load comments
+async function loadComments() {
+    try {
+        const response = await fetch(`/api/ideas/{{ idea.id }}/comments`);
+        const comments = await response.json();
+        
+        const container = document.getElementById('comments-container');
+        container.dataset.loaded = 'true';
+        
+        if (comments.length === 0) {
+            container.innerHTML = '<p style="color: #6c757d;">No comments yet. Be the first to comment!</p>';
+        } else {
+            let html = '';
+            comments.forEach(comment => {
+                html += `
+                    <div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; ${comment.is_internal ? 'border-left: 3px solid #ffc107;' : ''}">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <strong>${utils.escapeHtml(comment.author_name)}</strong>
+                            <span style="font-size: 12px; color: #6c757d;">${comment.created_at}</span>
+                        </div>
+                        <div style="white-space: pre-wrap;">${utils.escapeHtml(comment.content)}</div>
+                        ${comment.is_internal ? '<span style="font-size: 11px; color: #856404;">Internal note</span>' : ''}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        
+        // Update count
+        document.getElementById('comments-count').textContent = comments.length;
+    } catch (error) {
+        console.error('Error loading comments:', error);
+        document.getElementById('comments-container').innerHTML = '<p style="color: #dc3545;">Error loading comments</p>';
+    }
+}
+
+// Add comment
+const addCommentForm = document.getElementById('add-comment-form');
+if (addCommentForm) {
+    addCommentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const content = document.getElementById('comment-content').value.trim();
+        if (!content) return;
+        
+        try {
+            const response = await fetch(`/api/ideas/{{ idea.id }}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: content,
+                    is_internal: document.getElementById('comment-internal').checked
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                document.getElementById('comment-content').value = '';
+                document.getElementById('comment-internal').checked = false;
+                loadComments(); // Reload comments
+            } else {
+                alert('Error adding comment: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error adding comment');
+            console.error('Error:', error);
+        }
+    });
+}
+
+// Load external links
+async function loadExternalLinks() {
+    try {
+        const response = await fetch(`/api/ideas/{{ idea.id }}/external-links`);
+        const links = await response.json();
+        
+        const container = document.getElementById('external-links-container');
+        container.dataset.loaded = 'true';
+        
+        if (links.length === 0) {
+            container.innerHTML = '<p style="color: #6c757d;">No external links added yet.</p>';
+        } else {
+            let html = '<div style="display: grid; gap: 15px;">';
+            links.forEach(link => {
+                const icon = getLinkIcon(link.link_type);
+                html += `
+                    <div style="padding: 15px; background-color: #f8f9fa; border-radius: 8px; display: flex; align-items: start; gap: 15px;">
+                        <div style="font-size: 24px; color: #6c757d;">${icon}</div>
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 5px 0; font-size: 16px;">
+                                <a href="${utils.escapeHtml(link.url)}" target="_blank" style="color: #4a90e2; text-decoration: none;">
+                                    ${utils.escapeHtml(link.title)}
+                                </a>
+                            </h4>
+                            ${link.description ? `<p style="margin: 5px 0; color: #495057; font-size: 14px;">${utils.escapeHtml(link.description)}</p>` : ''}
+                            <div style="font-size: 12px; color: #6c757d;">
+                                ${link.link_type.replace(/_/g, ' ')} • Added by ${utils.escapeHtml(link.creator_name)} on ${link.created_at}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Error loading links:', error);
+        document.getElementById('external-links-container').innerHTML = '<p style="color: #dc3545;">Error loading links</p>';
+    }
+}
+
+// Get icon for link type
+function getLinkIcon(linkType) {
+    const icons = {
+        repository: '📁',
+        pull_request: '🔀',
+        ado_work_item: '📋',
+        documentation: '📚',
+        gantt_chart: '📊',
+        test_results: '✅',
+        deployment_guide: '🚀',
+        design_doc: '🎨',
+        other: '🔗'
+    };
+    return icons[linkType] || '🔗';
+}
+
+// Show add link modal
+function showAddLinkModal() {
+    document.getElementById('add-link-modal').classList.add('active');
+}
+
+function closeAddLinkModal() {
+    document.getElementById('add-link-modal').classList.remove('active');
+    document.getElementById('add-link-form').reset();
+}
+
+// Add external link
+const addLinkForm = document.getElementById('add-link-form');
+if (addLinkForm) {
+    addLinkForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const linkData = {
+            link_type: document.getElementById('link-type').value,
+            title: document.getElementById('link-title').value,
+            url: document.getElementById('link-url').value,
+            description: document.getElementById('link-description').value
+        };
+        
+        try {
+            const response = await fetch(`/api/ideas/{{ idea.id }}/external-links`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(linkData)
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                closeAddLinkModal();
+                loadExternalLinks(); // Reload links
+            } else {
+                alert('Error adding link: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error adding link');
+            console.error('Error:', error);
+        }
+    });
+}
+
+// Load activity feed
+async function loadActivityFeed() {
+    try {
+        const response = await fetch(`/api/ideas/{{ idea.id }}/activities`);
+        const activities = await response.json();
+        
+        const container = document.getElementById('activity-feed-container');
+        container.dataset.loaded = 'true';
+        
+        if (activities.length === 0) {
+            container.innerHTML = '<p style="color: #6c757d;">No activity recorded yet.</p>';
+        } else {
+            let html = '<div style="position: relative; padding-left: 30px;">';
+            activities.forEach((activity, index) => {
+                const isLast = index === activities.length - 1;
+                const icon = getActivityIcon(activity.activity_type);
+                
+                html += `
+                    <div style="position: relative; margin-bottom: ${isLast ? '0' : '20px'};">
+                        <div style="position: absolute; left: -30px; top: 5px; width: 24px; height: 24px; 
+                                   background-color: white; border: 2px solid #dee2e6; border-radius: 50%; 
+                                   display: flex; align-items: center; justify-content: center; font-size: 12px;">
+                            ${icon}
+                        </div>
+                        ${!isLast ? '<div style="position: absolute; left: -19px; top: 29px; width: 2px; height: calc(100% + 20px); background-color: #dee2e6;"></div>' : ''}
+                        <div style="padding: 10px 15px; background-color: #f8f9fa; border-radius: 8px;">
+                            <div style="font-size: 14px; margin-bottom: 5px;">
+                                <strong>${utils.escapeHtml(activity.actor_name)}</strong> ${utils.escapeHtml(activity.description)}
+                            </div>
+                            <div style="font-size: 12px; color: #6c757d;">${activity.created_at}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Error loading activity:', error);
+        document.getElementById('activity-feed-container').innerHTML = '<p style="color: #dc3545;">Error loading activity</p>';
+    }
+}
+
+// Get icon for activity type
+function getActivityIcon(activityType) {
+    const icons = {
+        status_change: '🔄',
+        comment_added: '💬',
+        link_added: '🔗',
+        link_removed: '❌',
+        progress_updated: '📊',
+        field_changed: '✏️',
+        assigned: '👤',
+        claimed: '✋',
+        approved: '✅',
+        rejected: '❌'
+    };
+    return icons[activityType] || '📝';
+}
+
+// Display status history timeline
+function displayStatusHistory() {
+    const statusHistory = {{ status_history_json | tojson }};
+    if (statusHistory.length > 0) {
+        const timeline = document.getElementById('status-history-timeline');
+        if (timeline) {
+            let timelineHtml = '';
+            statusHistory.forEach((entry, index) => {
+                const isLast = index === statusHistory.length - 1;
+                const fromStatus = entry.from_sub_status || entry.from_status;
+                const toStatus = entry.to_sub_status || entry.to_status;
+                
+                timelineHtml += `
+                    <div style="position: relative; margin-bottom: ${isLast ? '0' : '20px'};">
+                        <div style="position: absolute; left: -30px; top: 5px; width: 12px; height: 12px; 
+                                   background-color: ${isLast ? '#4a90e2' : '#dee2e6'}; 
+                                   border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 3px #f8f9fa;"></div>
+                        ${!isLast ? '<div style="position: absolute; left: -25px; top: 17px; width: 2px; height: calc(100% + 20px); background-color: #dee2e6;"></div>' : ''}
+                        <div style="background-color: #f8f9fa; padding: 12px 16px; border-radius: 8px; border-left: 3px solid ${isLast ? '#4a90e2' : '#dee2e6'};">
+                            <div style="font-weight: 600; margin-bottom: 4px;">
+                                ${fromStatus ? `${fromStatus.replace(/_/g, ' ')} → ` : ''}${toStatus.replace(/_/g, ' ')}
+                            </div>
+                            <div style="font-size: 12px; color: #6c757d;">
+                                ${new Date(entry.changed_at).toLocaleString()} by ${entry.changed_by}
+                                ${entry.duration_minutes ? ` • Duration: ${entry.duration_minutes} minutes` : ''}
+                            </div>
+                            ${entry.comment ? `<div style="margin-top: 4px; font-size: 13px; color: #495057;">${entry.comment}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            timeline.innerHTML = timelineHtml;
+        }
+    }
+}
+
+// GANTT Chart Rendering
+function renderGanttChart() {
+    const canvas = document.getElementById('gantt-canvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = 250;
+    
+    // Get idea data
+    const ideaData = {
+        size: '{{ idea.size.value }}',
+        status: '{{ idea.status.value }}',
+        subStatus: '{{ idea.sub_status.value if idea.sub_status else "" }}',
+        progress: {{ idea.progress_percentage or 0 }},
+        dateSubmitted: new Date('{{ idea.date_submitted.isoformat() }}'),
+        neededBy: {% if idea.needed_by %}new Date('{{ idea.needed_by.isoformat() }}'){% else %}null{% endif %},
+        claimDate: {% if idea.claims %}new Date('{{ idea.claims[0].claim_date.isoformat() }}'){% else %}null{% endif %}
+    };
+    
+    // Check for custom settings
+    const customSettings = sessionStorage.getItem(`gantt-settings-{{ idea.id }}`);
+    let startDate, endDate, phases;
+    
+    if (customSettings) {
+        const settings = JSON.parse(customSettings);
+        startDate = new Date(settings.startDate);
+        endDate = new Date(settings.endDate);
+        phases = [
+            { name: 'Planning', duration: settings.phases.planning, status: 'planning' },
+            { name: 'Development', duration: settings.phases.development, status: 'in_development' },
+            { name: 'Testing', duration: settings.phases.testing, status: 'testing' },
+            { name: 'Deployment', duration: settings.phases.deployment, status: 'awaiting_deployment' },
+            { name: 'Verification', duration: settings.phases.verification, status: 'deployed,verified' }
+        ];
+    } else {
+        // Calculate timeline based on size
+        const sizeDurations = {
+            'small': 5,      // 5 days
+            'medium': 10,    // 10 days
+            'large': 20,     // 20 days
+            'extra_large': 30 // 30 days
+        };
+        
+        const estimatedDays = sizeDurations[ideaData.size] || 10;
+        startDate = ideaData.claimDate || new Date();
+        endDate = ideaData.neededBy || new Date(startDate.getTime() + (estimatedDays * 24 * 60 * 60 * 1000));
+        
+        // Define phases based on sub-status
+        phases = [
+            { name: 'Planning', duration: 0.15, status: 'planning' },
+            { name: 'Development', duration: 0.40, status: 'in_development' },
+            { name: 'Testing', duration: 0.25, status: 'testing' },
+            { name: 'Deployment', duration: 0.10, status: 'awaiting_deployment' },
+            { name: 'Verification', duration: 0.10, status: 'deployed,verified' }
+        ];
+    }
+    
+    // Calculate phase positions
+    const totalDuration = endDate - startDate;
+    const pixelsPerDay = (canvas.width - 100) / (totalDuration / (1000 * 60 * 60 * 24));
+    
+    // Draw timeline header
+    ctx.fillStyle = '#f8f9fa';
+    ctx.fillRect(0, 0, canvas.width, 40);
+    
+    // Draw month labels
+    ctx.fillStyle = '#495057';
+    ctx.font = '12px sans-serif';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    let currentDate = new Date(startDate);
+    let x = 100;
+    while (currentDate <= endDate) {
+        const monthLabel = months[currentDate.getMonth()] + ' ' + currentDate.getDate();
+        ctx.fillText(monthLabel, x, 25);
+        x += pixelsPerDay * 7; // Weekly markers
+        currentDate.setDate(currentDate.getDate() + 7);
+    }
+    
+    // Draw phases
+    let y = 60;
+    let cumulativeDuration = 0;
+    
+    phases.forEach((phase, index) => {
+        const phaseStart = new Date(startDate.getTime() + (cumulativeDuration * totalDuration));
+        const phaseDuration = phase.duration * totalDuration;
+        const phaseEnd = new Date(phaseStart.getTime() + phaseDuration);
+        
+        const x1 = 100;
+        const x2 = x1 + (phaseDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay;
+        
+        // Determine phase color based on current status
+        let fillColor = '#e9ecef'; // Not started
+        if (ideaData.subStatus) {
+            const statusOrder = ['planning', 'in_development', 'testing', 'awaiting_deployment', 'deployed', 'verified'];
+            const currentIndex = statusOrder.indexOf(ideaData.subStatus);
+            const phaseStatuses = phase.status.split(',');
+            const phaseIndex = statusOrder.findIndex(s => phaseStatuses.includes(s));
+            
+            if (phaseIndex < currentIndex) {
+                fillColor = '#28a745'; // Completed
+            } else if (phaseIndex === currentIndex) {
+                fillColor = '#ffc107'; // In progress
+            } else if (ideaData.subStatus === 'blocked' || ideaData.subStatus === 'on_hold') {
+                fillColor = '#dc3545'; // Blocked
+            }
+        }
+        
+        // Draw phase bar
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(x1, y, x2 - x1, 30);
+        
+        // Draw phase border
+        ctx.strokeStyle = '#dee2e6';
+        ctx.strokeRect(x1, y, x2 - x1, 30);
+        
+        // Draw phase label
+        ctx.fillStyle = '#212529';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(phase.name, 10, y + 20);
+        
+        // Draw progress within current phase
+        if (fillColor === '#ffc107' && ideaData.progress > 0) {
+            const phaseProgress = (ideaData.progress - (cumulativeDuration * 100)) / (phase.duration * 100);
+            if (phaseProgress > 0 && phaseProgress <= 1) {
+                ctx.fillStyle = 'rgba(40, 167, 69, 0.3)';
+                ctx.fillRect(x1, y, (x2 - x1) * phaseProgress, 30);
+            }
+        }
+        
+        y += 35;
+        cumulativeDuration += phase.duration;
+    });
+    
+    // Draw current date marker
+    const today = new Date();
+    if (today >= startDate && today <= endDate) {
+        const daysFromStart = (today - startDate) / (1000 * 60 * 60 * 24);
+        const todayX = 100 + (daysFromStart * pixelsPerDay);
+        
+        ctx.strokeStyle = '#dc3545';
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(todayX, 40);
+        ctx.lineTo(todayX, canvas.height - 20);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = '#dc3545';
+        ctx.font = '11px sans-serif';
+        ctx.fillText('Today', todayX - 15, canvas.height - 5);
+    }
+}
+
+// Export GANTT chart as PNG
+function exportGanttChart() {
+    const canvas = document.getElementById('gantt-canvas');
+    if (!canvas) return;
+    
+    // Create a link element and trigger download
+    const link = document.createElement('a');
+    link.download = `gantt-chart-idea-{{ idea.id }}-${new Date().toISOString().split('T')[0]}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+}
+
+// Show GANTT settings modal
+function showGanttSettingsModal() {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('gantt-settings-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'gantt-settings-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>Customize Timeline</h3>
+                    <button class="modal-close" onclick="closeGanttSettingsModal()">&times;</button>
+                </div>
+                
+                <form id="gantt-settings-form">
+                    <div class="form-group">
+                        <label for="gantt-start-date">Start Date</label>
+                        <input type="date" id="gantt-start-date" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gantt-end-date">End Date</label>
+                        <input type="date" id="gantt-end-date" class="form-control" value="${new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Phase Durations (%)</label>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Planning:</label>
+                                <input type="number" id="phase-planning" class="form-control" min="0" max="100" value="15" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Development:</label>
+                                <input type="number" id="phase-development" class="form-control" min="0" max="100" value="40" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Testing:</label>
+                                <input type="number" id="phase-testing" class="form-control" min="0" max="100" value="25" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Deployment:</label>
+                                <input type="number" id="phase-deployment" class="form-control" min="0" max="100" value="10" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Verification:</label>
+                                <input type="number" id="phase-verification" class="form-control" min="0" max="100" value="10" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Total must equal 100%</small>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary">Apply Settings</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeGanttSettingsModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Add form submission handler
+        document.getElementById('gantt-settings-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate phase percentages
+            const phases = ['planning', 'development', 'testing', 'deployment', 'verification'];
+            let total = 0;
+            phases.forEach(phase => {
+                total += parseInt(document.getElementById(`phase-${phase}`).value) || 0;
+            });
+            
+            if (total !== 100) {
+                alert('Phase durations must total 100%');
+                return;
+            }
+            
+            // Store settings and re-render
+            const settings = {
+                startDate: document.getElementById('gantt-start-date').value,
+                endDate: document.getElementById('gantt-end-date').value,
+                phases: {}
+            };
+            
+            phases.forEach(phase => {
+                settings.phases[phase] = parseInt(document.getElementById(`phase-${phase}`).value) / 100;
+            });
+            
+            // Store in sessionStorage for this idea
+            sessionStorage.setItem(`gantt-settings-{{ idea.id }}`, JSON.stringify(settings));
+            
+            // Re-render chart with new settings
+            renderGanttChart();
+            closeGanttSettingsModal();
+        });
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeGanttSettingsModal() {
+    const modal = document.getElementById('gantt-settings-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Render GANTT chart when overview tab is shown
+if (document.getElementById('gantt-canvas')) {
+    setTimeout(renderGanttChart, 100);
+    window.addEventListener('resize', renderGanttChart);
 }
 
 // Claim functionality

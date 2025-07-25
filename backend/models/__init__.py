@@ -260,3 +260,96 @@ class StatusHistory(Base):
     
     # Relationships
     idea = relationship('Idea', backref='status_history')
+
+class IdeaComment(Base):
+    __tablename__ = 'idea_comments'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    author_email = Column(String(120), nullable=False)
+    author_name = Column(String(100))
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime)
+    is_internal = Column(Boolean, default=False)  # Internal notes vs public comments
+    sub_status = Column(Enum(SubStatus))  # Which stage this comment relates to
+    
+    # Relationships
+    idea = relationship('Idea', backref='comments')
+    author = relationship('UserProfile', foreign_keys=[author_email], 
+                         primaryjoin="IdeaComment.author_email==UserProfile.email", viewonly=True)
+
+class ExternalLinkType(enum.Enum):
+    repository = "repository"
+    pull_request = "pull_request"
+    ado_work_item = "ado_work_item"
+    documentation = "documentation"
+    gantt_chart = "gantt_chart"
+    test_results = "test_results"
+    deployment_guide = "deployment_guide"
+    design_doc = "design_doc"
+    other = "other"
+
+class IdeaExternalLink(Base):
+    __tablename__ = 'idea_external_links'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    link_type = Column(Enum(ExternalLinkType), nullable=False)
+    title = Column(String(200), nullable=False)
+    url = Column(String(500), nullable=False)
+    description = Column(Text)
+    sub_status = Column(Enum(SubStatus))  # Which stage this link relates to
+    created_by = Column(String(120), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime)
+    
+    # Relationships
+    idea = relationship('Idea', backref='external_links')
+    creator = relationship('UserProfile', foreign_keys=[created_by],
+                          primaryjoin="IdeaExternalLink.created_by==UserProfile.email", viewonly=True)
+
+class ActivityType(enum.Enum):
+    status_change = "status_change"
+    comment_added = "comment_added"
+    link_added = "link_added"
+    link_removed = "link_removed"
+    progress_updated = "progress_updated"
+    field_changed = "field_changed"
+    assigned = "assigned"
+    claimed = "claimed"
+    approved = "approved"
+    rejected = "rejected"
+
+class IdeaActivity(Base):
+    __tablename__ = 'idea_activities'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    activity_type = Column(Enum(ActivityType), nullable=False)
+    actor_email = Column(String(120), nullable=False)
+    actor_name = Column(String(100))
+    description = Column(Text, nullable=False)  # Human-readable description
+    activity_data = Column(Text)  # JSON string with additional data
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    idea = relationship('Idea', backref='activities')
+    actor = relationship('UserProfile', foreign_keys=[actor_email],
+                        primaryjoin="IdeaActivity.actor_email==UserProfile.email", viewonly=True)
+
+# Stage-specific data storage
+class IdeaStageData(Base):
+    __tablename__ = 'idea_stage_data'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    sub_status = Column(Enum(SubStatus), nullable=False)
+    field_name = Column(String(100), nullable=False)
+    field_value = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime)
+    updated_by = Column(String(120))
+    
+    # Relationships
+    idea = relationship('Idea', backref='stage_data')

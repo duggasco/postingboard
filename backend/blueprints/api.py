@@ -2907,3 +2907,7 @@ def delete_admin_user(email):
         }), 500
     finally:
         db.close()
+
+# Register SDLC tracking endpoints
+from api_sdlc_endpoints import register_sdlc_endpoints
+register_sdlc_endpoints(api_bp)

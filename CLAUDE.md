@@ -572,6 +572,191 @@ A dynamic version indicator appears in the bottom right corner of all pages show
 - Falls back to "v.unknown" when git unavailable
 - Docker build args pass commit at build time: `GIT_COMMIT=$(git rev-parse --short HEAD)`
 
+## Enhanced SDLC Tracking
+
+### Overview
+The application now includes comprehensive SDLC (Software Development Life Cycle) tracking features inspired by tools like JIRA and MIRO. These features enable detailed tracking of idea progress through development stages with comments, external links, activity feeds, and GANTT charts.
+
+### Sub-Status Tracking
+Ideas in "claimed" status can now have detailed sub-statuses:
+- **Development Stages**: planning, in_development, testing, awaiting_deployment, deployed, verified
+- **Special States**: on_hold, blocked, cancelled, rolled_back
+- **Progress Tracking**: 0-100% completion with visual progress bars
+- **Blocked Reasons**: Required explanation when marking as blocked/on_hold
+- **Expected Completion**: Target dates for delivery
+
+### Development Progress Tab
+The idea detail page now features a tabbed interface with:
+1. **Overview Tab**:
+   - Development progress with sub-status and progress bar
+   - GANTT chart visualization showing project timeline
+   - Timeline based on idea size (small=5 days, medium=10 days, large=20 days, extra_large=30 days)
+   - Phase breakdown: Planning (15%), Development (40%), Testing (25%), Deployment (10%), Verification (10%)
+   - Export and customization options for GANTT charts
+
+2. **Comments Tab**:
+   - Threaded discussion for developers and idea owners
+   - Internal notes option for team-only visibility
+   - Automatic activity tracking for all comments
+
+3. **Links & Resources Tab**:
+   - External link management for related resources
+   - Support for: repositories, pull requests, ADO work items, documentation, GANTT charts, test results
+   - Categorized display with icons and metadata
+
+4. **Activity Tab**:
+   - JIRA-style activity feed showing all changes
+   - Visual timeline with action icons
+   - Tracks: status changes, comments, links, progress updates, assignments
+
+5. **Status History Tab**:
+   - Complete audit trail of all status changes
+   - Duration tracking between status changes
+   - Change comments and user attribution
+
+### GANTT Chart Features
+- **Automatic Timeline**: Based on idea size and due date
+- **Phase Visualization**: Color-coded phases showing progress
+  - Gray: Not started
+  - Green: Completed
+  - Yellow: In progress
+  - Red: Blocked/delayed
+- **Today Marker**: Visual indicator of current date
+- **Export Function**: Download chart as PNG image
+- **Customization**: Adjust phase durations and timeline dates
+
+### Database Schema
+
+#### Enhanced Idea Fields
+```python
+class Idea(Base):
+    # ... existing fields ...
+    sub_status = Column(Enum(SubStatus), nullable=True)
+    sub_status_updated_at = Column(DateTime)
+    sub_status_updated_by = Column(String(120))
+    progress_percentage = Column(Integer, default=0)
+    blocked_reason = Column(Text)
+    expected_completion = Column(DateTime)
+```
+
+#### Status History
+```python
+class StatusHistory(Base):
+    __tablename__ = 'status_history'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    from_status = Column(Enum(IdeaStatus))
+    to_status = Column(Enum(IdeaStatus))
+    from_sub_status = Column(Enum(SubStatus))
+    to_sub_status = Column(Enum(SubStatus))
+    changed_by = Column(String(120), nullable=False)
+    changed_at = Column(DateTime, default=datetime.utcnow)
+    comment = Column(Text)
+    duration_minutes = Column(Integer)
+```
+
+#### Comments System
+```python
+class IdeaComment(Base):
+    __tablename__ = 'idea_comments'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    author_email = Column(String(120), nullable=False)
+    author_name = Column(String(100))
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_internal = Column(Boolean, default=False)
+    sub_status = Column(Enum(SubStatus))
+```
+
+#### External Links
+```python
+class IdeaExternalLink(Base):
+    __tablename__ = 'idea_external_links'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    link_type = Column(Enum(ExternalLinkType), nullable=False)
+    title = Column(String(200), nullable=False)
+    url = Column(String(500), nullable=False)
+    description = Column(Text)
+    sub_status = Column(Enum(SubStatus))
+    created_by = Column(String(120), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+```
+
+#### Activity Feed
+```python
+class IdeaActivity(Base):
+    __tablename__ = 'idea_activities'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    activity_type = Column(Enum(ActivityType), nullable=False)
+    actor_email = Column(String(120), nullable=False)
+    actor_name = Column(String(100))
+    description = Column(Text, nullable=False)
+    activity_data = Column(Text)  # JSON for additional data
+    created_at = Column(DateTime, default=datetime.utcnow)
+```
+
+### API Endpoints
+
+#### Sub-Status Management
+- `PUT /api/ideas/<id>/sub-status` - Update sub-status and progress
+  ```json
+  {
+    "sub_status": "in_development",
+    "progress_percentage": 45,
+    "blocked_reason": "Waiting for API access",
+    "expected_completion": "2025-08-15",
+    "comment": "Started backend implementation"
+  }
+  ```
+
+#### Comments
+- `GET /api/ideas/<id>/comments` - Get all comments for an idea
+- `POST /api/ideas/<id>/comments` - Add a new comment
+  ```json
+  {
+    "content": "Updated the API integration",
+    "is_internal": false
+  }
+  ```
+
+#### External Links
+- `GET /api/ideas/<id>/external-links` - Get all links for an idea
+- `POST /api/ideas/<id>/external-links` - Add a new link
+  ```json
+  {
+    "link_type": "pull_request",
+    "title": "Feature implementation PR #123",
+    "url": "https://github.com/org/repo/pull/123",
+    "description": "Main feature implementation"
+  }
+  ```
+
+#### Activity Feed
+- `GET /api/ideas/<id>/activities` - Get activity feed for an idea
+
+### Permissions
+- **Sub-status Updates**: Claimer, idea owner's team manager, or admin
+- **Comments**: Any authenticated user can comment
+- **External Links**: Any authenticated user can add links
+- **View Access**: All SDLC features visible to anyone who can view the idea
+
+### Usage Example
+1. Developer claims an idea
+2. Updates sub-status to "planning" with 10% progress
+3. Adds comment: "Reviewing requirements with stakeholders"
+4. Links design document from SharePoint
+5. Updates to "in_development" at 30% after planning complete
+6. Team members track progress via GANTT chart
+7. Manager reviews activity feed for updates
+8. On completion, full history available for review
+
 ## Future Enhancements
 1. WebSocket support for real-time updates
 2. File upload capabilities
@@ -1328,6 +1513,19 @@ All potentially truncated fields show full content on hover:
 - Users endpoint returns wrapped object: `{success: true, users: [...]}`
 
 ## Recent Fixes and Updates
+
+### Enhanced SDLC Tracking Implementation (July 2025)
+Implemented comprehensive Software Development Life Cycle tracking features:
+- **Sub-Status System**: Added detailed development stages (planning, in_development, testing, etc.) with progress tracking
+- **Tabbed Interface**: Redesigned idea detail page with tabs for Overview, Comments, Links, Activity, and History
+- **GANTT Chart Integration**: Built-in project timeline visualization with customizable phases
+- **Comments System**: Added threaded discussions with internal notes capability
+- **External Links**: Implemented resource linking for repos, PRs, ADO items, documentation
+- **Activity Feed**: JIRA-style activity tracking with visual timeline
+- **Database Models**: Created IdeaComment, IdeaExternalLink, IdeaActivity, StatusHistory tables
+- **API Endpoints**: Added /api/ideas/<id>/sub-status, /comments, /external-links, /activities
+- **Permissions**: Claimers, managers, and admins can update status; all authenticated users can comment
+- **Timeline Calculation**: Automatic GANTT chart generation based on idea size and due dates
 
 ### Sub-Status Implementation Fix (July 2025)
 Fixed 500 error on idea detail pages when implementing sub-status tracking:
