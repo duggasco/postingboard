@@ -12,7 +12,8 @@ services:
       - PYTHONUNBUFFERED=1
       - FLASK_APP=app.py
     volumes:
-      # - ./backend/posting_board_uuid.db:/app/posting_board_uuid.db
+      # Mount directory for database persistence
+      - ./backend/data:/app/data
       - ./backend/flask_session:/app/flask_session
       - ./backend/static:/app/static
       - ./backend/templates:/app/templates

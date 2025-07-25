@@ -719,7 +719,9 @@ if (updateSubStatusForm) {
 }
 
 // Enhanced SDLC Tracking Functions
-function showTab(tabName) {
+window.showTab = function(tabName) {
+    console.log('showTab called with:', tabName);
+    
     // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.style.display = 'none';
@@ -733,13 +735,18 @@ function showTab(tabName) {
     });
     
     // Show selected tab
-    document.getElementById(`tab-${tabName}`).style.display = 'block';
+    const targetTab = document.getElementById(`tab-${tabName}`);
+    if (targetTab) {
+        targetTab.style.display = 'block';
+    }
     
     // Set active button
     const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-    activeBtn.classList.add('active');
-    activeBtn.style.borderBottom = '3px solid #4a90e2';
-    activeBtn.style.color = '#4a90e2';
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.borderBottom = '3px solid #4a90e2';
+        activeBtn.style.color = '#4a90e2';
+    }
     
     // Load content if needed
     {% if has_tab_access %}
@@ -1033,7 +1040,7 @@ function renderGanttChart() {
     
     // Get idea data with linked items count
     const ideaData = {
-        id: {{ idea.id }},
+        id: '{{ idea.uuid }}',
         size: '{{ idea.size.value }}',
         status: '{{ idea.status.value }}',
         subStatus: '{{ idea.sub_status.value if idea.sub_status else "" }}',
@@ -1049,7 +1056,7 @@ function renderGanttChart() {
     };
     
     // Check for custom settings
-    const customSettings = sessionStorage.getItem(`gantt-settings-{{ idea.id }}`);
+    const customSettings = sessionStorage.getItem(`gantt-settings-{{ idea.uuid }}`);
     if (customSettings) {
         const settings = JSON.parse(customSettings);
         ideaData.customSettings = settings;
@@ -1172,7 +1179,7 @@ function showGanttSettingsModal() {
             });
             
             // Store in sessionStorage for this idea
-            sessionStorage.setItem(`gantt-settings-{{ idea.id }}`, JSON.stringify(settings));
+            sessionStorage.setItem(`gantt-settings-{{ idea.uuid }}`, JSON.stringify(settings));
             
             // Re-render chart with new settings
             renderGanttChart();
@@ -1191,22 +1198,28 @@ function closeGanttSettingsModal() {
 }
 
 // Render GANTT chart when overview tab is shown
-if (document.getElementById('gantt-chart-container')) {
-    setTimeout(function() {
-        try {
-            renderGanttChart();
-        } catch (error) {
-            console.error('Error rendering GANTT chart:', error);
-        }
-    }, 100);
-    window.addEventListener('resize', function() {
-        try {
-            renderGanttChart();
-        } catch (error) {
-            console.error('Error rendering GANTT chart on resize:', error);
-        }
-    });
-}
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, checking for GANTT container');
+    const container = document.getElementById('gantt-chart-container');
+    if (container) {
+        console.log('GANTT container found, rendering chart');
+        setTimeout(function() {
+            try {
+                renderGanttChart();
+            } catch (error) {
+                console.error('Error rendering GANTT chart:', error);
+            }
+        }, 100);
+        
+        window.addEventListener('resize', function() {
+            try {
+                renderGanttChart();
+            } catch (error) {
+                console.error('Error rendering GANTT chart on resize:', error);
+            }
+        });
+    }
+});
 
 // Claim functionality
 const claimBtn = document.getElementById('claim-btn');

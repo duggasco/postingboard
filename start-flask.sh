@@ -103,11 +103,19 @@ run_native() {
             # Change to backend directory
             cd backend
             
+            # Ensure data directory exists
+            mkdir -p data
+            
             # Initialize database if needed
-            if [ ! -f "posting_board.db" ]; then
+            if [ ! -f "data/posting_board_uuid.db" ]; then
                 echo -e "${YELLOW}Initializing database...${NC}"
+                # Set database URL to use data directory
+                export DATABASE_URL="sqlite:///data/posting_board_uuid.db"
                 python database.py
             fi
+            
+            # Ensure the database URL points to the data directory
+            export DATABASE_URL="sqlite:///data/posting_board_uuid.db"
             
             # Start the Flask application
             echo -e "${GREEN}Starting Flask server on http://localhost:$PORT${NC}"

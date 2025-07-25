@@ -587,7 +587,7 @@ def unclaim_idea(identifier):
             return jsonify({'success': False, 'message': 'Idea not found'}), 404
         
         # Delete all claims for this idea
-        claims_deleted = db.query(Claim).filter(Claim.idea_id == idea_id).delete()
+        claims_deleted = db.query(Claim).filter(Claim.idea_uuid == idea_id).delete()
         
         # Reset idea status to open
         idea.status = IdeaStatus.open
@@ -744,7 +744,7 @@ def get_user_notifications():
                 'type': notif.type,
                 'title': notif.title,
                 'message': notif.message,
-                'idea_id': notif.idea_id,
+                'idea_id': notif.idea_uuid,
                 'related_user': notif.related_user_email,
                 'is_read': notif.is_read,
                 'created_at': notif.created_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -2601,7 +2601,7 @@ def get_idea_stage_data(identifier):
         
         # Get stage data for this status
         stage_data = db.query(IdeaStageData).filter(
-            IdeaStageData.idea_id == idea_id,
+            IdeaStageData.idea_uuid == idea_id,
             IdeaStageData.sub_status == sub_status_enum
         ).all()
         

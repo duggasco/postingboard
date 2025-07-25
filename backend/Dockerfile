@@ -14,11 +14,14 @@ COPY ./backend .
 # Create flask_session directory
 RUN mkdir -p flask_session
 
-RUN python database.py
+# Make entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
 
 # Set git commit as environment variable
 ENV GIT_COMMIT=$GIT_COMMIT
 
 EXPOSE 9094
 
+# Use entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:9094", "app:create_app()"]

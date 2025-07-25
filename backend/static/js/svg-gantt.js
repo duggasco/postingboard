@@ -52,7 +52,7 @@ class SVGGanttChart {
             this.tooltip = document.createElement('div');
             this.tooltip.id = 'gantt-tooltip';
             this.tooltip.style.cssText = 'position: absolute; display: none; background: white; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 12px; pointer-events: none; z-index: 1000;';
-            this.container.appendChild(this.tooltip);
+            document.body.appendChild(this.tooltip); // Append to body instead of container
         }
     }
 
