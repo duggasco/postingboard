@@ -16,9 +16,6 @@
         <div class="size-badge size-{{ idea.size.value }}" style="display: inline-block;">Size: {{ idea.size.value.replace('_', ' ') }}</div>
     </div>
     
-    <div style="margin-bottom: 20px;">
-        <strong>Team:</strong> {{ idea.benefactor_team }}
-    </div>
     
     {% if idea.skills %}
     <div class="skills-tags" style="margin-bottom: 20px;">
@@ -30,6 +27,7 @@
     
     <div style="margin-bottom: 20px;">
         <strong>Submitted by:</strong> {% if idea.submitter and idea.submitter.name %}{{ idea.submitter.name }}{% else %}{{ idea.email }}{% endif %}<br>
+        <strong>Team:</strong> {{ idea.benefactor_team }}<br>
         <strong>Submitted on:</strong> {{ idea.date_submitted.strftime('%B %d, %Y') }}
         {% if idea.needed_by %}
         <br><strong>Needed by:</strong> {{ idea.needed_by.strftime('%B %d, %Y') }}
@@ -37,20 +35,20 @@
     </div>
     
     {% if idea.bounty or idea.bounty_details %}
-    <div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
-        <strong>Bounty:</strong>
+    <div class="bounty" style="margin-bottom: 20px;">
+        <span>Bounty:</span>
         {% if idea.bounty %}
             {{ idea.bounty }}
         {% endif %}
         {% if idea.bounty_details and idea.bounty_details.is_monetary %}
             {% if idea.bounty %} {% endif %}
-            <span style="color: #28a745; font-weight: 600;">
+            <span style="color: #28a745;">
                 ${{ "%.2f"|format(idea.bounty_details.amount) }}
                 {% if idea.bounty_details.is_expensed %}
-                    <span style="color: #6c757d; font-size: 12px;">(expensed)</span>
+                    <span style="color: #6c757d; font-size: 9px;">(expensed)</span>
                 {% endif %}
                 {% if idea.bounty_details.requires_approval and not idea.bounty_details.is_approved %}
-                    <span style="color: #856404; font-size: 12px; margin-left: 8px;">
+                    <span style="color: #856404; font-size: 9px; margin-left: 4px;">
                         <i class="fas fa-info-circle"></i> Pending approval
                     </span>
                 {% endif %}

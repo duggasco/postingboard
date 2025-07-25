@@ -2199,3 +2199,26 @@ Fixed all remaining team_id references throughout the codebase:
 - **Comments Updated**: Fixed comment in auth_utils.py
 - **Note**: URL parameter `team_id` kept as-is since it's just a parameter name that now contains UUID values
 - **Result**: All database field references now correctly use UUID field names
+
+### Bounty Card Size Reduction (July 2025)
+Reduced the size of bounty cards and text to improve readability:
+- **CSS Changes** (`/static/css/styles.css`):
+  - Reduced padding from `8px 12px` to `4px 8px`
+  - Reduced border-radius from `6px` to `4px`
+  - Reduced font-size from `12px` to `10px`
+  - Reduced margin-bottom from `10px` to `8px`
+  - Reduced gap from `8px` to `4px`
+- **JavaScript Changes**:
+  - Removed `font-weight: 600` from "Bounty:" label and monetary amounts
+  - Reduced sub-text font sizes from `11px` to `9px` for "(expensed)" and "(pending approval)" indicators
+  - Updated in: `/static/js/home.js`, `/templates/my_ideas.html`, `/templates/my_team.html`
+- **Template Changes**:
+  - Updated `/templates/idea_detail.html` to use consistent `.bounty` class styling
+- **Result**: Bounty sections are now smaller and less prominent, allowing more focus on idea descriptions
+
+### Idea Detail Page Layout Update (July 2025)
+Moved team information to match idea card format:
+- **Change**: Moved "Team" from separate section to appear below "Submitted by" in the submission info block
+- **Order**: Now displays as: Submitted by → Team → Submitted on → Needed by (if applicable)
+- **File Updated**: `/templates/idea_detail.html`
+- **Result**: Creates visual consistency between idea cards and detail page

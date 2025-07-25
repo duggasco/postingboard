@@ -140,7 +140,7 @@ function renderBounty(idea) {
     if (!idea.bounty && !idea.bounty_details) return '';
     
     let bountyHtml = '<div class="bounty">';
-    bountyHtml += '<span style="font-weight: 600;">Bounty: </span>';
+    bountyHtml += '<span>Bounty: </span>';
     
     const parts = [];
     
@@ -149,16 +149,16 @@ function renderBounty(idea) {
     }
     
     if (idea.bounty_details && idea.bounty_details.is_monetary) {
-        let monetaryPart = `<span style="color: #28a745; font-weight: 600;">$${idea.bounty_details.amount.toFixed(2)}</span>`;
+        let monetaryPart = `<span style="color: #28a745;">$${idea.bounty_details.amount.toFixed(2)}</span>`;
         
         // Add expense indicator if expensed
         if (idea.bounty_details.is_expensed) {
-            monetaryPart += ' <span style="color: #6c757d; font-size: 11px;">(expensed)</span>';
+            monetaryPart += ' <span style="color: #6c757d; font-size: 9px;">(expensed)</span>';
         }
         
         // Add approval status if needed
         if (idea.bounty_details.requires_approval && !idea.bounty_details.is_approved) {
-            monetaryPart += ' <span style="color: #856404; font-size: 11px;">(pending approval)</span>';
+            monetaryPart += ' <span style="color: #856404; font-size: 9px;">(pending approval)</span>';
         }
         
         parts.push(monetaryPart);
