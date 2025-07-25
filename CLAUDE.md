@@ -127,6 +127,11 @@ templates/
 - Dynamic DOM manipulation
 - Auto-refresh functionality
 - Form validation and submission
+- **SVG GANTT Chart**: Interactive timeline visualization
+  - `svg-gantt.js`: Custom SVG rendering library
+  - Mouse event handling for tooltips and clicks
+  - Dynamic phase calculations based on idea metadata
+  - PNG export functionality via Canvas conversion
 
 #### My Ideas Page (`/my-ideas`)
 - **Personal Ideas Only**: Shows only ideas submitted or claimed by the current user
@@ -594,11 +599,21 @@ The idea detail page shows comprehensive development progress when an idea is cl
 - **Action Buttons**: Update Status, Export Timeline, Customize Timeline (all in one row)
 
 ### GANTT Chart Implementation
+- **SVG Technology**: Built with Scalable Vector Graphics for full interactivity
 - **Sequential Phases**: Each phase on its own row, not stacked
 - **Realistic Overlaps**: Phases can overlap (e.g., testing starts before development ends)
 - **Progress Coloring**: Green (complete), Yellow (in progress), Blue (planned), Red (blocked)
-- **Interactive Features**: Hover for details, today marker, progress indicator line
+- **Interactive Features**: 
+  - Hover tooltips with phase details, dates, duration, and linked items count
+  - Click to open stage-specific data modal
+  - Today marker with dashed line
+  - Progress indicator line
 - **Synchronization**: Progress updates automatically sync with GANTT visualization
+- **Technical Architecture**:
+  - `SVGGanttChart` class in `/static/js/svg-gantt.js`
+  - Dynamic SVG element creation with proper namespacing
+  - Event delegation for performance with many phases
+  - Automatic date calculations based on idea size and timeline
 
 ### Stage-Specific Fields
 The Update Status modal dynamically shows fields based on the selected stage:
@@ -649,15 +664,21 @@ The idea detail page features a tabbed interface with:
    - Change comments and user attribution
 
 ### GANTT Chart Features
+- **SVG-Based Implementation**: Interactive Scalable Vector Graphics for enhanced user experience
 - **Automatic Timeline**: Based on idea size and due date
 - **Phase Visualization**: Color-coded phases showing progress
   - Gray: Not started
   - Green: Completed
   - Yellow: In progress
   - Red: Blocked/delayed
-- **Today Marker**: Visual indicator of current date
-- **Export Function**: Download chart as PNG image
+- **Interactive Elements**:
+  - **Hover Tooltips**: Shows phase details, start/end dates, duration, and linked items count
+  - **Click Actions**: Click on any phase to open the stage-specific data modal
+  - **Smooth Transitions**: Visual feedback with opacity changes on hover
+- **Today Marker**: Visual indicator of current date with dashed line
+- **Export Function**: Download chart as PNG image with full visual fidelity
 - **Customization**: Adjust phase durations and timeline dates
+- **Responsive Design**: SVG scales properly across different screen sizes
 
 ### Database Schema
 
@@ -1866,3 +1887,20 @@ Enhanced My Team page with skills gap visualization:
 ### Team Performance Enhancements (July 2025)
 - **Removed Redundancy**: Removed team claims pie chart from My Team page (data available in table)
 - **Column Totals**: Added bold totals row at top of team members table for quick summaries
+
+### Interactive SVG GANTT Implementation (July 2025)
+Replaced Canvas-based GANTT chart with interactive SVG implementation:
+- **Technology Migration**: Converted from HTML5 Canvas to SVG for enhanced interactivity
+- **Interactive Features**:
+  - Hover tooltips displaying phase name, dates, duration, and progress
+  - Shows count of linked items (comments, external links) when hovering over phases
+  - Click on phases to open stage-specific data modal with relevant fields
+- **Visual Consistency**: Maintained exact visual design from Canvas implementation
+- **Export Functionality**: SVG to PNG export preserves full chart quality
+- **Implementation Details**:
+  - Created `svg-gantt.js` module with SVGGanttChart class
+  - Uses SVG groups and rects for phase rendering
+  - Event delegation for efficient mouse interaction
+  - Tooltip positioning adjusts to prevent edge overflow
+- **Browser Compatibility**: Works in all modern browsers supporting SVG
+- **Performance**: Lightweight implementation with no external dependencies
