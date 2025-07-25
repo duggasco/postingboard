@@ -133,7 +133,7 @@
         return `
             <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'">
                 <div class="idea-header">
-                    <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
+                    <h3 class="idea-title">💡 ${utils.escapeHtml(idea.title)}</h3>
                     <span class="status-badge ${statusClass}">${idea.status.toUpperCase()}</span>
                 </div>
                 
