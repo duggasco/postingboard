@@ -931,9 +931,9 @@ document.getElementById('edit-idea-form').addEventListener('submit', async (e) =
         amount: parseFloat(document.getElementById('edit-amount').value) || 0
     };
     
-    // Get selected skills
+    // Get selected skills (UUIDs)
     const checkedSkills = document.querySelectorAll('#edit-skills-container input[type="checkbox"]:checked');
-    data.skill_ids = Array.from(checkedSkills).map(cb => parseInt(cb.value));
+    data.skill_ids = Array.from(checkedSkills).map(cb => cb.value);
     
     try {
         await utils.fetchJson(`/api/ideas/${ideaId}`, {

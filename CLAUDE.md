@@ -2062,3 +2062,18 @@ Fixed amount field only showing when "is expensed" was checked:
   - `/templates/admin/dashboard.html`: Updated toggleMonetaryFields function
   - `/templates/admin/ideas.html`: Updated toggleMonetaryFields function
 - **Result**: Users can enter bounty amounts for all monetary bounties, whether expensed or not
+
+### UUID Migration Frontend Fixes (July 2025)
+Fixed JavaScript parseInt errors after UUID migration:
+- **Issue**: Frontend code was using `parseInt()` on UUID strings, causing "NaN" errors and failed API calls
+- **Root Cause**: When migrating from integer IDs to UUIDs, frontend JavaScript still had parseInt calls
+- **Files Fixed**:
+  - `/templates/admin/dashboard.html`: Removed parseInt from skill_ids mapping
+  - `/templates/admin/ideas.html`: Removed parseInt from skill_ids array
+  - `/templates/admin/users.html`: Removed parseInt from skill_ids and team_id comparison
+  - `/templates/my_team.html`: Removed parseInt from skill_ids mapping
+- **Verified Safe parseInt Uses**:
+  - Progress percentages and phase values in idea_detail.html
+  - SMTP port number in email_settings.html
+  - Date components in main.js
+- **Result**: Admin edit actions now work correctly with UUID-based system

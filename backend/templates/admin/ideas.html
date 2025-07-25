@@ -571,7 +571,7 @@ async function saveIdea(event) {
         status: formData.get('status'),
         bounty: formData.get('bounty'),
         email: formData.get('email'),
-        skill_ids: formData.getAll('skills[]').map(id => parseInt(id)),
+        skill_ids: formData.getAll('skills[]'),
         // Bounty fields
         is_monetary: document.getElementById('edit-is-monetary').checked,
         is_expensed: document.getElementById('edit-is-expensed').checked,

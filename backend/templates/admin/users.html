@@ -459,7 +459,7 @@ function applyFilters() {
         }
         
         // Team filter
-        if (teamFilter && user.team_id !== parseInt(teamFilter)) {
+        if (teamFilter && user.team_id !== teamFilter) {
             return false;
         }
         
@@ -618,7 +618,7 @@ async function saveUser(event) {
         team_id: formData.get('team_id') || null,
         managed_team_id: formData.get('managed_team_id') || null,
         is_verified: formData.get('is_verified') === 'on',
-        skill_ids: formData.getAll('skills[]').map(id => parseInt(id))
+        skill_ids: formData.getAll('skills[]')
     };
     
     try {
