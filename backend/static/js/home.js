@@ -106,7 +106,7 @@
         if (parts.length === 0) {
             bountyHtml += '<span style="color: #6c757d;">None specified</span>';
         } else {
-            bountyHtml += parts.join(' + ');
+            bountyHtml += parts.join(' ');
         }
         
         bountyHtml += '</div>';

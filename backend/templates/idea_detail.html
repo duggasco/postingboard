@@ -43,7 +43,7 @@
             {{ idea.bounty }}
         {% endif %}
         {% if idea.bounty_details and idea.bounty_details.is_monetary %}
-            {% if idea.bounty %} + {% endif %}
+            {% if idea.bounty %} {% endif %}
             <span style="color: #28a745; font-weight: 600;">
                 ${{ "%.2f"|format(idea.bounty_details.amount) }}
                 {% if idea.bounty_details.is_expensed %}
