@@ -585,18 +585,52 @@ Ideas in "claimed" status can now have detailed sub-statuses:
 - **Blocked Reasons**: Required explanation when marking as blocked/on_hold
 - **Expected Completion**: Target dates for delivery
 
-### Development Progress Tab
-The idea detail page now features a tabbed interface with:
-1. **Overview Tab**:
-   - Development progress with sub-status and progress bar
-   - GANTT chart visualization showing project timeline
-   - Timeline based on idea size (small=5 days, medium=10 days, large=20 days, extra_large=30 days)
-   - Phase breakdown: Planning (15%), Development (40%), Testing (25%), Deployment (10%), Verification (10%)
-   - Export and customization options for GANTT charts
+### Development Progress Section
+The idea detail page shows comprehensive development progress when an idea is claimed:
+- **Status Badge**: Current sub-status with color coding
+- **Progress Percentage**: Manual or automatic based on phase
+- **GANTT Chart**: Interactive timeline visualization
+- **Last Updated**: Timestamp and user who made the update
+- **Action Buttons**: Update Status, Export Timeline, Customize Timeline (all in one row)
 
-2. **Comments Tab**:
-   - Threaded discussion for developers and idea owners
-   - Internal notes option for team-only visibility
+### GANTT Chart Implementation
+- **Sequential Phases**: Each phase on its own row, not stacked
+- **Realistic Overlaps**: Phases can overlap (e.g., testing starts before development ends)
+- **Progress Coloring**: Green (complete), Yellow (in progress), Blue (planned), Red (blocked)
+- **Interactive Features**: Hover for details, today marker, progress indicator line
+- **Synchronization**: Progress updates automatically sync with GANTT visualization
+
+### Stage-Specific Fields
+The Update Status modal dynamically shows fields based on the selected stage:
+
+**Planning Fields**:
+- Requirements Document URL
+- Design Specification URL
+
+**Development Fields**:
+- Repository URL
+- Branch Name
+- Pull Request URLs (multi-line)
+
+**Testing Fields**:
+- Test Plan URL
+- Test Results Summary
+- Defects Found (number)
+
+**Deployment Fields**:
+- Deployment Guide URL
+- Release Notes
+- Target Environment (dropdown)
+
+**Verification Fields**:
+- Verified By (name)
+- Performance Metrics
+- Sign-off Notes
+
+### Tabbed Interface
+The idea detail page features a tabbed interface with:
+1. **Overview Tab**: Main idea details and development progress
+2. **Comments Tab**: Discussion thread with internal notes option
    - Automatic activity tracking for all comments
 
 3. **Links & Resources Tab**:

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest, idea_skills, SubStatus, StatusHistory
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest, idea_skills, SubStatus, StatusHistory, IdeaStageData, IdeaActivity, ActivityType
 from sqlalchemy import desc, asc, func, or_
 from datetime import datetime
 from decorators import require_verified_email
@@ -2299,20 +2299,23 @@ def update_idea_sub_status(idea_id):
         idea.sub_status_updated_at = datetime.utcnow()
         idea.sub_status_updated_by = user_email
         
-        # Update progress percentage based on sub-status
-        progress_map = {
-            SubStatus.planning: 10,
-            SubStatus.in_development: 30,
-            SubStatus.testing: 60,
-            SubStatus.awaiting_deployment: 80,
-            SubStatus.deployed: 90,
-            SubStatus.verified: 100,
-            SubStatus.on_hold: idea.progress_percentage,  # Keep current
-            SubStatus.blocked: idea.progress_percentage,  # Keep current
-            SubStatus.cancelled: idea.progress_percentage,  # Keep current
-            SubStatus.rolled_back: 85  # Back to before deployment
-        }
-        idea.progress_percentage = progress_map.get(sub_status_enum, idea.progress_percentage)
+        # Update progress percentage if provided, otherwise use default mapping
+        if 'progress_percentage' in request.json:
+            idea.progress_percentage = request.json.get('progress_percentage')
+        else:
+            progress_map = {
+                SubStatus.planning: 10,
+                SubStatus.in_development: 30,
+                SubStatus.testing: 60,
+                SubStatus.awaiting_deployment: 80,
+                SubStatus.deployed: 90,
+                SubStatus.verified: 100,
+                SubStatus.on_hold: idea.progress_percentage,  # Keep current
+                SubStatus.blocked: idea.progress_percentage,  # Keep current
+                SubStatus.cancelled: idea.progress_percentage,  # Keep current
+                SubStatus.rolled_back: 85  # Back to before deployment
+            }
+            idea.progress_percentage = progress_map.get(sub_status_enum, idea.progress_percentage)
         
         # Handle special fields
         if sub_status_enum in [SubStatus.blocked, SubStatus.on_hold]:
@@ -2322,6 +2325,27 @@ def update_idea_sub_status(idea_id):
             
         if request.json.get('expected_completion'):
             idea.expected_completion = datetime.strptime(request.json.get('expected_completion'), '%Y-%m-%d')
+        
+        # Handle stage-specific data
+        stage_data = request.json.get('stage_data', {})
+        if stage_data:
+            # Remove existing stage data for this sub-status
+            db.query(IdeaStageData).filter(
+                IdeaStageData.idea_id == idea.id,
+                IdeaStageData.sub_status == sub_status_enum
+            ).delete()
+            
+            # Add new stage data
+            for field_name, field_value in stage_data.items():
+                if field_value:  # Only save non-empty values
+                    stage_record = IdeaStageData(
+                        idea_id=idea.id,
+                        sub_status=sub_status_enum,
+                        field_name=field_name,
+                        field_value=str(field_value),
+                        updated_by=user_email
+                    )
+                    db.add(stage_record)
         
         # Update main status if needed
         if sub_status_enum in [SubStatus.verified, SubStatus.cancelled]:
@@ -2340,6 +2364,29 @@ def update_idea_sub_status(idea_id):
             SubStatus.cancelled: 'has been cancelled',
             SubStatus.rolled_back: 'has been rolled back'
         }
+        
+        # Create activity record
+        activity_data = {
+            'old_sub_status': old_sub_status.value if old_sub_status else None,
+            'new_sub_status': sub_status_enum.value,
+            'progress': idea.progress_percentage,
+            'comment': request.json.get('comment')
+        }
+        
+        # Add stage data changes to activity
+        if stage_data:
+            activity_data['stage_fields'] = stage_data
+        
+        import json
+        activity = IdeaActivity(
+            idea_id=idea.id,
+            activity_type=ActivityType.status_change,
+            actor_email=user_email,
+            actor_name=session.get('user_name', user_email),
+            description=f'Updated status to {sub_status_enum.value.replace("_", " ").title()}',
+            activity_data=json.dumps(activity_data)
+        )
+        db.add(activity)
         
         # Notify idea submitter
         if idea.email != user_email:
@@ -2412,6 +2459,41 @@ def get_idea_status_history(idea_id):
             })
         
         return jsonify(history_data)
+    finally:
+        db.close()
+
+@api_bp.route('/ideas/<int:idea_id>/stage-data')
+def get_idea_stage_data(idea_id):
+    """Get stage-specific data for an idea and status."""
+    db = get_session()
+    try:
+        # Check if idea exists
+        idea = db.query(Idea).get(idea_id)
+        if not idea:
+            return jsonify({'error': 'Idea not found'}), 404
+        
+        # Get status from query parameter
+        status = request.args.get('status')
+        if not status:
+            return jsonify({'error': 'Status parameter is required'}), 400
+        
+        try:
+            sub_status_enum = SubStatus(status)
+        except ValueError:
+            return jsonify({'error': 'Invalid status'}), 400
+        
+        # Get stage data for this status
+        stage_data = db.query(IdeaStageData).filter(
+            IdeaStageData.idea_id == idea_id,
+            IdeaStageData.sub_status == sub_status_enum
+        ).all()
+        
+        # Convert to dictionary
+        data_dict = {}
+        for record in stage_data:
+            data_dict[record.field_name] = record.field_value
+        
+        return jsonify(data_dict)
     finally:
         db.close()
 
@@ -2908,6 +2990,158 @@ def delete_admin_user(email):
     finally:
         db.close()
 
-# Register SDLC tracking endpoints
-from api_sdlc_endpoints import register_sdlc_endpoints
-register_sdlc_endpoints(api_bp)
+
+@api_bp.route("/ideas/<int:idea_id>/comments", methods=["GET", "POST"])
+def handle_idea_comments(idea_id):
+    """Get or add comments for an idea."""
+    db = get_session()
+    try:
+        from models import IdeaComment, IdeaActivity, ActivityType
+        
+        if request.method == "GET":
+            # Get all comments for the idea
+            comments = db.query(IdeaComment).filter_by(idea_id=idea_id).order_by(IdeaComment.created_at.desc()).all()
+            
+            comments_data = []
+            for comment in comments:
+                comments_data.append({
+                    "id": comment.id,
+                    "author_name": comment.author_name or comment.author_email,
+                    "author_email": comment.author_email,
+                    "content": comment.content,
+                    "created_at": comment.created_at.strftime("%B %d, %Y at %I:%M %p"),
+                    "is_internal": comment.is_internal,
+                    "sub_status": comment.sub_status.value if comment.sub_status else None
+                })
+            
+            return jsonify(comments_data)
+        
+        else:  # POST
+            user_email = session.get("user_email")
+            if not user_email:
+                return jsonify({"success": False, "error": "Authentication required"}), 401
+            
+            data = request.get_json()
+            
+            # Create comment
+            comment = IdeaComment(
+                idea_id=idea_id,
+                author_email=user_email,
+                author_name=session.get("user_name", user_email),
+                content=data["content"],
+                is_internal=data.get("is_internal", False)
+            )
+            db.add(comment)
+            
+            # Create activity
+            activity = IdeaActivity(
+                idea_id=idea_id,
+                activity_type=ActivityType.comment_added,
+                actor_email=user_email,
+                actor_name=session.get("user_name", user_email),
+                description="added a comment"
+            )
+            db.add(activity)
+            
+            db.commit()
+            
+            return jsonify({"success": True, "comment_id": comment.id})
+    
+    except Exception as e:
+        if request.method == "POST":
+            db.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route("/ideas/<int:idea_id>/external-links", methods=["GET", "POST"])
+def handle_idea_external_links(idea_id):
+    """Get or add external links for an idea."""
+    db = get_session()
+    try:
+        from models import IdeaExternalLink, ExternalLinkType, IdeaActivity, ActivityType
+        
+        if request.method == "GET":
+            # Get all links for the idea
+            links = db.query(IdeaExternalLink).filter_by(idea_id=idea_id).order_by(IdeaExternalLink.created_at.desc()).all()
+            
+            links_data = []
+            for link in links:
+                links_data.append({
+                    "id": link.id,
+                    "link_type": link.link_type.value,
+                    "title": link.title,
+                    "url": link.url,
+                    "description": link.description,
+                    "creator_name": link.creator.name if link.creator else link.created_by,
+                    "created_at": link.created_at.strftime("%B %d, %Y"),
+                    "sub_status": link.sub_status.value if link.sub_status else None
+                })
+            
+            return jsonify(links_data)
+        
+        else:  # POST
+            user_email = session.get("user_email")
+            if not user_email:
+                return jsonify({"success": False, "error": "Authentication required"}), 401
+            
+            data = request.get_json()
+            
+            # Create link
+            link = IdeaExternalLink(
+                idea_id=idea_id,
+                link_type=ExternalLinkType(data["link_type"]),
+                title=data["title"],
+                url=data["url"],
+                description=data.get("description"),
+                created_by=user_email
+            )
+            db.add(link)
+            
+            # Create activity
+            activity = IdeaActivity(
+                idea_id=idea_id,
+                activity_type=ActivityType.link_added,
+                actor_email=user_email,
+                actor_name=session.get("user_name", user_email),
+                description=f"added a {data['link_type'].replace('_', ' ')}"
+            )
+            db.add(activity)
+            
+            db.commit()
+            
+            return jsonify({"success": True, "link_id": link.id})
+    
+    except Exception as e:
+        if request.method == "POST":
+            db.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route("/ideas/<int:idea_id>/activities", methods=["GET"])
+def get_idea_activities(idea_id):
+    """Get activity feed for an idea."""
+    db = get_session()
+    try:
+        from models import IdeaActivity
+        
+        activities = db.query(IdeaActivity).filter_by(idea_id=idea_id).order_by(IdeaActivity.created_at.desc()).limit(50).all()
+        
+        activities_data = []
+        for activity in activities:
+            activities_data.append({
+                "id": activity.id,
+                "activity_type": activity.activity_type.value,
+                "actor_name": activity.actor_name or activity.actor_email,
+                "description": activity.description,
+                "created_at": activity.created_at.strftime("%B %d, %Y at %I:%M %p"),
+                "activity_data": activity.activity_data
+            })
+        
+        return jsonify(activities_data)
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        db.close()

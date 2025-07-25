@@ -113,8 +113,9 @@
             <div style="margin-bottom: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #4a90e2;">
                 <h3 style="margin-top: 0; margin-bottom: 15px;">Development Progress</h3>
                 
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <!-- Status and Progress Info -->
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                         <span style="font-weight: 600; color: #495057;">Status: 
                             <span class="sub-status-badge sub-status-{{ idea.sub_status.value }}">
                                 {{ idea.sub_status.value.replace('_', ' ').title() }}
@@ -123,56 +124,22 @@
                         <span style="font-size: 14px; color: #6c757d;">{{ idea.progress_percentage }}% Complete</span>
                     </div>
                     
-                    <!-- Progress bar -->
-                    <div style="background-color: #e9ecef; border-radius: 4px; height: 20px; position: relative; overflow: hidden;">
-                        <div style="background-color: {% if idea.sub_status.value in ['blocked', 'on_hold'] %}#dc3545{% elif idea.sub_status.value == 'verified' %}#28a745{% else %}#4a90e2{% endif %}; 
-                                   height: 100%; width: {{ idea.progress_percentage }}%; transition: width 0.3s ease;"></div>
+                    {% if idea.expected_completion %}
+                    <div style="margin-bottom: 8px;">
+                        <strong>Expected Completion:</strong> {{ idea.expected_completion.strftime('%B %d, %Y') }}
                     </div>
-                </div>
-                
-                {% if idea.expected_completion %}
-                <div style="margin-bottom: 10px;">
-                    <strong>Expected Completion:</strong> {{ idea.expected_completion.strftime('%B %d, %Y') }}
-                </div>
-                {% endif %}
-                
-                {% if idea.blocked_reason and idea.sub_status.value in ['blocked', 'on_hold'] %}
-                <div style="margin-bottom: 10px; padding: 10px; background-color: #fff3cd; border-radius: 4px; border-left: 3px solid #ffc107;">
-                    <strong>Reason:</strong> {{ idea.blocked_reason }}
-                </div>
-                {% endif %}
-                
-                {% if idea.sub_status_updated_at %}
-                <div style="font-size: 12px; color: #6c757d;">
-                    Last updated: {{ idea.sub_status_updated_at.strftime('%B %d, %Y at %I:%M %p') }}
-                    {% if idea.sub_status_updated_by %} by {{ idea.sub_status_updated_by }}{% endif %}
-                </div>
-                {% endif %}
-                
-                <!-- Update controls for authorized users -->
-                {% set is_claimer = false %}
-                {% for claim in idea.claims %}
-                    {% if claim.claimer_email == session.get('user_email') %}
-                        {% set is_claimer = true %}
                     {% endif %}
-                {% endfor %}
-                {% if session.get('user_email') and (is_claimer or 
-                      session.get('is_admin') or 
-                      (session.get('user_managed_team_id') and idea.claims and idea.claims[0].claimer_team == session.get('user_team'))) %}
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
-                    <button class="btn btn-sm btn-secondary" onclick="showUpdateSubStatusModal()">Update Status</button>
+                    
+                    {% if idea.blocked_reason and idea.sub_status.value in ['blocked', 'on_hold'] %}
+                    <div style="margin-bottom: 10px; padding: 10px; background-color: #fff3cd; border-radius: 4px; border-left: 3px solid #ffc107;">
+                        <strong>Reason:</strong> {{ idea.blocked_reason }}
+                    </div>
+                    {% endif %}
+                    
                 </div>
-                {% endif %}
-            </div>
-            {% endif %}
-            
-            <!-- GANTT Chart Section -->
-            {% if idea.status.value == 'claimed' %}
-            <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #4a90e2;">
-                <h3 style="margin-top: 0; margin-bottom: 15px;">Project Timeline</h3>
                 
-                <div id="gantt-chart-container" style="position: relative; min-height: 200px; background: white; border: 1px solid #dee2e6; border-radius: 4px; padding: 20px;">
-                    <!-- GANTT Chart will be rendered here -->
+                <!-- GANTT Chart Timeline -->
+                <div id="gantt-chart-container" style="position: relative; min-height: 200px; background: white; border: 1px solid #dee2e6; border-radius: 4px; padding: 20px; margin-bottom: 15px;">
                     <canvas id="gantt-canvas" style="width: 100%; height: 100%;"></canvas>
                 </div>
                 
@@ -186,13 +153,35 @@
                     <div style="margin-top: 10px;">
                         Timeline based on: {{ idea.size.value.replace('_', ' ').title() }} size idea • Due by {{ idea.needed_by.strftime('%B %d, %Y') if idea.needed_by else 'No deadline set' }}
                     </div>
-                    {% if session.get('user_email') %}
-                    <div style="margin-top: 10px;">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="exportGanttChart()">Export Timeline</button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="showGanttSettingsModal()">Customize Timeline</button>
+                    
+                    {% if idea.sub_status_updated_at %}
+                    <div style="margin-top: 10px; font-size: 12px; color: #6c757d;">
+                        Last updated: {{ idea.sub_status_updated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                        {% if idea.sub_status_updated_by %} by {{ idea.sub_status_updated_by }}{% endif %}
                     </div>
                     {% endif %}
                 </div>
+                
+                <!-- Action buttons -->
+                {% set is_claimer = false %}
+                {% for claim in idea.claims %}
+                    {% if claim.claimer_email == session.get('user_email') %}
+                        {% set is_claimer = true %}
+                    {% endif %}
+                {% endfor %}
+                {% set can_update = session.get('user_email') and (is_claimer or 
+                      session.get('is_admin') or 
+                      (session.get('user_managed_team_id') and idea.claims and idea.claims[0].claimer_team == session.get('user_team'))) %}
+                
+                {% if session.get('user_email') %}
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; display: flex; gap: 10px; flex-wrap: wrap;">
+                    {% if can_update %}
+                    <button class="btn btn-sm btn-secondary" onclick="showUpdateSubStatusModal()">Update Status</button>
+                    {% endif %}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="exportGanttChart()">Export Timeline</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="showGanttSettingsModal()">Customize Timeline</button>
+                </div>
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -299,6 +288,96 @@
                 <input type="date" id="expected-completion" class="form-control" value="{% if idea.expected_completion %}{{ idea.expected_completion.strftime('%Y-%m-%d') }}{% endif %}">
             </div>
             
+            <!-- Stage-specific fields -->
+            <div id="stage-specific-fields">
+                <!-- Planning Stage Fields -->
+                <div id="planning-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Planning Details</h4>
+                    <div class="form-group">
+                        <label for="requirements-doc">Requirements Document URL</label>
+                        <input type="url" id="requirements-doc" class="form-control" placeholder="Link to requirements document">
+                    </div>
+                    <div class="form-group">
+                        <label for="design-spec">Design Specification URL</label>
+                        <input type="url" id="design-spec" class="form-control" placeholder="Link to design specification">
+                    </div>
+                </div>
+                
+                <!-- Development Stage Fields -->
+                <div id="development-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Development Details</h4>
+                    <div class="form-group">
+                        <label for="repository-url">Repository URL</label>
+                        <input type="url" id="repository-url" class="form-control" placeholder="Repository URL">
+                    </div>
+                    <div class="form-group">
+                        <label for="branch-name">Branch Name</label>
+                        <input type="text" id="branch-name" class="form-control" placeholder="feature/branch-name">
+                    </div>
+                    <div class="form-group">
+                        <label for="pr-urls">Pull Request URLs</label>
+                        <textarea id="pr-urls" class="form-control" rows="2" placeholder="One PR URL per line"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Testing Stage Fields -->
+                <div id="testing-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Testing Details</h4>
+                    <div class="form-group">
+                        <label for="test-plan">Test Plan URL</label>
+                        <input type="url" id="test-plan" class="form-control" placeholder="Link to test plan">
+                    </div>
+                    <div class="form-group">
+                        <label for="test-results">Test Results Summary</label>
+                        <textarea id="test-results" class="form-control" rows="2" placeholder="Test results summary (passed/failed/pending)"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="defects-found">Defects Found</label>
+                        <input type="number" id="defects-found" class="form-control" min="0" placeholder="Number of defects found">
+                    </div>
+                </div>
+                
+                <!-- Deployment Stage Fields -->
+                <div id="deployment-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Deployment Details</h4>
+                    <div class="form-group">
+                        <label for="deployment-guide">Deployment Guide URL</label>
+                        <input type="url" id="deployment-guide" class="form-control" placeholder="Link to deployment guide">
+                    </div>
+                    <div class="form-group">
+                        <label for="release-notes">Release Notes</label>
+                        <textarea id="release-notes" class="form-control" rows="2" placeholder="Key changes and features in this release"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="environment">Target Environment</label>
+                        <select id="environment" class="form-control">
+                            <option value="">Select environment...</option>
+                            <option value="dev">Development</option>
+                            <option value="qa">QA</option>
+                            <option value="staging">Staging</option>
+                            <option value="production">Production</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Verification Stage Fields -->
+                <div id="verification-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Verification Details</h4>
+                    <div class="form-group">
+                        <label for="verified-by">Verified By</label>
+                        <input type="text" id="verified-by" class="form-control" placeholder="Name of person who verified">
+                    </div>
+                    <div class="form-group">
+                        <label for="performance-metrics">Performance Metrics</label>
+                        <textarea id="performance-metrics" class="form-control" rows="2" placeholder="Key performance metrics (response time, throughput, etc.)"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="sign-off-notes">Sign-off Notes</label>
+                        <textarea id="sign-off-notes" class="form-control" rows="2" placeholder="Final sign-off comments"></textarea>
+                    </div>
+                </div>
+            </div>
+            
             <div class="form-group">
                 <label for="comment">Comment (Optional)</label>
                 <textarea id="comment" class="form-control" rows="2" placeholder="Add any additional notes about this status change..."></textarea>
@@ -395,6 +474,30 @@
 
 {% block extra_js %}
 <script>
+// Progress mapping for consistent synchronization with GANTT phases
+const progressMapping = {
+    'planning': { min: 0, default: 7, max: 15 },
+    'in_development': { min: 10, default: 30, max: 55 },
+    'testing': { min: 40, default: 55, max: 70 },
+    'awaiting_deployment': { min: 65, default: 72, max: 80 },
+    'deployed': { min: 75, default: 82, max: 90 },
+    'verified': { min: 85, default: 95, max: 100 },
+    'on_hold': null, // Keep current progress
+    'blocked': null, // Keep current progress
+    'cancelled': { min: 0, default: 0, max: 0 },
+    'rolled_back': { min: 0, default: 0, max: 0 }
+};
+
+// Calculate which phase a progress percentage falls into
+function getPhaseFromProgress(progress) {
+    if (progress <= 15) return 'planning';
+    if (progress <= 55) return 'in_development';
+    if (progress <= 80) return 'testing';
+    if (progress <= 90) return 'awaiting_deployment';
+    if (progress < 100) return 'deployed';
+    return 'verified';
+}
+
 // Sub-status update functionality
 const updateSubStatusModal = document.getElementById('update-sub-status-modal');
 const updateSubStatusForm = document.getElementById('update-sub-status-form');
@@ -402,8 +505,58 @@ const subStatusSelect = document.getElementById('sub-status');
 const progressGroup = document.getElementById('progress-group');
 const blockedReasonGroup = document.getElementById('blocked-reason-group');
 
-function showUpdateSubStatusModal() {
+async function showUpdateSubStatusModal() {
     updateSubStatusModal.classList.add('active');
+    
+    // Trigger change event to show appropriate fields
+    const currentStatus = document.getElementById('sub-status').value;
+    if (currentStatus) {
+        showStageSpecificFields(currentStatus);
+        
+        // Load existing stage data
+        await loadStageData(currentStatus);
+    }
+}
+
+// Load existing stage data for the current status
+async function loadStageData(status) {
+    try {
+        const response = await fetch(`/api/ideas/{{ idea.id }}/stage-data?status=${status}`);
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Populate fields based on the status
+            switch(status) {
+                case 'planning':
+                    if (data.requirements_doc) document.getElementById('requirements-doc').value = data.requirements_doc;
+                    if (data.design_spec) document.getElementById('design-spec').value = data.design_spec;
+                    break;
+                case 'in_development':
+                    if (data.repository_url) document.getElementById('repository-url').value = data.repository_url;
+                    if (data.branch_name) document.getElementById('branch-name').value = data.branch_name;
+                    if (data.pr_urls) document.getElementById('pr-urls').value = data.pr_urls;
+                    break;
+                case 'testing':
+                    if (data.test_plan) document.getElementById('test-plan').value = data.test_plan;
+                    if (data.test_results) document.getElementById('test-results').value = data.test_results;
+                    if (data.defects_found) document.getElementById('defects-found').value = data.defects_found;
+                    break;
+                case 'awaiting_deployment':
+                case 'deployed':
+                    if (data.deployment_guide) document.getElementById('deployment-guide').value = data.deployment_guide;
+                    if (data.release_notes) document.getElementById('release-notes').value = data.release_notes;
+                    if (data.environment) document.getElementById('environment').value = data.environment;
+                    break;
+                case 'verified':
+                    if (data.verified_by) document.getElementById('verified-by').value = data.verified_by;
+                    if (data.performance_metrics) document.getElementById('performance-metrics').value = data.performance_metrics;
+                    if (data.sign_off_notes) document.getElementById('sign-off-notes').value = data.sign_off_notes;
+                    break;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading stage data:', error);
+    }
 }
 
 function closeUpdateSubStatusModal() {
@@ -424,34 +577,52 @@ if (subStatusSelect) {
             document.getElementById('blocked-reason').required = false;
         }
         
-        // Auto-set progress based on status
+        // Auto-set progress based on status using mapping
         const progressInput = document.getElementById('progress');
-        switch(status) {
-            case 'planning':
-                progressInput.value = 10;
-                break;
-            case 'in_development':
-                progressInput.value = 30;
-                break;
-            case 'testing':
-                progressInput.value = 60;
-                break;
-            case 'awaiting_deployment':
-                progressInput.value = 80;
-                break;
-            case 'deployed':
-                progressInput.value = 90;
-                break;
-            case 'verified':
-                progressInput.value = 100;
-                break;
-            case 'cancelled':
-            case 'rolled_back':
-                progressInput.value = 0;
-                break;
-            // blocked/on_hold keep current progress
+        const mapping = progressMapping[status];
+        
+        if (mapping) {
+            progressInput.value = mapping.default;
+            // Update min/max constraints
+            progressInput.min = mapping.min;
+            progressInput.max = mapping.max;
+        } else {
+            // For blocked/on_hold, keep current progress but don't constrain
+            progressInput.min = 0;
+            progressInput.max = 100;
         }
+        
+        // Show/hide stage-specific fields
+        showStageSpecificFields(status);
     });
+}
+
+// Function to show/hide stage-specific fields
+function showStageSpecificFields(status) {
+    // Hide all stage fields
+    document.querySelectorAll('.stage-fields').forEach(field => {
+        field.style.display = 'none';
+    });
+    
+    // Show fields for the selected stage
+    switch(status) {
+        case 'planning':
+            document.getElementById('planning-fields').style.display = 'block';
+            break;
+        case 'in_development':
+            document.getElementById('development-fields').style.display = 'block';
+            break;
+        case 'testing':
+            document.getElementById('testing-fields').style.display = 'block';
+            break;
+        case 'awaiting_deployment':
+        case 'deployed':
+            document.getElementById('deployment-fields').style.display = 'block';
+            break;
+        case 'verified':
+            document.getElementById('verification-fields').style.display = 'block';
+            break;
+    }
 }
 
 // Handle sub-status update submission
@@ -473,6 +644,36 @@ if (updateSubStatusForm) {
         const expectedCompletion = document.getElementById('expected-completion').value;
         if (expectedCompletion) {
             formData.expected_completion = expectedCompletion;
+        }
+        
+        // Collect stage-specific fields
+        formData.stage_data = {};
+        switch(formData.sub_status) {
+            case 'planning':
+                formData.stage_data.requirements_doc = document.getElementById('requirements-doc').value;
+                formData.stage_data.design_spec = document.getElementById('design-spec').value;
+                break;
+            case 'in_development':
+                formData.stage_data.repository_url = document.getElementById('repository-url').value;
+                formData.stage_data.branch_name = document.getElementById('branch-name').value;
+                formData.stage_data.pr_urls = document.getElementById('pr-urls').value;
+                break;
+            case 'testing':
+                formData.stage_data.test_plan = document.getElementById('test-plan').value;
+                formData.stage_data.test_results = document.getElementById('test-results').value;
+                formData.stage_data.defects_found = document.getElementById('defects-found').value;
+                break;
+            case 'awaiting_deployment':
+            case 'deployed':
+                formData.stage_data.deployment_guide = document.getElementById('deployment-guide').value;
+                formData.stage_data.release_notes = document.getElementById('release-notes').value;
+                formData.stage_data.environment = document.getElementById('environment').value;
+                break;
+            case 'verified':
+                formData.stage_data.verified_by = document.getElementById('verified-by').value;
+                formData.stage_data.performance_metrics = document.getElementById('performance-metrics').value;
+                formData.stage_data.sign_off_notes = document.getElementById('sign-off-notes').value;
+                break;
         }
         
         try {
@@ -850,13 +1051,13 @@ function renderGanttChart() {
         startDate = ideaData.claimDate || new Date();
         endDate = ideaData.neededBy || new Date(startDate.getTime() + (estimatedDays * 24 * 60 * 60 * 1000));
         
-        // Define phases based on sub-status
+        // Define phases with start offsets to show dependencies and potential overlaps
         phases = [
-            { name: 'Planning', duration: 0.15, status: 'planning' },
-            { name: 'Development', duration: 0.40, status: 'in_development' },
-            { name: 'Testing', duration: 0.25, status: 'testing' },
-            { name: 'Deployment', duration: 0.10, status: 'awaiting_deployment' },
-            { name: 'Verification', duration: 0.10, status: 'deployed,verified' }
+            { name: 'Planning', startOffset: 0, duration: 0.15, status: 'planning' },
+            { name: 'Development', startOffset: 0.10, duration: 0.45, status: 'in_development' },
+            { name: 'Testing', startOffset: 0.40, duration: 0.30, status: 'testing' },
+            { name: 'Deployment', startOffset: 0.65, duration: 0.15, status: 'awaiting_deployment' },
+            { name: 'Verification', startOffset: 0.75, duration: 0.15, status: 'deployed,verified' }
         ];
     }
     
@@ -882,60 +1083,142 @@ function renderGanttChart() {
         currentDate.setDate(currentDate.getDate() + 7);
     }
     
-    // Draw phases
-    let y = 60;
-    let cumulativeDuration = 0;
+    // Draw grid lines for better readability
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 1;
+    
+    // Vertical grid lines (weekly)
+    let gridDate = new Date(startDate);
+    while (gridDate <= endDate) {
+        const gridX = 100 + ((gridDate - startDate) / (1000 * 60 * 60 * 24)) * pixelsPerDay;
+        ctx.beginPath();
+        ctx.moveTo(gridX, 40);
+        ctx.lineTo(gridX, 235);
+        ctx.stroke();
+        gridDate.setDate(gridDate.getDate() + 7);
+    }
+    
+    // Draw phases as traditional GANTT chart with proper timeline positioning
+    const barHeight = 25;
+    const rowSpacing = 35;
+    let startY = 60;
     
     phases.forEach((phase, index) => {
-        const phaseStart = new Date(startDate.getTime() + (cumulativeDuration * totalDuration));
+        const phaseStart = new Date(startDate.getTime() + (phase.startOffset * totalDuration));
         const phaseDuration = phase.duration * totalDuration;
         const phaseEnd = new Date(phaseStart.getTime() + phaseDuration);
         
-        const x1 = 100;
+        // Calculate x position based on phase start offset
+        const x1 = 100 + (phase.startOffset * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay;
         const x2 = x1 + (phaseDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay;
+        const barY = startY + (index * rowSpacing);
         
-        // Determine phase color based on current status
+        // Draw phase label on the left
+        ctx.fillStyle = '#212529';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(phase.name, 90, barY + barHeight/2 + 4);
+        ctx.textAlign = 'left';
+        
+        // Determine phase color based on progress percentage
         let fillColor = '#e9ecef'; // Not started
-        if (ideaData.subStatus) {
-            const statusOrder = ['planning', 'in_development', 'testing', 'awaiting_deployment', 'deployed', 'verified'];
-            const currentIndex = statusOrder.indexOf(ideaData.subStatus);
-            const phaseStatuses = phase.status.split(',');
-            const phaseIndex = statusOrder.findIndex(s => phaseStatuses.includes(s));
-            
-            if (phaseIndex < currentIndex) {
-                fillColor = '#28a745'; // Completed
-            } else if (phaseIndex === currentIndex) {
-                fillColor = '#ffc107'; // In progress
-            } else if (ideaData.subStatus === 'blocked' || ideaData.subStatus === 'on_hold') {
-                fillColor = '#dc3545'; // Blocked
+        const phaseStartProgress = phase.startOffset * 100;
+        const phaseEndProgress = phaseStartProgress + (phase.duration * 100);
+        
+        if (ideaData.progress >= phaseEndProgress) {
+            fillColor = '#28a745'; // Completed
+        } else if (ideaData.progress > phaseStartProgress && ideaData.progress < phaseEndProgress) {
+            fillColor = '#ffc107'; // In progress
+        }
+        
+        // Override color if blocked or on hold
+        if (ideaData.subStatus === 'blocked' || ideaData.subStatus === 'on_hold') {
+            if (ideaData.progress > phaseStartProgress && ideaData.progress <= phaseEndProgress) {
+                fillColor = '#dc3545'; // Blocked/on hold
             }
         }
         
         // Draw phase bar
         ctx.fillStyle = fillColor;
-        ctx.fillRect(x1, y, x2 - x1, 30);
+        ctx.fillRect(x1, barY, x2 - x1, barHeight);
         
         // Draw phase border
         ctx.strokeStyle = '#dee2e6';
-        ctx.strokeRect(x1, y, x2 - x1, 30);
+        ctx.strokeRect(x1, barY, x2 - x1, barHeight);
         
-        // Draw phase label
-        ctx.fillStyle = '#212529';
-        ctx.font = '12px sans-serif';
-        ctx.fillText(phase.name, 10, y + 20);
+        // Draw duration text to the right of the bar
+        ctx.fillStyle = '#6c757d';
+        ctx.font = '11px sans-serif';
+        const durationDays = Math.round(phaseDuration / (1000 * 60 * 60 * 24));
+        ctx.fillText(`${durationDays} days (${Math.round(phase.duration * 100)}%)`, x2 + 10, barY + barHeight/2 + 4);
         
         // Draw progress within current phase
-        if (fillColor === '#ffc107' && ideaData.progress > 0) {
-            const phaseProgress = (ideaData.progress - (cumulativeDuration * 100)) / (phase.duration * 100);
+        if (ideaData.progress > phaseStartProgress && ideaData.progress < phaseEndProgress) {
+            const phaseProgress = (ideaData.progress - phaseStartProgress) / (phase.duration * 100);
             if (phaseProgress > 0 && phaseProgress <= 1) {
-                ctx.fillStyle = 'rgba(40, 167, 69, 0.3)';
-                ctx.fillRect(x1, y, (x2 - x1) * phaseProgress, 30);
+                // Use different overlay for blocked/on hold
+                if (ideaData.subStatus === 'blocked' || ideaData.subStatus === 'on_hold') {
+                    ctx.fillStyle = 'rgba(220, 53, 69, 0.3)'; // Red overlay
+                } else {
+                    ctx.fillStyle = 'rgba(40, 167, 69, 0.3)'; // Green overlay
+                }
+                ctx.fillRect(x1, barY, (x2 - x1) * phaseProgress, barHeight);
             }
         }
         
-        y += 35;
-        cumulativeDuration += phase.duration;
     });
+    
+    // Draw dependency lines between phases
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]);
+    
+    // Planning → Development
+    ctx.beginPath();
+    ctx.moveTo(100 + (0.15 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + 12);
+    ctx.lineTo(100 + (0.10 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + rowSpacing + 12);
+    ctx.stroke();
+    
+    // Development → Testing
+    ctx.beginPath();
+    ctx.moveTo(100 + (0.55 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + rowSpacing + 12);
+    ctx.lineTo(100 + (0.40 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (2 * rowSpacing) + 12);
+    ctx.stroke();
+    
+    // Testing → Deployment
+    ctx.beginPath();
+    ctx.moveTo(100 + (0.70 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (2 * rowSpacing) + 12);
+    ctx.lineTo(100 + (0.65 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (3 * rowSpacing) + 12);
+    ctx.stroke();
+    
+    // Deployment → Verification
+    ctx.beginPath();
+    ctx.moveTo(100 + (0.80 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (3 * rowSpacing) + 12);
+    ctx.lineTo(100 + (0.75 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (4 * rowSpacing) + 12);
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+    
+    // Draw progress indicator
+    if (ideaData.progress > 0 && ideaData.progress < 100) {
+        const totalDays = totalDuration / (1000 * 60 * 60 * 24);
+        const progressDays = (ideaData.progress / 100) * totalDays;
+        const progressX = 100 + (progressDays * pixelsPerDay);
+        
+        // Draw progress line across all phases
+        ctx.strokeStyle = '#007bff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(progressX, 50);
+        ctx.lineTo(progressX, startY + (phases.length * rowSpacing) - 10);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        
+        // Draw progress label at top
+        ctx.fillStyle = '#007bff';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(`Progress: ${ideaData.progress}%`, progressX - 30, 45);
+    }
     
     // Draw current date marker
     const today = new Date();
@@ -947,13 +1230,13 @@ function renderGanttChart() {
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
         ctx.moveTo(todayX, 40);
-        ctx.lineTo(todayX, canvas.height - 20);
+        ctx.lineTo(todayX, startY + (phases.length * rowSpacing));
         ctx.stroke();
         ctx.setLineDash([]);
         
         ctx.fillStyle = '#dc3545';
         ctx.font = '11px sans-serif';
-        ctx.fillText('Today', todayX - 15, canvas.height - 5);
+        ctx.fillText('Today', todayX - 15, startY + (phases.length * rowSpacing) + 15);
     }
 }
 
