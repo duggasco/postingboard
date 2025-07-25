@@ -36,6 +36,14 @@ def create_app():
     # Initialize extensions
     Session(app)
     
+    # Ensure database tables exist and teams are initialized
+    from database import init_db
+    init_db()
+    
+    # Ensure predefined teams exist
+    from initialize_teams import ensure_teams_exist
+    ensure_teams_exist()
+    
     # Register blueprints
     app.register_blueprint(main_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')

@@ -2013,3 +2013,38 @@ Replaced Canvas-based GANTT chart with interactive SVG implementation:
   - Tooltip positioning adjusts to prevent edge overflow
 - **Browser Compatibility**: Works in all modern browsers supporting SVG
 - **Performance**: Lightweight implementation with no external dependencies
+
+### Team Spending Analytics (July 2025)
+Added comprehensive spending analytics for bounty tracking:
+- **Database Integration**: Leverages existing Bounty model fields (is_monetary, amount, is_approved)
+- **Spending Metrics**:
+  - Total Approved: Sum of approved bounty amounts
+  - Pending Approval: Sum of amounts requiring approval
+  - Actual Spend: Completed ideas with monetary bounties
+  - Committed Spend: Claimed ideas with monetary bounties
+- **UI Components**:
+  - Spending overview cards on My Team and Admin pages
+  - Monthly spending trends chart
+  - Top spending teams chart (admin only)
+- **API Enhancements**:
+  - Added `calculate_team_spending_analytics()` helper function
+  - Enhanced team-stats endpoints with spending data
+  - Bulk upload now supports bounty fields
+- **Production-Ready**: Uses SQLAlchemy with StaticPool for proper connection handling
+
+### Pill Size Reduction (July 2025)
+Reduced size of priority, size, and skill pills for better title prominence:
+- **Priority/Size Pills**: 9px font, 1px 6px padding, 8px border radius (from 11px/3px 10px/12px)
+- **Skill Tags**: 9px font, 1px 6px padding to match other pills (from 10px/2px 6px)
+- **Visual Impact**: Idea titles now more prominent with smaller metadata elements
+- **Consistency**: All pill-style elements now use same sizing
+
+### Team Persistence Fix (July 2025)
+Fixed teams not persisting on fresh installations:
+- **Issue**: Teams only created during initial database setup, not on app startup
+- **Solution**: Created `initialize_teams.py` to check and populate teams if missing
+- **Implementation**:
+  - `ensure_teams_exist()` function checks team count on startup
+  - Automatically creates 13 predefined teams if none exist
+  - Called from `app.py` during app initialization
+- **Result**: Teams always available on both native and Docker deployments
