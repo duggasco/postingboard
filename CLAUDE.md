@@ -1614,6 +1614,23 @@ All potentially truncated fields show full content on hover:
 
 ## Recent Fixes and Updates
 
+### Total Expensed Metric Addition (January 2025)
+Added "Total Expensed" metric to provide visibility into expense reimbursement vs. recognition-only bounties:
+- **Purpose**: Organizations need to distinguish between monetary bounties that will be expensed vs. those for recognition only
+- **Implementation**:
+  - Added `total_expensed` calculation to `calculate_team_spending_analytics()` function
+  - Added organization-wide `total_expensed` to `/api/stats` endpoint
+  - Calculates sum where `is_monetary=True AND is_approved=True AND is_expensed=True`
+- **UI Updates**:
+  - Added "Total Expensed" card (purple background) to spending overview sections
+  - My Team page: 5-card responsive grid showing all spending metrics
+  - Admin Dashboard: 5-card grid in Organization Spending Overview
+  - Grid layout uses `repeat(auto-fit, minmax(200px, 1fr))` for responsive display
+- **Value**: Helps organizations understand:
+  - What portion of approved bounties will require expense reimbursement
+  - What portion is for recognition/prizes only (not expensed)
+  - Better budget planning and financial tracking
+
 ### Bounty Tracking Fix - Include All Monetary Bounties (January 2025)
 Fixed spending analytics to track ALL monetary bounties regardless of expense status:
 - **Issue**: Spending analytics were only counting bounties marked as "expensed", excluding non-expensed monetary bounties

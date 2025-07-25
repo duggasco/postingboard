@@ -53,10 +53,14 @@
     <!-- Spending Overview Section -->
     <div style="margin-top: 40px; margin-bottom: 40px;">
         <h3>Organization Spending Overview</h3>
-        <div class="stats-grid" style="margin-top: 20px;">
+        <div class="stats-grid" style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
             <div class="stat-card" style="background: #e8f5e8;">
                 <h3 id="total-org-spend">-</h3>
                 <p>Total Approved Spend</p>
+            </div>
+            <div class="stat-card" style="background: #f0e6ff;">
+                <h3 id="total-org-expensed">-</h3>
+                <p>Total Expensed</p>
             </div>
             <div class="stat-card" style="background: #fff4e5;">
                 <h3 id="pending-org-spend">-</h3>
@@ -1012,11 +1016,13 @@ function formatCurrency(amount) {
 function updateSpendingAnalytics(spending) {
     // Update spending overview cards
     const totalOrgSpend = document.getElementById('total-org-spend');
+    const totalOrgExpensed = document.getElementById('total-org-expensed');
     const pendingOrgSpend = document.getElementById('pending-org-spend');
     const actualOrgSpend = document.getElementById('actual-org-spend');
     const committedOrgSpend = document.getElementById('committed-org-spend');
     
     if (totalOrgSpend) totalOrgSpend.textContent = formatCurrency(spending.total_approved_spend || 0);
+    if (totalOrgExpensed) totalOrgExpensed.textContent = formatCurrency(spending.total_expensed || 0);
     if (pendingOrgSpend) pendingOrgSpend.textContent = formatCurrency(spending.pending_approval_spend || 0);
     if (actualOrgSpend) actualOrgSpend.textContent = formatCurrency(spending.actual_spend || 0);
     if (committedOrgSpend) committedOrgSpend.textContent = formatCurrency(spending.committed_spend || 0);

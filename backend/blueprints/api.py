@@ -67,6 +67,16 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
         Bounty.is_approved == True
     ).scalar() or 0.0
     
+    # Total expensed (approved monetary bounties marked as expensed)
+    total_expensed = db.query(func.sum(Bounty.amount)).join(
+        Idea, Bounty.idea_uuid == Idea.uuid
+    ).filter(
+        Idea.benefactor_team == team.name,
+        Bounty.is_monetary == True,
+        Bounty.is_approved == True,
+        Bounty.is_expensed == True
+    ).scalar() or 0.0
+    
     # Pending approval spend (monetary bounties awaiting approval)
     pending_approval_spend = db.query(func.sum(Bounty.amount)).join(
         Idea, Bounty.idea_uuid == Idea.uuid
@@ -174,6 +184,7 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
     
     return {
         'total_approved_spend': float(total_approved_spend),
+        'total_expensed': float(total_expensed),
         'pending_approval_spend': float(pending_approval_spend),
         'actual_spend': float(actual_spend),
         'committed_spend': float(committed_spend),
@@ -867,6 +878,13 @@ def get_stats():
             Bounty.is_approved == True
         ).scalar() or 0.0
         
+        # Total expensed across all teams
+        total_expensed = db.query(func.sum(Bounty.amount)).filter(
+            Bounty.is_monetary == True,
+            Bounty.is_approved == True,
+            Bounty.is_expensed == True
+        ).scalar() or 0.0
+        
         # Pending approval spend
         pending_approval_spend = db.query(func.sum(Bounty.amount)).filter(
             Bounty.is_monetary == True,
@@ -914,6 +932,7 @@ def get_stats():
         
         stats['spending'] = {
             'total_approved_spend': float(total_approved_spend),
+            'total_expensed': float(total_expensed),
             'pending_approval_spend': float(pending_approval_spend),
             'actual_spend': float(actual_spend),
             'committed_spend': float(committed_spend),
@@ -923,6 +942,7 @@ def get_stats():
         # Add spending_analytics to stats
         stats['spending_analytics'] = {
             'total_approved_spend': float(total_approved_spend),
+            'total_expensed': float(total_expensed),
             'pending_approval_spend': float(pending_approval_spend),
             'actual_spend': float(actual_spend),
             'committed_spend': float(committed_spend),

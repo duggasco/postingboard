@@ -33,10 +33,14 @@
     <!-- Spending Overview -->
     <div id="spending-overview" style="margin-bottom: 30px; display: none;">
         <h4 style="margin: 20px 0 15px 0; color: #1a1d23;">Team Spending Overview</h4>
-        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
             <div class="stat-card" style="background: #e8f5e8;">
                 <h3 id="total-approved-spend">$0</h3>
                 <p>Total Approved</p>
+            </div>
+            <div class="stat-card" style="background: #f0e6ff;">
+                <h3 id="total-expensed">$0</h3>
+                <p>Total Expensed</p>
             </div>
             <div class="stat-card" style="background: #fff4e5;">
                 <h3 id="pending-approval-spend">$0</h3>
@@ -830,6 +834,7 @@ function updateCharts() {
         
         // Update spending overview cards
         document.getElementById('total-approved-spend').textContent = formatCurrency(teamStats.spending.total_approved_spend);
+        document.getElementById('total-expensed').textContent = formatCurrency(teamStats.spending.total_expensed || 0);
         document.getElementById('pending-approval-spend').textContent = formatCurrency(teamStats.spending.pending_approval_spend);
         document.getElementById('actual-spend').textContent = formatCurrency(teamStats.spending.actual_spend);
         document.getElementById('committed-spend').textContent = formatCurrency(teamStats.spending.committed_spend);
