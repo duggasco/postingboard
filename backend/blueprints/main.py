@@ -167,6 +167,42 @@ def idea_detail(idea_id):
             flash('Idea not found', 'error')
             return redirect(url_for('main.home'))
         
+        # Determine if user has access to sensitive tabs
+        has_tab_access = False
+        user_email = session.get('user_email')
+        
+        if user_email:
+            # Check if user is admin
+            if session.get('is_admin'):
+                has_tab_access = True
+            # Check if user is the idea submitter
+            elif idea.email == user_email:
+                has_tab_access = True
+            # Check if user is a direct claimer
+            elif any(claim.claimer_email == user_email for claim in idea.claims):
+                has_tab_access = True
+            else:
+                # Check if user is a manager of the submitter or any claimer
+                from models import UserProfile
+                user_profile = db.query(UserProfile).filter_by(
+                    email=user_email,
+                    role='manager'
+                ).first()
+                
+                if user_profile and user_profile.managed_team_id:
+                    # Get all team members' emails
+                    team_members = db.query(UserProfile).filter_by(
+                        team_id=user_profile.managed_team_id
+                    ).all()
+                    team_emails = [member.email for member in team_members]
+                    
+                    # Check if submitter is in the team
+                    if idea.email in team_emails:
+                        has_tab_access = True
+                    # Check if any claimer is in the team
+                    elif any(claim.claimer_email in team_emails for claim in idea.claims):
+                        has_tab_access = True
+        
         # Serialize status history for JavaScript
         status_history_data = []
         if idea.status_history:
@@ -182,7 +218,10 @@ def idea_detail(idea_id):
                     'duration_minutes': history.duration_minutes
                 })
         
-        return render_template('idea_detail.html', idea=idea, status_history_json=status_history_data)
+        return render_template('idea_detail.html', 
+                             idea=idea, 
+                             status_history_json=status_history_data,
+                             has_tab_access=has_tab_access)
     finally:
         db.close()
 

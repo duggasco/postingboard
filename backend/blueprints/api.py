@@ -13,6 +13,45 @@ from werkzeug.datastructures import FileStorage
 
 api_bp = Blueprint('api', __name__)
 
+def check_idea_tab_access(idea, user_email, db):
+    """Check if user has access to sensitive idea tabs (comments, links, activity)."""
+    if not user_email:
+        return False
+    
+    # Admin always has access
+    if session.get('is_admin'):
+        return True
+    
+    # Idea submitter has access
+    if idea.email == user_email:
+        return True
+    
+    # Direct claimer has access
+    if any(claim.claimer_email == user_email for claim in idea.claims):
+        return True
+    
+    # Manager of submitter or claimer has access
+    user_profile = db.query(UserProfile).filter_by(
+        email=user_email,
+        role='manager'
+    ).first()
+    
+    if user_profile and user_profile.managed_team_id:
+        # Get all team members' emails
+        team_members = db.query(UserProfile).filter_by(
+            team_id=user_profile.managed_team_id
+        ).all()
+        team_emails = [member.email for member in team_members]
+        
+        # Check if submitter is in the team
+        if idea.email in team_emails:
+            return True
+        # Check if any claimer is in the team
+        if any(claim.claimer_email in team_emails for claim in idea.claims):
+            return True
+    
+    return False
+
 @api_bp.route('/health')
 def health_check():
     """Health check endpoint for monitoring."""
@@ -2998,6 +3037,16 @@ def handle_idea_comments(idea_id):
     try:
         from models import IdeaComment, IdeaActivity, ActivityType
         
+        # Get the idea
+        idea = db.query(Idea).get(idea_id)
+        if not idea:
+            return jsonify({"error": "Idea not found"}), 404
+        
+        # Check access
+        user_email = session.get("user_email")
+        if not check_idea_tab_access(idea, user_email, db):
+            return jsonify({"error": "Access denied"}), 403
+        
         if request.method == "GET":
             # Get all comments for the idea
             comments = db.query(IdeaComment).filter_by(idea_id=idea_id).order_by(IdeaComment.created_at.desc()).all()
@@ -3060,6 +3109,16 @@ def handle_idea_external_links(idea_id):
     db = get_session()
     try:
         from models import IdeaExternalLink, ExternalLinkType, IdeaActivity, ActivityType
+        
+        # Get the idea
+        idea = db.query(Idea).get(idea_id)
+        if not idea:
+            return jsonify({"error": "Idea not found"}), 404
+        
+        # Check access
+        user_email = session.get("user_email")
+        if not check_idea_tab_access(idea, user_email, db):
+            return jsonify({"error": "Access denied"}), 403
         
         if request.method == "GET":
             # Get all links for the idea
@@ -3125,6 +3184,16 @@ def get_idea_activities(idea_id):
     db = get_session()
     try:
         from models import IdeaActivity
+        
+        # Get the idea
+        idea = db.query(Idea).get(idea_id)
+        if not idea:
+            return jsonify({"error": "Idea not found"}), 404
+        
+        # Check access
+        user_email = session.get("user_email")
+        if not check_idea_tab_access(idea, user_email, db):
+            return jsonify({"error": "Access denied"}), 403
         
         activities = db.query(IdeaActivity).filter_by(idea_id=idea_id).order_by(IdeaActivity.created_at.desc()).limit(50).all()
         
