@@ -162,6 +162,11 @@ class VerificationCode(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False)
+    attempts = Column(Integer, default=0)
+    
+    def is_expired(self):
+        """Check if the verification code has expired."""
+        return datetime.utcnow() > self.expires_at
 
 class ManagerRequest(Base):
     __tablename__ = 'manager_requests'

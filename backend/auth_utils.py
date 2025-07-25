@@ -13,7 +13,7 @@ def create_verification_code(db: Session, email: str):
     """Create a new verification code for the given email."""
     # Check for existing active codes
     active_codes = db.query(VerificationCode).filter(
-        VerificationCode.user_email == email,
+        VerificationCode.email == email,
         VerificationCode.is_used == False,
         VerificationCode.expires_at > datetime.utcnow()
     ).all()
@@ -22,7 +22,7 @@ def create_verification_code(db: Session, email: str):
     if len(active_codes) >= 3:
         # Check if any code was created in the last 15 minutes
         recent_code = db.query(VerificationCode).filter(
-            VerificationCode.user_email == email,
+            VerificationCode.email == email,
             VerificationCode.created_at > datetime.utcnow() - timedelta(minutes=15)
         ).order_by(VerificationCode.created_at.desc()).first()
         
@@ -36,14 +36,15 @@ def create_verification_code(db: Session, email: str):
     # Create or get user profile
     user = db.query(UserProfile).filter_by(email=email).first()
     if not user:
-        user = UserProfile(email=email)
+        # Create user with empty name for now - they'll fill it during profile completion
+        user = UserProfile(email=email, name='')
         db.add(user)
         db.commit()
     
     # Generate new code
     code = generate_verification_code()
     verification = VerificationCode(
-        user_email=email,
+        email=email,
         code=code,
         expires_at=datetime.utcnow() + timedelta(minutes=3)
     )
@@ -55,7 +56,7 @@ def create_verification_code(db: Session, email: str):
     
     return {
         'success': True,
-        'code_id': verification.id,
+        'code_id': verification.uuid,
         'email_sent': email_sent
     }
 
@@ -63,23 +64,12 @@ def verify_code(db: Session, email: str, code: str):
     """Verify a verification code."""
     # Get the most recent unused code for this email
     verification = db.query(VerificationCode).filter(
-        VerificationCode.user_email == email,
+        VerificationCode.email == email,
         VerificationCode.code == code,
         VerificationCode.is_used == False
     ).order_by(VerificationCode.created_at.desc()).first()
     
     if not verification:
-        # Increment attempts on all active codes for this email
-        active_codes = db.query(VerificationCode).filter(
-            VerificationCode.user_email == email,
-            VerificationCode.is_used == False,
-            VerificationCode.expires_at > datetime.utcnow()
-        ).all()
-        
-        for active_code in active_codes:
-            active_code.attempts += 1
-        db.commit()
-        
         return {
             'success': False,
             'error': 'Invalid verification code.'
