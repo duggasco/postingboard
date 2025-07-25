@@ -12,9 +12,12 @@
     </div>
     
     <div class="idea-meta" style="margin-bottom: 20px;">
-        <span class="priority-badge priority-{{ idea.priority.value }}">Priority: {{ idea.priority.value }}</span>
-        <span>Size: {{ idea.size.value.replace('_', ' ') }}</span>
-        <span>Team: {{ idea.benefactor_team }}</span>
+        <div class="priority-badge priority-{{ idea.priority.value }}">Priority: {{ idea.priority.value }}</div>
+        <div class="size-badge size-{{ idea.size.value }}">Size: {{ idea.size.value.replace('_', ' ') }}</div>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+        <strong>Team:</strong> {{ idea.benefactor_team }}
     </div>
     
     {% if idea.skills %}
