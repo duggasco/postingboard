@@ -176,7 +176,7 @@
                 {% endfor %}
                 {% set can_update = session.get('user_email') and (is_claimer or 
                       session.get('is_admin') or 
-                      (session.get('user_managed_team_id') and idea.claims and idea.claims[0].claimer_team == session.get('user_team'))) %}
+                      (session.get('user_managed_team_uuid') and idea.claims and idea.claims[0].claimer_team == session.get('user_team'))) %}
                 
                 {% if session.get('user_email') %}
                 <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; display: flex; gap: 10px; flex-wrap: wrap;">

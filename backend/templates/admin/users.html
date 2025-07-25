@@ -90,13 +90,13 @@
             </div>
             <div class="form-group">
                 <label for="edit-team">Team</label>
-                <select id="edit-team" name="team_id" class="form-control">
+                <select id="edit-team" name="team_uuid" class="form-control">
                     <option value="">No Team</option>
                 </select>
             </div>
             <div class="form-group" id="edit-managed-team-group" style="display: none;">
                 <label for="edit-managed-team">Managed Team</label>
-                <select id="edit-managed-team" name="managed_team_id" class="form-control">
+                <select id="edit-managed-team" name="managed_team_uuid" class="form-control">
                     <option value="">No Managed Team</option>
                 </select>
                 <div id="remove-manager-container" style="margin-top: 10px; display: none;">
@@ -459,7 +459,7 @@ function applyFilters() {
         }
         
         // Team filter
-        if (teamFilter && user.team_id !== teamFilter) {
+        if (teamFilter && user.team_uuid !== teamFilter) {
             return false;
         }
         
@@ -494,8 +494,8 @@ async function editUser(email) {
     document.getElementById('edit-user-email').value = user.email;
     document.getElementById('edit-name').value = user.name || '';
     document.getElementById('edit-role').value = user.role || 'idea_submitter';
-    document.getElementById('edit-team').value = user.team_id || '';
-    document.getElementById('edit-managed-team').value = user.managed_team_id || '';
+    document.getElementById('edit-team').value = user.team_uuid || '';
+    document.getElementById('edit-managed-team').value = user.managed_team_uuid || '';
     document.getElementById('edit-verified').checked = user.is_verified;
     
     // Populate analytics
@@ -533,7 +533,7 @@ async function editUser(email) {
         managedTeamGroup.style.display = 'block';
         skillsGroup.style.display = 'none';
         // Show remove manager button if they are currently managing a team
-        removeManagerContainer.style.display = user.managed_team_id ? 'block' : 'none';
+        removeManagerContainer.style.display = user.managed_team_uuid ? 'block' : 'none';
     } else if (role === 'citizen_developer' || role === 'developer') {
         managedTeamGroup.style.display = 'none';
         skillsGroup.style.display = 'block';
@@ -615,8 +615,8 @@ async function saveUser(event) {
         email: formData.get('email'),
         name: formData.get('name'),
         role: formData.get('role'),
-        team_id: formData.get('team_id') || null,
-        managed_team_id: formData.get('managed_team_id') || null,
+        team_uuid: formData.get('team_uuid') || null,
+        managed_team_uuid: formData.get('managed_team_uuid') || null,
         is_verified: formData.get('is_verified') === 'on',
         skill_ids: formData.getAll('skills[]')
     };

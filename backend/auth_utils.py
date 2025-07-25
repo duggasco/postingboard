@@ -165,7 +165,7 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
             )
             db.add(manager_request)
         
-        # Don't set managed_team_id directly when creating request
+        # Don't set managed_team_uuid directly when creating request
     elif managed_team_uuid is not None and not create_manager_request:
         # Direct assignment (from admin approval)
         user.managed_team_uuid = managed_team_uuid

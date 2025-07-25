@@ -2183,3 +2183,19 @@ Fixed "failed to approve claim request: undefined" error:
   - Fixed team_uuid comparison in deny_claim endpoint
 - **Files Updated**: `/blueprints/api.py` - approve_claim and deny_claim endpoints
 - **Result**: Claim approvals now work correctly with proper error messages
+
+### Team ID to UUID Migration Completion (July 2025)
+Fixed all remaining team_id references throughout the codebase:
+- **Templates Updated**:
+  - `idea_detail.html`: Changed user_managed_team_id to user_managed_team_uuid in session check
+  - `admin/users.html`: Updated all form fields and JavaScript from team_id/managed_team_id to team_uuid/managed_team_uuid
+- **API Endpoints Updated**:
+  - Fixed all UserProfile field references from managed_team_id to managed_team_uuid
+  - Fixed team member queries from team_id to team_uuid
+  - Updated response fields to use team_uuid consistently
+- **Main Routes Updated**:
+  - Fixed manager notification queries to use team_uuid
+  - Updated all managed_team_id checks to managed_team_uuid
+- **Comments Updated**: Fixed comment in auth_utils.py
+- **Note**: URL parameter `team_id` kept as-is since it's just a parameter name that now contains UUID values
+- **Result**: All database field references now correctly use UUID field names

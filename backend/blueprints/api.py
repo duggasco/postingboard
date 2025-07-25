@@ -37,10 +37,10 @@ def check_idea_tab_access(idea, user_email, db):
         role='manager'
     ).first()
     
-    if user_profile and user_profile.managed_team_id:
+    if user_profile and user_profile.managed_team_uuid:
         # Get all team members' emails
         team_members = db.query(UserProfile).filter_by(
-            team_id=user_profile.managed_team_id
+            team_uuid=user_profile.managed_team_uuid
         ).all()
         team_emails = [member.email for member in team_members]
         
@@ -1238,7 +1238,7 @@ def get_team_member(email):
             'email': member.email,
             'name': member.name,
             'role': member.role,
-            'team_id': member.team_uuid,
+            'team_uuid': member.team_uuid,
             'team_name': member.team.name if member.team else None,
             'skills': [{'uuid': s.uuid, 'name': s.name} for s in member.skills],
             'is_verified': member.is_verified,

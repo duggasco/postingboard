@@ -91,9 +91,9 @@ def submit():
                     user_profile = db.query(UserProfile).filter_by(email=session.get('user_email')).first()
                     
                     # Notify user's manager if they have one
-                    if user_profile and user_profile.managed_team_id:
+                    if user_profile and user_profile.managed_team_uuid:
                         managers = db.query(UserProfile).filter_by(
-                            managed_team_id=user_profile.team_id,
+                            managed_team_uuid=user_profile.team_uuid,
                             role='manager'
                         ).all()
                         
@@ -196,10 +196,10 @@ def idea_detail(identifier):
                     role='manager'
                 ).first()
                 
-                if user_profile and user_profile.managed_team_id:
+                if user_profile and user_profile.managed_team_uuid:
                     # Get all team members' emails
                     team_members = db.query(UserProfile).filter_by(
-                        team_id=user_profile.managed_team_id
+                        team_uuid=user_profile.managed_team_uuid
                     ).all()
                     team_emails = [member.email for member in team_members]
                     
