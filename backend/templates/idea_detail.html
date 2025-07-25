@@ -539,7 +539,7 @@ async function showUpdateSubStatusModal() {
 // Load existing stage data for the current status
 async function loadStageData(status) {
     try {
-        const response = await fetch(`/api/ideas/{{ idea.id }}/stage-data?status=${status}`);
+        const response = await fetch(`/api/ideas/{{ idea.uuid }}/stage-data?status=${status}`);
         if (response.ok) {
             const data = await response.json();
             
@@ -695,7 +695,7 @@ if (updateSubStatusForm) {
         }
         
         try {
-            const response = await fetch(`/api/ideas/{{ idea.id }}/sub-status`, {
+            const response = await fetch(`/api/ideas/{{ idea.uuid }}/sub-status`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -758,7 +758,7 @@ function showTab(tabName) {
 // Load comments
 async function loadComments() {
     try {
-        const response = await fetch(`/api/ideas/{{ idea.id }}/comments`);
+        const response = await fetch(`/api/ideas/{{ idea.uuid }}/comments`);
         const comments = await response.json();
         
         const container = document.getElementById('comments-container');
@@ -801,7 +801,7 @@ if (addCommentForm) {
         if (!content) return;
         
         try {
-            const response = await fetch(`/api/ideas/{{ idea.id }}/comments`, {
+            const response = await fetch(`/api/ideas/{{ idea.uuid }}/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -828,7 +828,7 @@ if (addCommentForm) {
 // Load external links
 async function loadExternalLinks() {
     try {
-        const response = await fetch(`/api/ideas/{{ idea.id }}/external-links`);
+        const response = await fetch(`/api/ideas/{{ idea.uuid }}/external-links`);
         const links = await response.json();
         
         const container = document.getElementById('external-links-container');
@@ -906,7 +906,7 @@ if (addLinkForm) {
         };
         
         try {
-            const response = await fetch(`/api/ideas/{{ idea.id }}/external-links`, {
+            const response = await fetch(`/api/ideas/{{ idea.uuid }}/external-links`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(linkData)
@@ -929,7 +929,7 @@ if (addLinkForm) {
 // Load activity feed
 async function loadActivityFeed() {
     try {
-        const response = await fetch(`/api/ideas/{{ idea.id }}/activities`);
+        const response = await fetch(`/api/ideas/{{ idea.uuid }}/activities`);
         const activities = await response.json();
         
         const container = document.getElementById('activity-feed-container');
@@ -1242,7 +1242,7 @@ if (claimForm) {
         formData.append('skills', document.getElementById('claim-skills').value);
         
         try {
-            const response = await fetch(`/idea/{{ idea.id }}/claim`, {
+            const response = await fetch(`/idea/{{ idea.uuid }}/claim`, {
                 method: 'POST',
                 body: formData
             });

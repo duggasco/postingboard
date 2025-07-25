@@ -256,7 +256,7 @@ async function loadTeamData() {
         loadAllTeamsOverview();
     } else {
         // Manager - load their team data directly
-        currentTeamId = {{ session.get('user_managed_team_id') or 'null' }};
+        currentTeamId = '{{ session.get('user_managed_team_uuid') or '' }}' || null;
         if (currentTeamId) {
             document.getElementById('team-stats-cards').style.display = 'grid';
             loadTeamStats();
@@ -1014,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (teamId) {
                 // Show individual team stats
-                currentTeamId = parseInt(teamId);
+                currentTeamId = teamId; // Now using UUID
                 document.getElementById('all-teams-overview').style.display = 'none';
                 document.getElementById('team-stats-container').style.display = 'block';
                 document.getElementById('team-stats-cards').style.display = 'grid';

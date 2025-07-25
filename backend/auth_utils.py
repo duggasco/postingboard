@@ -116,7 +116,7 @@ def get_user_profile(db: Session, email: str):
     """Get user profile by email."""
     return db.query(UserProfile).filter_by(email=email).first()
 
-def update_user_profile(db: Session, email: str, name: str = None, role: str = None, team_id: int = None, managed_team_id: int = None, skill_ids: list = None, create_manager_request: bool = False):
+def update_user_profile(db: Session, email: str, name: str = None, role: str = None, team_uuid: str = None, managed_team_uuid: str = None, skill_ids: list = None, create_manager_request: bool = False):
     """Update user profile with name, role, team, managed team, and skills."""
     user = db.query(UserProfile).filter_by(email=email).first()
     if not user:
@@ -128,19 +128,19 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
     if role is not None:
         user.role = role
         
-    if team_id is not None:
-        old_team_id = user.team_id
-        user.team_id = team_id
+    if team_uuid is not None:
+        old_team_uuid = user.team_uuid
+        user.team_uuid = team_uuid
         
         # If team changed, notify the manager of the new team
-        if old_team_id != team_id and team_id is not None:
+        if old_team_uuid != team_uuid and team_uuid is not None:
             # Team and Notification already imported at top
             # Get the team name
-            team = db.query(Team).filter_by(id=team_id).first()
+            team = db.query(Team).filter_by(uuid=team_uuid).first()
             if team:
                 # Find the manager of this team
                 manager = db.query(UserProfile).filter_by(
-                    managed_team_id=team_id,
+                    managed_team_uuid=team_uuid,
                     role='manager'
                 ).first()
                 
@@ -156,29 +156,29 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
                     db.add(notification)
     
     # Handle manager team assignment
-    if managed_team_id is not None and create_manager_request:
+    if managed_team_uuid is not None and create_manager_request:
         # Create a manager request instead of direct assignment
         # ManagerRequest already imported at top
         
         # Check if there's already a pending request
         existing_request = db.query(ManagerRequest).filter_by(
             user_email=email,
-            requested_team_id=managed_team_id,
+            requested_team_uuid=managed_team_uuid,
             status='pending'
         ).first()
         
         if not existing_request:
             manager_request = ManagerRequest(
                 user_email=email,
-                requested_team_id=managed_team_id,
+                requested_team_uuid=managed_team_uuid,
                 status='pending'
             )
             db.add(manager_request)
         
         # Don't set managed_team_id directly when creating request
-    elif managed_team_id is not None and not create_manager_request:
+    elif managed_team_uuid is not None and not create_manager_request:
         # Direct assignment (from admin approval)
-        user.managed_team_id = managed_team_id
+        user.managed_team_uuid = managed_team_uuid
     
     if skill_ids is not None:
         # Clear existing skills
@@ -186,7 +186,7 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
         # Add new skills
         # Skill already imported at top
         for skill_id in skill_ids:
-            skill = db.query(Skill).filter_by(id=skill_id).first()
+            skill = db.query(Skill).filter_by(uuid=skill_id).first()
             if skill:
                 user.skills.append(skill)
     

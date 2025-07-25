@@ -8,11 +8,11 @@ services:
     ports:
       - "9094:9094"
     environment:
-      - DATABASE_URL=sqlite:///posting_board.db
+      - DATABASE_URL=sqlite:///posting_board_uuid.db
       - PYTHONUNBUFFERED=1
       - FLASK_APP=app.py
     volumes:
-      - ./backend/posting_board.db:/app/posting_board.db
+      # - ./backend/posting_board_uuid.db:/app/posting_board_uuid.db
       - ./backend/flask_session:/app/flask_session
       - ./backend/static:/app/static
       - ./backend/templates:/app/templates

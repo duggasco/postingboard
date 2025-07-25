@@ -5,6 +5,7 @@ from sqlalchemy import desc, asc
 from datetime import datetime
 from email_utils import send_claim_notification
 from decorators import require_verified_email, require_profile_complete
+from uuid_utils import get_by_identifier, get_identifier_for_url, is_valid_uuid
 
 main_bp = Blueprint('main', __name__)
 
@@ -42,22 +43,22 @@ def submit():
                 idea.needed_by = datetime.strptime(needed_by, '%Y-%m-%d')
             
             # Handle skills
-            skill_ids = request.form.getlist('skills[]')
-            for skill_id in skill_ids:
-                if skill_id.isdigit():
-                    skill = db.query(Skill).get(int(skill_id))
+            skill_uuids = request.form.getlist('skills[]')
+            for skill_uuid in skill_uuids:
+                if is_valid_uuid(skill_uuid):
+                    skill = get_by_identifier(Skill, skill_uuid, db)
                     if skill:
                         idea.skills.append(skill)
                 else:
                     # Create new skill if it's a custom one
-                    skill = db.query(Skill).filter_by(name=skill_id).first()
+                    skill = db.query(Skill).filter_by(name=skill_uuid).first()
                     if not skill:
-                        skill = Skill(name=skill_id)
+                        skill = Skill(name=skill_uuid)
                         db.add(skill)
                     idea.skills.append(skill)
             
             db.add(idea)
-            db.flush()  # Flush to get idea.id before creating bounty
+            db.flush()  # Flush to get idea.uuid before creating bounty
             
             # Handle bounty if monetary is checked
             is_monetary = request.form.get('is_monetary') == 'on'
@@ -75,7 +76,7 @@ def submit():
                 
                 # Create bounty record
                 bounty = Bounty(
-                    idea_id=idea.id,
+                    idea_uuid=idea.uuid,
                     is_monetary=is_monetary,
                     is_expensed=is_expensed,
                     amount=amount,
@@ -102,7 +103,7 @@ def submit():
                                 type='bounty_approval',
                                 title='Bounty Approval Required',
                                 message=f'${amount:.2f} bounty requested for idea: {idea.title}',
-                                idea_id=idea.id,
+                                idea_uuid=idea.uuid,
                                 related_user_email=session.get('user_email')
                             )
                             db.add(notification)
@@ -113,7 +114,7 @@ def submit():
                         type='bounty_approval',
                         title='Bounty Approval Required',
                         message=f'${amount:.2f} bounty requested by {session.get("user_name", session.get("user_email"))} for idea: {idea.title}',
-                        idea_id=idea.id,
+                        idea_uuid=idea.uuid,
                         related_user_email=session.get('user_email')
                     )
                     db.add(admin_notification)
@@ -123,11 +124,11 @@ def submit():
             # Update session
             if 'submitted_ideas' not in session:
                 session['submitted_ideas'] = []
-            session['submitted_ideas'].append(idea.id)
+            session['submitted_ideas'].append(idea.uuid)
             session.permanent = True
             
             flash('Idea submitted successfully!', 'success')
-            return redirect(url_for('main.idea_detail', idea_id=idea.id))
+            return redirect(url_for('main.idea_detail', identifier=idea.uuid))
             
         except Exception as e:
             db.rollback()
@@ -157,12 +158,18 @@ def my_team():
     
     return render_template('my_team.html')
 
-@main_bp.route('/idea/<int:idea_id>')
-def idea_detail(idea_id):
+@main_bp.route('/idea/<identifier>')
+def idea_detail(identifier):
     """Show individual idea details."""
+    # Only allow UUID format
+    from uuid_utils import is_valid_uuid
+    if not is_valid_uuid(identifier):
+        flash('Invalid idea identifier', 'error')
+        return redirect(url_for('main.home'))
+        
     db = get_session()
     try:
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             flash('Idea not found', 'error')
             return redirect(url_for('main.home'))
@@ -225,10 +232,15 @@ def idea_detail(idea_id):
     finally:
         db.close()
 
-@main_bp.route('/idea/<int:idea_id>/claim', methods=['POST'])
+@main_bp.route('/idea/<identifier>/claim', methods=['POST'])
 @require_profile_complete
-def claim_idea(idea_id):
+def claim_idea(identifier):
     """Request to claim an idea - requires approvals."""
+    # Only allow UUID format
+    from uuid_utils import is_valid_uuid
+    if not is_valid_uuid(identifier):
+        return jsonify({'success': False, 'message': 'Invalid idea identifier'}), 400
+        
     # Check if user has permission to claim based on role
     user_role = session.get('user_role')
     if user_role not in ['citizen_developer', 'developer']:
@@ -236,7 +248,7 @@ def claim_idea(idea_id):
     
     db = get_session()
     try:
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({'success': False, 'message': 'Idea not found'}), 404
         
@@ -246,7 +258,7 @@ def claim_idea(idea_id):
         # Check if user already has a pending claim approval for this idea
         from models import ClaimApproval
         existing_approval = db.query(ClaimApproval).filter_by(
-            idea_id=idea_id,
+            idea_uuid=idea.uuid,
             claimer_email=session.get('user_email'),
             status='pending'
         ).first()
@@ -260,7 +272,7 @@ def claim_idea(idea_id):
         
         # Create claim approval request
         claim_approval = ClaimApproval(
-            idea_id=idea_id,
+            idea_uuid=idea.uuid,
             claimer_name=session.get('user_name') or request.form.get('name'),
             claimer_email=session.get('user_email'),
             claimer_team=request.form.get('team'),
@@ -269,7 +281,7 @@ def claim_idea(idea_id):
         )
         
         # If claimer's team doesn't have a manager, auto-approve manager approval
-        if not user_profile or not user_profile.team_id:
+        if not user_profile or not user_profile.team_uuid:
             # No team, auto-approve manager
             claim_approval.manager_approved = True
             claim_approval.manager_approved_at = datetime.now()
@@ -277,7 +289,7 @@ def claim_idea(idea_id):
         else:
             # Check if the team has a manager
             team_manager = db.query(UserProfile).filter_by(
-                managed_team_id=user_profile.team_id,
+                managed_team_uuid=user_profile.team_uuid,
                 role='manager'
             ).first()
             if not team_manager:
@@ -295,18 +307,18 @@ def claim_idea(idea_id):
             type='claim_request',
             title='New claim request',
             message=f'{claim_approval.claimer_name} wants to claim your idea "{idea.title}". Please review and approve/deny the request.',
-            idea_id=idea_id,
+            idea_uuid=idea.uuid,
             related_user_email=claim_approval.claimer_email
         )
         db.add(owner_notification)
         
         # If claimer has a manager, notify them too
-        if user_profile and user_profile.team_id:
+        if user_profile and user_profile.team_uuid:
             # Get team manager
             manager = db.query(UserProfile).filter_by(
-                team_id=user_profile.team_id,
+                team_uuid=user_profile.team_uuid,
                 role='manager',
-                managed_team_id=user_profile.team_id
+                managed_team_uuid=user_profile.team_uuid
             ).first()
             
             if manager:
@@ -315,7 +327,7 @@ def claim_idea(idea_id):
                     type='claim_request',
                     title='Team member claim request',
                     message=f'{claim_approval.claimer_name} from your team wants to claim "{idea.title}". Please review and approve/deny the request.',
-                    idea_id=idea_id,
+                    idea_uuid=idea.uuid,
                     related_user_email=claim_approval.claimer_email
                 )
                 db.add(manager_notification)
@@ -325,8 +337,8 @@ def claim_idea(idea_id):
         # Update session with pending claim
         if 'pending_claims' not in session:
             session['pending_claims'] = []
-        if idea_id not in session['pending_claims']:
-            session['pending_claims'].append(idea_id)
+        if idea.uuid not in session['pending_claims']:
+            session['pending_claims'].append(idea.uuid)
         
         session.permanent = True
         

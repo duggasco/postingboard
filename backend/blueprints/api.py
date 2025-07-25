@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest, idea_skills, SubStatus, StatusHistory, IdeaStageData, IdeaActivity, ActivityType
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest, idea_skills, SubStatus, StatusHistory, IdeaStageData, IdeaActivity, ActivityType, IdeaComment, IdeaExternalLink, ExternalLinkType
 from sqlalchemy import desc, asc, func, or_
 from datetime import datetime
 from decorators import require_verified_email
@@ -10,6 +10,7 @@ from email.mime.multipart import MIMEMultipart
 import csv
 import io
 from werkzeug.datastructures import FileStorage
+from uuid_utils import get_by_identifier, get_identifier_for_url, is_valid_uuid
 
 api_bp = Blueprint('api', __name__)
 
@@ -84,7 +85,10 @@ def get_ideas():
         # Apply filters
         skill_filter = request.args.get('skill')
         if skill_filter:
-            query = query.join(Idea.skills).filter(Skill.id == int(skill_filter))
+            if is_valid_uuid(skill_filter):
+                query = query.join(Idea.skills).filter(Skill.uuid == skill_filter)
+            else:
+                return jsonify({'error': 'Invalid skill identifier'}), 400
         
         priority_filter = request.args.get('priority')
         if priority_filter:
@@ -115,7 +119,8 @@ def get_ideas():
         ideas_data = []
         for idea in ideas:
             idea_dict = {
-                'id': idea.id,
+                'id': idea.uuid,  # Only expose UUID as 'id' for backward compatibility
+                'uuid': idea.uuid,
                 'title': idea.title,
                 'description': idea.description,
                 'email': idea.email,
@@ -126,11 +131,11 @@ def get_ideas():
                 'status': idea.status.value,
                 'bounty': idea.bounty,
                 'bounty_details': {
-                    'is_monetary': idea.bounty_details.is_monetary,
-                    'is_expensed': idea.bounty_details.is_expensed,
-                    'amount': idea.bounty_details.amount,
-                    'requires_approval': idea.bounty_details.requires_approval
-                } if idea.bounty_details else None,
+                    'is_monetary': idea.bounty_details[0].is_monetary,
+                    'is_expensed': idea.bounty_details[0].is_expensed,
+                    'amount': idea.bounty_details[0].amount,
+                    'requires_approval': idea.bounty_details[0].requires_approval
+                } if idea.bounty_details and len(idea.bounty_details) > 0 else None,
                 'sub_status': idea.sub_status.value if idea.sub_status else None,
                 'sub_status_updated_at': idea.sub_status_updated_at.strftime('%Y-%m-%d %H:%M') if idea.sub_status_updated_at else None,
                 'sub_status_updated_by': idea.sub_status_updated_by,
@@ -139,8 +144,12 @@ def get_ideas():
                 'expected_completion': idea.expected_completion.strftime('%Y-%m-%d') if idea.expected_completion else None,
                 'needed_by': idea.needed_by.strftime('%Y-%m-%d') if idea.needed_by else None,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
-                'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],
-                'claims': [{'name': c.claimer_name, 'email': c.claimer_email, 'date': c.claim_date.strftime('%Y-%m-%d')} for c in idea.claims]
+                'skills': [{'id': s.uuid, 'name': s.name} for s in idea.skills],
+                'claims': [{
+                    'name': db.query(UserProfile).filter_by(email=c.claimer_email).first().name if db.query(UserProfile).filter_by(email=c.claimer_email).first() else c.claimer_email,
+                    'email': c.claimer_email,
+                    'date': c.claim_date.strftime('%Y-%m-%d')
+                } for c in idea.claims]
             }
             ideas_data.append(idea_dict)
         
@@ -154,7 +163,7 @@ def get_skills():
     db = get_session()
     try:
         skills = db.query(Skill).order_by(Skill.name).all()
-        return jsonify([{'id': s.id, 'name': s.name} for s in skills])
+        return jsonify([{'id': s.uuid, 'name': s.name} for s in skills])
     finally:
         db.close()
 
@@ -179,22 +188,24 @@ def add_skill():
         db.add(skill)
         db.commit()
         
-        return jsonify({'success': True, 'skill': {'id': skill.id, 'name': skill.name}})
+        return jsonify({'success': True, 'skill': {'id': skill.uuid, 'name': skill.name}})
     except Exception as e:
         db.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         db.close()
 
-@api_bp.route('/skills/<int:skill_id>', methods=['PUT'])
-def update_skill(skill_id):
+@api_bp.route('/skills/<identifier>', methods=['PUT'])
+def update_skill(identifier):
     """Update a skill (admin only)."""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     db = get_session()
     try:
-        skill = db.query(Skill).get(skill_id)
+        if not is_valid_uuid(identifier):
+            return jsonify({'error': 'Invalid identifier'}), 400
+        skill = get_by_identifier(Skill, identifier, db)
         if not skill:
             return jsonify({'success': False, 'message': 'Skill not found'}), 404
         
@@ -210,15 +221,17 @@ def update_skill(skill_id):
     finally:
         db.close()
 
-@api_bp.route('/skills/<int:skill_id>', methods=['DELETE'])
-def delete_skill(skill_id):
+@api_bp.route('/skills/<identifier>', methods=['DELETE'])
+def delete_skill(identifier):
     """Delete a skill (admin only)."""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     db = get_session()
     try:
-        skill = db.query(Skill).get(skill_id)
+        if not is_valid_uuid(identifier):
+            return jsonify({'error': 'Invalid identifier'}), 400
+        skill = get_by_identifier(Skill, identifier, db)
         if not skill:
             return jsonify({'success': False, 'message': 'Skill not found'}), 404
         
@@ -235,19 +248,34 @@ def delete_skill(skill_id):
     finally:
         db.close()
 
-@api_bp.route('/teams/<int:team_id>/members')
-def get_team_members(team_id):
+@api_bp.route('/teams/<identifier>/members')
+def get_team_members(identifier):
     """Get members of a team (manager only for their own team, or admin for any team)."""
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
+    
+    db = get_session()
+    try:
+        team = get_by_identifier(Team, identifier, db)
+        if not team:
+            return jsonify({'error': 'Team not found'}), 404
+        team_uuid = team.uuid
+        db.close()
+    except Exception:
+        db.close()
+        return jsonify({'error': 'Database error'}), 500
+    
     is_admin = session.get('is_admin')
-    is_manager_of_team = session.get('user_role') == 'manager' and session.get('user_managed_team_id') == team_id
+    is_manager_of_team = session.get('user_role') == 'manager' and session.get('user_managed_team_uuid') == team_uuid
     
     if not is_admin and not is_manager_of_team:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
     
     db = get_session()
     try:
+        db = get_session()
         members = db.query(UserProfile).filter(
-            UserProfile.team_id == team_id,
+            UserProfile.team_uuid == team_uuid,
             UserProfile.role.in_(['developer', 'citizen_developer'])  # Only developers can be assigned
         ).all()
         
@@ -272,11 +300,11 @@ def get_teams():
         if session.get('is_admin'):
             # Admin sees all teams with approval status
             teams = db.query(Team).order_by(Team.name).all()
-            return jsonify([{'id': t.id, 'name': t.name, 'is_approved': t.is_approved} for t in teams])
+            return jsonify([{'id': t.uuid, 'name': t.name, 'is_approved': t.is_approved} for t in teams])
         else:
             # Non-admin users only see approved teams
             teams = db.query(Team).filter(Team.is_approved == True).order_by(Team.name).all()
-            return jsonify([{'id': t.id, 'name': t.name} for t in teams])
+            return jsonify([{'id': t.uuid, 'name': t.name} for t in teams])
     finally:
         db.close()
 
@@ -300,22 +328,25 @@ def add_team():
         team = Team(name=name, is_approved=True)
         db.add(team)
         db.commit()
-        return jsonify({'success': True, 'id': team.id})
+        return jsonify({'success': True, 'id': team.uuid})
     except Exception as e:
         db.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         db.close()
 
-@api_bp.route('/teams/<int:team_id>', methods=['PUT'])
-def update_team(team_id):
+@api_bp.route('/teams/<identifier>', methods=['PUT'])
+def update_team(identifier):
     """Update a team (admin only)."""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
+    
     db = get_session()
     try:
-        team = db.query(Team).get(team_id)
+        team = get_by_identifier(Team, identifier, db)
         if not team:
             return jsonify({'success': False, 'message': 'Team not found'}), 404
         
@@ -328,7 +359,7 @@ def update_team(team_id):
             # Check if this is an approval (changing from False to True)
             if not team.is_approved and is_approved:
                 # Find users who belong to this team to notify them
-                team_users = db.query(UserProfile).filter_by(team_id=team.id).all()
+                team_users = db.query(UserProfile).filter_by(team_uuid=team.uuid).all()
                 
                 for user in team_users:
                     # Create notification for each team member
@@ -351,15 +382,18 @@ def update_team(team_id):
     finally:
         db.close()
 
-@api_bp.route('/teams/<int:team_id>', methods=['DELETE'])
-def delete_team(team_id):
+@api_bp.route('/teams/<identifier>', methods=['DELETE'])
+def delete_team(identifier):
     """Delete a team (admin only)."""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
+    
     db = get_session()
     try:
-        team = db.query(Team).get(team_id)
+        team = get_by_identifier(Team, identifier, db)
         if not team:
             return jsonify({'success': False, 'message': 'Team not found'}), 404
         
@@ -376,15 +410,18 @@ def delete_team(team_id):
     finally:
         db.close()
 
-@api_bp.route('/teams/<int:team_id>/deny', methods=['POST'])
-def deny_team(team_id):
+@api_bp.route('/teams/<identifier>/deny', methods=['POST'])
+def deny_team(identifier):
     """Deny a team request and clear it from all users (admin only)."""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
+    
     db = get_session()
     try:
-        team = db.query(Team).get(team_id)
+        team = get_by_identifier(Team, identifier, db)
         if not team:
             return jsonify({'success': False, 'message': 'Team not found'}), 404
         
@@ -392,11 +429,11 @@ def deny_team(team_id):
             return jsonify({'success': False, 'message': 'Cannot deny an already approved team'}), 400
         
         # Find all users who have this team assigned
-        affected_users = db.query(UserProfile).filter_by(team_id=team.id).all()
+        affected_users = db.query(UserProfile).filter_by(team_uuid=team.uuid).all()
         
         # Clear team assignment from all affected users
         for user in affected_users:
-            user.team_id = None
+            user.team_uuid = None
             
             # Create notification for each affected user
             notification = Notification(
@@ -422,15 +459,17 @@ def deny_team(team_id):
     finally:
         db.close()
 
-@api_bp.route('/ideas/<int:idea_id>', methods=['PUT'])
-def update_idea(idea_id):
+@api_bp.route('/ideas/<identifier>', methods=['PUT'])
+def update_idea(identifier):
     """Update an idea (admin only)."""
+    if not is_valid_uuid(identifier):
+        return jsonify({'success': False, 'message': 'Invalid identifier'}), 400
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     db = get_session()
     try:
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({'success': False, 'message': 'Idea not found'}), 404
         
@@ -457,7 +496,7 @@ def update_idea(idea_id):
                     type='status_change',
                     title='Idea status updated',
                     message=f'Your idea "{idea.title}" has been updated from {old_status.value} to {new_status.value}.',
-                    idea_id=idea_id
+                    idea_uuid=idea.uuid
                 )
                 db.add(submitter_notification)
                 
@@ -468,7 +507,7 @@ def update_idea(idea_id):
                         type='status_change',
                         title='Claimed idea status updated',
                         message=f'The idea "{idea.title}" you claimed has been updated from {old_status.value} to {new_status.value}.',
-                        idea_id=idea_id
+                        idea_uuid=idea.uuid
                     )
                     db.add(claimer_notification)
                     
@@ -480,7 +519,7 @@ def update_idea(idea_id):
                         type='idea_completed',
                         title='Your idea has been completed!',
                         message=f'Congratulations! Your idea "{idea.title}" has been marked as complete.',
-                        idea_id=idea_id
+                        idea_uuid=idea.uuid
                     )
                     db.add(completion_notification)
                     
@@ -496,9 +535,9 @@ def update_idea(idea_id):
             # Clear existing skills
             idea.skills = []
             # Add new skills
-            skill_ids = data['skill_ids']
-            if skill_ids:
-                skills = db.query(Skill).filter(Skill.id.in_(skill_ids)).all()
+            skill_uuids = data['skill_ids']
+            if skill_uuids:
+                skills = db.query(Skill).filter(Skill.uuid.in_(skill_uuids)).all()
                 idea.skills = skills
         
         db.commit()
@@ -509,15 +548,17 @@ def update_idea(idea_id):
     finally:
         db.close()
 
-@api_bp.route('/ideas/<int:idea_id>', methods=['DELETE'])
-def delete_idea(idea_id):
+@api_bp.route('/ideas/<identifier>', methods=['DELETE'])
+def delete_idea(identifier):
     """Delete an idea (admin only)."""
+    if not is_valid_uuid(identifier):
+        return jsonify({'success': False, 'message': 'Invalid identifier'}), 400
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     db = get_session()
     try:
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({'success': False, 'message': 'Idea not found'}), 404
         
@@ -530,15 +571,18 @@ def delete_idea(idea_id):
     finally:
         db.close()
 
-@api_bp.route('/ideas/<int:idea_id>/unclaim', methods=['POST'])
-def unclaim_idea(idea_id):
+@api_bp.route('/ideas/<identifier>/unclaim', methods=['POST'])
+def unclaim_idea(identifier):
     """Unclaim an idea by removing all claims (admin only)."""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
+    
     db = get_session()
     try:
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({'success': False, 'message': 'Idea not found'}), 404
         
@@ -696,7 +740,7 @@ def get_user_notifications():
         notifications_data = []
         for notif in all_notifications[:50]:  # Limit total to 50
             notifications_data.append({
-                'id': notif.id,
+                'id': notif.uuid,
                 'type': notif.type,
                 'title': notif.title,
                 'message': notif.message,
@@ -743,17 +787,20 @@ def _get_time_ago(timestamp):
     else:
         return "just now"
 
-@api_bp.route('/user/notifications/<int:notification_id>/read', methods=['POST'])
-def mark_notification_read(notification_id):
+@api_bp.route('/user/notifications/<identifier>/read', methods=['POST'])
+def mark_notification_read(identifier):
     """Mark a notification as read."""
     if not session.get('user_verified'):
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
     
     user_email = session.get('user_email')
     db = get_session()
     try:
         notification = db.query(Notification).filter_by(
-            id=notification_id,
+            uuid=identifier,
             user_email=user_email
         ).first()
         
@@ -772,11 +819,14 @@ def mark_notification_read(notification_id):
     finally:
         db.close()
 
-@api_bp.route('/user/notifications/<int:notification_id>', methods=['DELETE'])
-def delete_notification(notification_id):
+@api_bp.route('/user/notifications/<identifier>', methods=['DELETE'])
+def delete_notification(identifier):
     """Delete a notification."""
     if not session.get('user_verified'):
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
     
     user_email = session.get('user_email')
     is_admin = session.get('is_admin')
@@ -785,10 +835,10 @@ def delete_notification(notification_id):
     try:
         # Admin can delete any notification, users can only delete their own
         if is_admin:
-            notification = db.query(Notification).filter_by(id=notification_id).first()
+            notification = db.query(Notification).filter_by(uuid=identifier).first()
         else:
             notification = db.query(Notification).filter_by(
-                id=notification_id,
+                uuid=identifier,
                 user_email=user_email
             ).first()
         
@@ -811,7 +861,7 @@ def get_team_member(email):
     """Get details of a specific team member (manager or admin only)."""
     # Check if user is a manager with a team or an admin
     is_admin = session.get('is_admin')
-    is_manager = session.get('user_role') == 'manager' and session.get('user_managed_team_id')
+    is_manager = session.get('user_role') == 'manager' and session.get('user_managed_team_uuid')
     
     if not is_admin and not is_manager:
         return jsonify({'success': False, 'error': 'Unauthorized. Manager role or admin access required.'}), 403
@@ -824,7 +874,7 @@ def get_team_member(email):
             return jsonify({'success': False, 'error': 'Team member not found'}), 404
         
         # Verify the member belongs to the manager's team (skip for admins)
-        if not is_admin and member.team_id != session.get('user_managed_team_id'):
+        if not is_admin and member.team_uuid != session.get('user_managed_team_uuid'):
             return jsonify({'success': False, 'error': 'Member not in your team'}), 403
         
         # Count submitted and claimed ideas
@@ -852,9 +902,9 @@ def get_team_member(email):
             'email': member.email,
             'name': member.name,
             'role': member.role,
-            'team_id': member.team_id,
+            'team_id': member.team_uuid,
             'team_name': member.team.name if member.team else None,
-            'skills': [{'id': s.id, 'name': s.name} for s in member.skills],
+            'skills': [{'id': s.uuid, 'name': s.name} for s in member.skills],
             'is_verified': member.is_verified,
             'created_at': member.created_at.isoformat() if member.created_at else None,
             'last_verified_at': member.last_verified_at.isoformat() if member.last_verified_at else None,
@@ -875,7 +925,7 @@ def update_team_member(email):
     """Update a team member's profile (manager or admin only)."""
     # Check if user is a manager with a team or an admin
     is_admin = session.get('is_admin')
-    is_manager = session.get('user_role') == 'manager' and session.get('user_managed_team_id')
+    is_manager = session.get('user_role') == 'manager' and session.get('user_managed_team_uuid')
     
     if not is_admin and not is_manager:
         return jsonify({'success': False, 'error': 'Unauthorized. Manager role or admin access required.'}), 403
@@ -888,7 +938,7 @@ def update_team_member(email):
             return jsonify({'success': False, 'error': 'Team member not found'}), 404
         
         # Verify the member belongs to the manager's team (skip for admins)
-        if not is_admin and member.team_id != session.get('user_managed_team_id'):
+        if not is_admin and member.team_uuid != session.get('user_managed_team_uuid'):
             return jsonify({'success': False, 'error': 'Member not in your team'}), 403
         
         # Managers can only manage developers, not other managers (admins can edit anyone)
@@ -909,9 +959,9 @@ def update_team_member(email):
             # Clear existing skills
             member.skills = []
             # Add new skills
-            skill_ids = data['skill_ids']
-            if skill_ids:
-                skills = db.query(Skill).filter(Skill.id.in_(skill_ids)).all()
+            skill_uuids = data['skill_ids']
+            if skill_uuids:
+                skills = db.query(Skill).filter(Skill.uuid.in_(skill_uuids)).all()
                 member.skills = skills
         
         db.commit()
@@ -927,22 +977,22 @@ def update_team_member(email):
 def get_team_stats():
     """Get team statistics for managers."""
     # Check if user is a manager with a team
-    if session.get('user_role') != 'manager' or not session.get('user_managed_team_id'):
+    if session.get('user_role') != 'manager' or not session.get('user_managed_team_uuid'):
         return jsonify({'error': 'Unauthorized. Manager role required.'}), 403
     
     db = get_session()
     try:
-        team_id = session.get('user_managed_team_id')
+        team_uuid = session.get('user_managed_team_uuid')
         user_email = session.get('user_email')
         
         # Get team object
-        team = db.query(Team).filter(Team.id == team_id).first()
+        team = db.query(Team).filter(Team.uuid == team_uuid).first()
         if not team:
             return jsonify({'error': 'Team not found'}), 404
         
         # Get team members
         team_members = db.query(UserProfile).filter(
-            UserProfile.team_id == team_id,
+            UserProfile.team_uuid == team_uuid,
             UserProfile.email != user_email  # Exclude the manager
         ).all()
         
@@ -955,16 +1005,16 @@ def get_team_stats():
         
         # Get claimed ideas by team members with proper join
         from models import ClaimApproval
-        team_claimed = db.query(func.count(func.distinct(Claim.idea_id))).join(
-            Idea, Claim.idea_id == Idea.id
+        team_claimed = db.query(func.count(func.distinct(Claim.idea_uuid))).join(
+            Idea, Claim.idea_uuid == Idea.uuid
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
         ).scalar() or 0
         
         # Status breakdown of team's claimed ideas
         status_breakdown = {}
-        claimed_status_query = db.query(Idea.status, func.count(Idea.id)).join(
-            Claim, Claim.idea_id == Idea.id
+        claimed_status_query = db.query(Idea.status, func.count(Idea.uuid)).join(
+            Claim, Claim.idea_uuid == Idea.uuid
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
         ).group_by(Idea.status).all()
@@ -974,7 +1024,7 @@ def get_team_stats():
         
         # Submitted ideas by status
         submitted_status_breakdown = {}
-        submitted_status_query = db.query(Idea.status, func.count(Idea.id)).filter(
+        submitted_status_query = db.query(Idea.status, func.count(Idea.uuid)).filter(
             Idea.email.in_(team_member_emails)
         ).group_by(Idea.status).all()
         
@@ -983,7 +1033,7 @@ def get_team_stats():
         
         # Priority breakdown - split by submitted vs claimed
         priority_submitted = {}
-        priority_submitted_query = db.query(Idea.priority, func.count(Idea.id)).filter(
+        priority_submitted_query = db.query(Idea.priority, func.count(Idea.uuid)).filter(
             Idea.email.in_(team_member_emails)
         ).group_by(Idea.priority).all()
         
@@ -991,8 +1041,8 @@ def get_team_stats():
             priority_submitted[priority.value] = count
             
         priority_claimed = {}
-        priority_claimed_query = db.query(Idea.priority, func.count(Idea.id)).join(
-            Claim, Claim.idea_id == Idea.id
+        priority_claimed_query = db.query(Idea.priority, func.count(Idea.uuid)).join(
+            Claim, Claim.idea_uuid == Idea.uuid
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
         ).group_by(Idea.priority).all()
@@ -1002,7 +1052,7 @@ def get_team_stats():
         
         # Size breakdown - split by submitted vs claimed
         size_submitted = {}
-        size_submitted_query = db.query(Idea.size, func.count(Idea.id)).filter(
+        size_submitted_query = db.query(Idea.size, func.count(Idea.uuid)).filter(
             Idea.email.in_(team_member_emails)
         ).group_by(Idea.size).all()
         
@@ -1010,8 +1060,8 @@ def get_team_stats():
             size_submitted[size.value] = count
             
         size_claimed = {}
-        size_claimed_query = db.query(Idea.size, func.count(Idea.id)).join(
-            Claim, Claim.idea_id == Idea.id
+        size_claimed_query = db.query(Idea.size, func.count(Idea.uuid)).join(
+            Claim, Claim.idea_uuid == Idea.uuid
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
         ).group_by(Idea.size).all()
@@ -1023,9 +1073,9 @@ def get_team_stats():
         team_skills = {}
         for member in team_members:
             member_skills = db.query(Skill.name).join(
-                user_skills, Skill.id == user_skills.c.skill_id
+                user_skills, Skill.uuid == user_skills.c.skill_uuid
             ).filter(
-                user_skills.c.user_id == member.id
+                user_skills.c.user_email == member.email
             ).all()
             
             for (skill_name,) in member_skills:
@@ -1045,9 +1095,9 @@ def get_team_stats():
         
         for idea in team_submitted_ideas:
             idea_skill_list = db.query(Skill.name).join(
-                idea_skills, Skill.id == idea_skills.c.skill_id
+                idea_skills, Skill.uuid == idea_skills.c.skill_uuid
             ).filter(
-                idea_skills.c.idea_id == idea.id
+                idea_skills.c.idea_uuid == idea.uuid
             ).all()
             
             for (skill_name,) in idea_skill_list:
@@ -1115,7 +1165,7 @@ def get_team_stats():
         
         # Pending approvals for team
         pending_approvals = db.query(ClaimApproval).join(
-            Idea, ClaimApproval.idea_id == Idea.id
+            Idea, ClaimApproval.idea_uuid == Idea.uuid
         ).filter(
             ClaimApproval.claimer_email.in_(team_member_emails),
             ClaimApproval.status == 'pending',
@@ -1172,7 +1222,7 @@ def get_team_stats():
         ).count()
         
         stats = {
-            'teamId': team_id,
+            'teamId': team.uuid,
             'teamName': team.name,
             'overview': {
                 'total_members': len(team_members),
@@ -1221,11 +1271,11 @@ def get_admin_team_stats():
     
     db = get_session()
     try:
-        # Get optional team_id parameter
-        team_id = request.args.get('team_id', type=int)
+        # Get optional team_id parameter (now UUID)
+        team_identifier = request.args.get('team_id', type=str)
         
         # If no team_id, return stats for all teams
-        if not team_id:
+        if not team_identifier:
             # Get all teams
             teams = db.query(Team).order_by(Team.name).all()
             all_teams_stats = []
@@ -1233,7 +1283,7 @@ def get_admin_team_stats():
             for team in teams:
                 # Get team members
                 team_members = db.query(UserProfile).filter(
-                    UserProfile.team_id == team.id
+                    UserProfile.team_uuid == team.uuid
                 ).all()
                 
                 team_member_emails = [member.email for member in team_members]
@@ -1247,8 +1297,8 @@ def get_admin_team_stats():
                     Idea.email.in_(team_member_emails)
                 ).count()
                 
-                team_claimed = db.query(func.count(func.distinct(Claim.idea_id))).join(
-                    Idea, Claim.idea_id == Idea.id
+                team_claimed = db.query(func.count(func.distinct(Claim.idea_uuid))).join(
+                    Idea, Claim.idea_uuid == Idea.uuid
                 ).filter(
                     Claim.claimer_email.in_(team_member_emails)
                 ).scalar() or 0
@@ -1262,7 +1312,7 @@ def get_admin_team_stats():
                 completion_rate = round((completed_ideas / team_claimed * 100) if team_claimed > 0 else 0, 1)
                 
                 all_teams_stats.append({
-                    'id': team.id,
+                    'id': team.uuid,
                     'name': team.name,
                     'is_approved': team.is_approved,
                     'member_count': len(team_members),
@@ -1274,13 +1324,15 @@ def get_admin_team_stats():
             return jsonify({'teams_overview': all_teams_stats})
         
         # Get stats for specific team
-        team = db.query(Team).filter(Team.id == team_id).first()
+        if not is_valid_uuid(team_identifier):
+            return jsonify({'error': 'Invalid team identifier'}), 400
+        team = get_by_identifier(Team, team_identifier, db)
         if not team:
             return jsonify({'error': 'Team not found'}), 404
         
         # Get team members
         team_members = db.query(UserProfile).filter(
-            UserProfile.team_id == team_id
+            UserProfile.team_uuid == team.uuid
         ).all()
         
         team_member_emails = [member.email for member in team_members]
@@ -1292,16 +1344,16 @@ def get_admin_team_stats():
         
         # Get claimed ideas by team members with proper join
         from models import ClaimApproval
-        team_claimed = db.query(func.count(func.distinct(Claim.idea_id))).join(
-            Idea, Claim.idea_id == Idea.id
+        team_claimed = db.query(func.count(func.distinct(Claim.idea_uuid))).join(
+            Idea, Claim.idea_uuid == Idea.uuid
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
         ).scalar() or 0
         
         # Status breakdown of team's claimed ideas
         status_breakdown = {}
-        claimed_status_query = db.query(Idea.status, func.count(Idea.id)).join(
-            Claim, Claim.idea_id == Idea.id
+        claimed_status_query = db.query(Idea.status, func.count(Idea.uuid)).join(
+            Claim, Claim.idea_uuid == Idea.uuid
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
         ).group_by(Idea.status).all()
@@ -1311,7 +1363,7 @@ def get_admin_team_stats():
         
         # Submitted ideas by status
         submitted_status_breakdown = {}
-        submitted_status_query = db.query(Idea.status, func.count(Idea.id)).filter(
+        submitted_status_query = db.query(Idea.status, func.count(Idea.uuid)).filter(
             Idea.email.in_(team_member_emails)
         ).group_by(Idea.status).all()
         
@@ -1320,7 +1372,7 @@ def get_admin_team_stats():
         
         # Priority breakdown - split by submitted vs claimed
         priority_submitted = {}
-        priority_submitted_query = db.query(Idea.priority, func.count(Idea.id)).filter(
+        priority_submitted_query = db.query(Idea.priority, func.count(Idea.uuid)).filter(
             Idea.email.in_(team_member_emails)
         ).group_by(Idea.priority).all()
         
@@ -1328,8 +1380,8 @@ def get_admin_team_stats():
             priority_submitted[priority.value] = count
             
         priority_claimed = {}
-        priority_claimed_query = db.query(Idea.priority, func.count(Idea.id)).join(
-            Claim, Claim.idea_id == Idea.id
+        priority_claimed_query = db.query(Idea.priority, func.count(Idea.uuid)).join(
+            Claim, Claim.idea_uuid == Idea.uuid
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
         ).group_by(Idea.priority).all()
@@ -1339,7 +1391,7 @@ def get_admin_team_stats():
         
         # Size breakdown - split by submitted vs claimed
         size_submitted = {}
-        size_submitted_query = db.query(Idea.size, func.count(Idea.id)).filter(
+        size_submitted_query = db.query(Idea.size, func.count(Idea.uuid)).filter(
             Idea.email.in_(team_member_emails)
         ).group_by(Idea.size).all()
         
@@ -1347,8 +1399,8 @@ def get_admin_team_stats():
             size_submitted[size.value] = count
             
         size_claimed = {}
-        size_claimed_query = db.query(Idea.size, func.count(Idea.id)).join(
-            Claim, Claim.idea_id == Idea.id
+        size_claimed_query = db.query(Idea.size, func.count(Idea.uuid)).join(
+            Claim, Claim.idea_uuid == Idea.uuid
         ).filter(
             Claim.claimer_email.in_(team_member_emails)
         ).group_by(Idea.size).all()
@@ -1360,9 +1412,9 @@ def get_admin_team_stats():
         team_skills = {}
         for member in team_members:
             member_skills = db.query(Skill.name).join(
-                user_skills, Skill.id == user_skills.c.skill_id
+                user_skills, Skill.uuid == user_skills.c.skill_uuid
             ).filter(
-                user_skills.c.user_id == member.id
+                user_skills.c.user_email == member.email
             ).all()
             
             for (skill_name,) in member_skills:
@@ -1382,9 +1434,9 @@ def get_admin_team_stats():
         
         for idea in team_submitted_ideas:
             idea_skill_list = db.query(Skill.name).join(
-                idea_skills, Skill.id == idea_skills.c.skill_id
+                idea_skills, Skill.uuid == idea_skills.c.skill_uuid
             ).filter(
-                idea_skills.c.idea_id == idea.id
+                idea_skills.c.idea_uuid == idea.uuid
             ).all()
             
             for (skill_name,) in idea_skill_list:
@@ -1452,7 +1504,7 @@ def get_admin_team_stats():
         
         # Pending approvals for team
         pending_approvals = db.query(ClaimApproval).join(
-            Idea, ClaimApproval.idea_id == Idea.id
+            Idea, ClaimApproval.idea_uuid == Idea.uuid
         ).filter(
             ClaimApproval.claimer_email.in_(team_member_emails),
             ClaimApproval.status == 'pending',
@@ -1509,7 +1561,7 @@ def get_admin_team_stats():
         ).count()
         
         stats = {
-            'teamId': team.id,
+            'teamId': team.uuid,
             'teamName': team.name,
             'overview': {
                 'total_members': len(team_members),
@@ -1569,7 +1621,7 @@ def get_my_ideas():
         ).all()
         
         for idea in submitted_ideas:
-            ideas_dict[idea.id] = {
+            ideas_dict[idea.uuid] = {
                     'idea': idea,
                     'relationship': 'submitted'
                 }
@@ -1580,11 +1632,11 @@ def get_my_ideas():
         ).all()
         
         for idea in claimed_ideas:
-            if idea.id in ideas_dict:
+            if idea.uuid in ideas_dict:
                 # User both submitted and claimed this idea
-                ideas_dict[idea.id]['relationship'] = 'both'
+                ideas_dict[idea.uuid]['relationship'] = 'both'
             else:
-                ideas_dict[idea.id] = {
+                ideas_dict[idea.uuid] = {
                     'idea': idea,
                     'relationship': 'claimed'
                 }
@@ -1607,7 +1659,7 @@ def get_my_ideas():
             claim_info = None
             if item['relationship'] in ['claimed', 'both']:
                 claim = db.query(Claim).filter(
-                    Claim.idea_id == idea.id,
+                    Claim.idea_uuid == idea.uuid,
                     Claim.claimer_email == user_email
                 ).first()
                 if claim:
@@ -1617,7 +1669,7 @@ def get_my_ideas():
                     }
             
             idea_dict = {
-                'id': idea.id,
+                'id': idea.uuid,
                 'title': idea.title,
                 'description': idea.description,
                 'email': idea.email,
@@ -1627,15 +1679,19 @@ def get_my_ideas():
                 'status': idea.status.value,
                 'bounty': idea.bounty,
                 'bounty_details': {
-                    'is_monetary': idea.bounty_details.is_monetary,
-                    'is_expensed': idea.bounty_details.is_expensed,
-                    'amount': idea.bounty_details.amount,
-                    'requires_approval': idea.bounty_details.requires_approval
-                } if idea.bounty_details else None,
+                    'is_monetary': idea.bounty_details[0].is_monetary,
+                    'is_expensed': idea.bounty_details[0].is_expensed,
+                    'amount': idea.bounty_details[0].amount,
+                    'requires_approval': idea.bounty_details[0].requires_approval
+                } if idea.bounty_details and len(idea.bounty_details) > 0 else None,
                 'benefactor_team': idea.benefactor_team,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
-                'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],
-                'claims': [{'name': c.claimer_name, 'email': c.claimer_email, 'date': c.claim_date.strftime('%Y-%m-%d')} for c in idea.claims],
+                'skills': [{'id': s.uuid, 'name': s.name} for s in idea.skills],
+                'claims': [{
+                    'name': db.query(UserProfile).filter_by(email=c.claimer_email).first().name if db.query(UserProfile).filter_by(email=c.claimer_email).first() else c.claimer_email,
+                    'email': c.claimer_email,
+                    'date': c.claim_date.strftime('%Y-%m-%d')
+                } for c in idea.claims],
                 'relationship': item['relationship'],
                 'claim_info': claim_info
             }
@@ -1662,7 +1718,7 @@ def get_my_ideas():
         for approval in pending_claims:
             idea = approval.idea
             pending_claims_data.append({
-                'id': idea.id,
+                'id': idea.uuid,
                 'title': idea.title,
                 'description': idea.description,
                 'email': idea.email,
@@ -1672,9 +1728,9 @@ def get_my_ideas():
                 'status': 'pending_claim',  # Special status for UI
                 'benefactor_team': idea.benefactor_team,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
-                'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],
+                'skills': [{'id': s.uuid, 'name': s.name} for s in idea.skills],
                 'pending_approval': {
-                    'id': approval.id,
+                    'id': approval.uuid,
                     'status': approval.status,
                     'owner_approved': approval.idea_owner_approved,
                     'manager_approved': approval.manager_approved,
@@ -1689,8 +1745,8 @@ def get_my_ideas():
         for approval in pending_owner_approvals:
             idea = approval.idea
             pending_approvals_data.append({
-                'id': approval.id,
-                'idea_id': approval.idea_id,
+                'id': approval.uuid,
+                'idea_uuid': approval.idea_uuid,
                 'claimer_name': approval.claimer_name,
                 'claimer_email': approval.claimer_email,
                 'claimer_team': approval.claimer_team,
@@ -1699,7 +1755,7 @@ def get_my_ideas():
                 'owner_approved': approval.idea_owner_approved,
                 'manager_approved': approval.manager_approved,
                 'idea': {
-                    'id': idea.id,
+                    'id': idea.uuid,
                     'title': idea.title,
                     'description': idea.description,
                     'benefactor_team': idea.benefactor_team,
@@ -1803,7 +1859,7 @@ def get_manager_requests():
         
         # Get current managers
         current_managers = db.query(UserProfile).filter(
-            UserProfile.managed_team_id != None,
+            UserProfile.managed_team_uuid != None,
             UserProfile.role == 'manager'
         ).all()
         
@@ -1811,7 +1867,7 @@ def get_manager_requests():
         pending_data = []
         for req in pending_requests:
             pending_data.append({
-                'id': req.id,
+                'id': req.uuid,
                 'user_name': req.user.name if req.user else 'N/A',
                 'user_email': req.user_email,
                 'team_name': req.team.name if req.team else 'N/A',
@@ -1835,17 +1891,20 @@ def get_manager_requests():
     finally:
         db.close()
 
-@api_bp.route('/admin/manager-requests/<int:request_id>/approve', methods=['POST'])
-def approve_manager_request(request_id):
+@api_bp.route('/admin/manager-requests/<identifier>/approve', methods=['POST'])
+def approve_manager_request(identifier):
     """Approve a manager request (admin only)."""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
     
     db = get_session()
     try:
         from models import ManagerRequest
         
-        manager_request = db.query(ManagerRequest).get(request_id)
+        manager_request = get_by_identifier(ManagerRequest, identifier, db)
         if not manager_request:
             return jsonify({'success': False, 'message': 'Request not found'}), 404
         
@@ -1857,10 +1916,10 @@ def approve_manager_request(request_id):
         manager_request.processed_at = datetime.now()
         manager_request.processed_by = session.get('user_email', 'admin@system.local')
         
-        # Update the user's managed_team_id and role
+        # Update the user's managed_team_uuid and role
         user = db.query(UserProfile).filter_by(email=manager_request.user_email).first()
         if user:
-            user.managed_team_id = manager_request.requested_team_id
+            user.managed_team_uuid = manager_request.requested_team_uuid
             user.role = 'manager'  # Also change their role to manager
         
         # Create notification for the approved manager
@@ -1875,7 +1934,7 @@ def approve_manager_request(request_id):
             db.add(manager_notification)
             
             # Notify existing team members about their new manager
-            team_members = db.query(UserProfile).filter_by(team_id=manager_request.requested_team_id).all()
+            team_members = db.query(UserProfile).filter_by(team_uuid=manager_request.requested_team_uuid).all()
             for member in team_members:
                 if member.email != manager_request.user_email:  # Don't notify the manager about themselves
                     member_notification = Notification(
@@ -1896,17 +1955,20 @@ def approve_manager_request(request_id):
     finally:
         db.close()
 
-@api_bp.route('/admin/manager-requests/<int:request_id>/deny', methods=['POST'])
-def deny_manager_request(request_id):
+@api_bp.route('/admin/manager-requests/<identifier>/deny', methods=['POST'])
+def deny_manager_request(identifier):
     """Deny a manager request (admin only)."""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
     
     db = get_session()
     try:
         from models import ManagerRequest
         
-        manager_request = db.query(ManagerRequest).get(request_id)
+        manager_request = get_by_identifier(ManagerRequest, identifier, db)
         if not manager_request:
             return jsonify({'success': False, 'message': 'Request not found'}), 404
         
@@ -1955,7 +2017,7 @@ def remove_manager():
             return jsonify({'success': False, 'message': 'User not found'}), 404
         
         # Remove managed team
-        user.managed_team_id = None
+        user.managed_team_uuid = None
         
         # Optionally change role back (if specified in request)
         if 'change_role' in request.json and request.json['change_role']:
@@ -1992,12 +2054,12 @@ def get_pending_claim_approvals():
         
         # Get approvals where user is a manager of the claimer's team
         manager_approvals = []
-        if session.get('user_role') == 'manager' and session.get('user_managed_team_id'):
-            managed_team_id = session.get('user_managed_team_id')
+        if session.get('user_role') == 'manager' and session.get('user_managed_team_uuid'):
+            managed_team_uuid = session.get('user_managed_team_uuid')
             
             # Get team members' emails
             team_members = db.query(UserProfile).filter(
-                UserProfile.team_id == managed_team_id
+                UserProfile.team_uuid == managed_team_uuid
             ).all()
             team_emails = [member.email for member in team_members]
             
@@ -2012,8 +2074,8 @@ def get_pending_claim_approvals():
         owner_data = []
         for approval in owner_approvals:
             owner_data.append({
-                'id': approval.id,
-                'idea_id': approval.idea_id,
+                'id': approval.uuid,
+                'idea_uuid': approval.idea_uuid,
                 'idea_title': approval.idea.title,
                 'claimer_name': approval.claimer_name,
                 'claimer_email': approval.claimer_email,
@@ -2024,8 +2086,8 @@ def get_pending_claim_approvals():
         manager_data = []
         for approval in manager_approvals:
             manager_data.append({
-                'id': approval.id,
-                'idea_id': approval.idea_id,
+                'id': approval.uuid,
+                'idea_uuid': approval.idea_uuid,
                 'idea_title': approval.idea.title,
                 'claimer_name': approval.claimer_name,
                 'claimer_email': approval.claimer_email,
@@ -2040,17 +2102,20 @@ def get_pending_claim_approvals():
     finally:
         db.close()
 
-@api_bp.route('/claim-approvals/<int:approval_id>/approve', methods=['POST'])
-def approve_claim(approval_id):
+@api_bp.route('/claim-approvals/<identifier>/approve', methods=['POST'])
+def approve_claim(identifier):
     """Approve a claim request (as idea owner or manager)."""
     if not session.get('user_verified'):
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
     
     db = get_session()
     try:
         from models import ClaimApproval, Idea, Claim, IdeaStatus
         
-        approval = db.query(ClaimApproval).get(approval_id)
+        approval = get_by_identifier(ClaimApproval, identifier, db)
         if not approval:
             return jsonify({'success': False, 'message': 'Approval request not found'}), 404
         
@@ -2070,7 +2135,7 @@ def approve_claim(approval_id):
         elif session.get('user_role') == 'manager' and approval.manager_approved is None:
             # Verify user manages the claimer's team
             claimer = db.query(UserProfile).filter_by(email=approval.claimer_email).first()
-            if claimer and claimer.team_id == session.get('user_managed_team_id'):
+            if claimer and claimer.team_uuid == session.get('user_managed_team_uuid'):
                 approval.manager_approved = True
                 approval.manager_approved_at = datetime.now()
                 approval.manager_approved_by = user_email
@@ -2083,7 +2148,7 @@ def approve_claim(approval_id):
         if approval.idea_owner_approved and approval.manager_approved:
             # Create the actual claim
             claim = Claim(
-                idea_id=approval.idea_id,
+                idea_uuid=approval.idea_uuid,
                 claimer_name=approval.claimer_name,
                 claimer_email=approval.claimer_email,
                 claimer_team=approval.claimer_team,
@@ -2106,7 +2171,7 @@ def approve_claim(approval_id):
                 type='claim_approved',
                 title='Claim Approved!',
                 message=f'Your claim for "{idea.title}" has been approved. You can now start working on it.',
-                idea_id=idea.id,
+                idea_uuid=idea.uuid,
                 related_user_email=idea.email
             )
             db.add(claimer_notification)
@@ -2117,7 +2182,7 @@ def approve_claim(approval_id):
                 type='claim_approved',
                 title='Your idea has been claimed',
                 message=f'{approval.claimer_name} has successfully claimed your idea "{idea.title}".',
-                idea_id=idea.id,
+                idea_uuid=idea.uuid,
                 related_user_email=approval.claimer_email
             )
             db.add(owner_notification)
@@ -2126,12 +2191,12 @@ def approve_claim(approval_id):
             if approval.claimer_email == session.get('user_email'):
                 if 'claimed_ideas' not in session:
                     session['claimed_ideas'] = []
-                if approval.idea_id not in session['claimed_ideas']:
-                    session['claimed_ideas'].append(approval.idea_id)
+                if approval.idea_uuid not in session['claimed_ideas']:
+                    session['claimed_ideas'].append(approval.idea_uuid)
                     
                 # Remove from pending claims
-                if 'pending_claims' in session and approval.idea_id in session['pending_claims']:
-                    session['pending_claims'].remove(approval.idea_id)
+                if 'pending_claims' in session and approval.idea_uuid in session['pending_claims']:
+                    session['pending_claims'].remove(approval.idea_uuid)
                 
                 session.permanent = True
         
@@ -2144,17 +2209,20 @@ def approve_claim(approval_id):
     finally:
         db.close()
 
-@api_bp.route('/claim-approvals/<int:approval_id>/deny', methods=['POST'])
-def deny_claim(approval_id):
+@api_bp.route('/claim-approvals/<identifier>/deny', methods=['POST'])
+def deny_claim(identifier):
     """Deny a claim request (as idea owner or manager)."""
     if not session.get('user_verified'):
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
     
     db = get_session()
     try:
         from models import ClaimApproval, Idea
         
-        approval = db.query(ClaimApproval).get(approval_id)
+        approval = get_by_identifier(ClaimApproval, identifier, db)
         if not approval:
             return jsonify({'success': False, 'message': 'Approval request not found'}), 404
         
@@ -2175,7 +2243,7 @@ def deny_claim(approval_id):
         elif session.get('user_role') == 'manager' and approval.manager_approved is None:
             # Verify user manages the claimer's team
             claimer = db.query(UserProfile).filter_by(email=approval.claimer_email).first()
-            if claimer and claimer.team_id == session.get('user_managed_team_id'):
+            if claimer and claimer.team_id == session.get('user_managed_team_uuid'):
                 approval.manager_approved = False
                 approval.manager_denied_at = datetime.now()
                 approval.manager_approved_by = user_email
@@ -2191,7 +2259,7 @@ def deny_claim(approval_id):
             type='claim_denied',
             title='Claim Denied',
             message=f'Your claim request for "{idea.title}" has been denied.',
-            idea_id=idea.id,
+            idea_uuid=idea.uuid,
             related_user_email=user_email
         )
         db.add(claimer_notification)
@@ -2205,17 +2273,19 @@ def deny_claim(approval_id):
     finally:
         db.close()
 
-@api_bp.route('/ideas/<int:idea_id>/assign', methods=['POST'])
-def assign_idea(idea_id):
+@api_bp.route('/ideas/<identifier>/assign', methods=['POST'])
+def assign_idea(identifier):
     """Assign an idea to a team member (manager only)."""
-    if session.get('user_role') != 'manager' or not session.get('user_managed_team_id'):
+    if not is_valid_uuid(identifier):
+        return jsonify({'success': False, 'message': 'Invalid identifier'}), 400
+    if session.get('user_role') != 'manager' or not session.get('user_managed_team_uuid'):
         return jsonify({'success': False, 'message': 'Only managers can assign ideas'}), 403
     
     db = get_session()
     try:
         from models import Idea
         
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({'success': False, 'message': 'Idea not found'}), 404
         
@@ -2229,7 +2299,7 @@ def assign_idea(idea_id):
         
         # Verify assignee is in the manager's team
         assignee = db.query(UserProfile).filter_by(email=assignee_email).first()
-        if not assignee or assignee.team_id != session.get('user_managed_team_id'):
+        if not assignee or assignee.team_uuid != session.get('user_managed_team_uuid'):
             return jsonify({'success': False, 'message': 'Assignee must be a member of your team'}), 400
         
         # Update assignment
@@ -2243,7 +2313,7 @@ def assign_idea(idea_id):
             type='assigned',
             title='New idea assigned to you',
             message=f'{session.get("user_name", "Your manager")} has assigned the idea "{idea.title}" to you.',
-            idea_id=idea_id,
+            idea_uuid=idea.uuid,
             related_user_email=session.get('user_email')
         )
         db.add(assignee_notification)
@@ -2254,7 +2324,7 @@ def assign_idea(idea_id):
             type='assigned',
             title='Your idea has been assigned',
             message=f'Your idea "{idea.title}" has been assigned to {assignee.name} by {session.get("user_name", "a manager")}.',
-            idea_id=idea_id,
+            idea_uuid=idea.uuid,
             related_user_email=assignee_email
         )
         db.add(submitter_notification)
@@ -2268,13 +2338,15 @@ def assign_idea(idea_id):
     finally:
         db.close()
 
-@api_bp.route('/ideas/<int:idea_id>/sub-status', methods=['PUT'])
+@api_bp.route('/ideas/<identifier>/sub-status', methods=['PUT'])
 @require_verified_email
-def update_idea_sub_status(idea_id):
+def update_idea_sub_status(identifier):
     """Update the sub-status of a claimed idea."""
+    if not is_valid_uuid(identifier):
+        return jsonify({'success': False, 'message': 'Invalid identifier'}), 400
     db = get_session()
     try:
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({'success': False, 'message': 'Idea not found'}), 404
         
@@ -2293,7 +2365,7 @@ def update_idea_sub_status(idea_id):
         elif any(claim.claimer_email == user_email for claim in idea.claims):
             # Claimer can update
             can_update = True
-        elif user_role == 'manager' and session.get('user_managed_team_id'):
+        elif user_role == 'manager' and session.get('user_managed_team_uuid'):
             # Manager can update if idea is for their team
             user_profile = db.query(UserProfile).filter_by(email=user_email).first()
             if user_profile and user_profile.managed_team and idea.benefactor_team == user_profile.managed_team.name:
@@ -2321,7 +2393,7 @@ def update_idea_sub_status(idea_id):
         
         # Create status history entry
         history = StatusHistory(
-            idea_id=idea.id,
+            idea_uuid=idea.uuid,
             from_status=idea.status,
             to_status=idea.status,
             from_sub_status=idea.sub_status,
@@ -2370,7 +2442,7 @@ def update_idea_sub_status(idea_id):
         if stage_data:
             # Remove existing stage data for this sub-status
             db.query(IdeaStageData).filter(
-                IdeaStageData.idea_id == idea.id,
+                IdeaStageData.idea_uuid == idea.uuid,
                 IdeaStageData.sub_status == sub_status_enum
             ).delete()
             
@@ -2378,7 +2450,7 @@ def update_idea_sub_status(idea_id):
             for field_name, field_value in stage_data.items():
                 if field_value:  # Only save non-empty values
                     stage_record = IdeaStageData(
-                        idea_id=idea.id,
+                        idea_uuid=idea.uuid,
                         sub_status=sub_status_enum,
                         field_name=field_name,
                         field_value=str(field_value),
@@ -2418,8 +2490,8 @@ def update_idea_sub_status(idea_id):
         
         import json
         activity = IdeaActivity(
-            idea_id=idea.id,
-            activity_type=ActivityType.status_change,
+            idea_uuid=idea.uuid,
+            activity_type=ActivityType.status_changed,
             actor_email=user_email,
             actor_name=session.get('user_name', user_email),
             description=f'Updated status to {sub_status_enum.value.replace("_", " ").title()}',
@@ -2434,7 +2506,7 @@ def update_idea_sub_status(idea_id):
                 type='status_change',
                 title=f'Idea "{idea.title}" status updated',
                 message=f'Your idea {notification_messages.get(sub_status_enum, "status has changed")}.',
-                idea_id=idea.id,
+                idea_uuid=idea.uuid,
                 related_user_email=user_email
             )
             db.add(notification)
@@ -2442,7 +2514,7 @@ def update_idea_sub_status(idea_id):
         # Notify manager if it's a special state
         if sub_status_enum in [SubStatus.blocked, SubStatus.on_hold, SubStatus.rolled_back]:
             manager_profile = db.query(UserProfile).filter_by(
-                managed_team_id=db.query(Team).filter_by(name=idea.benefactor_team).first().id if idea.benefactor_team else None,
+                managed_team_uuid=db.query(Team).filter_by(name=idea.benefactor_team).first().uuid if idea.benefactor_team else None,
                 role='manager'
             ).first()
             if manager_profile and manager_profile.email != user_email:
@@ -2451,7 +2523,7 @@ def update_idea_sub_status(idea_id):
                     type='status_change',
                     title=f'Idea "{idea.title}" needs attention',
                     message=f'The idea {notification_messages.get(sub_status_enum, "needs your attention")}. Reason: {idea.blocked_reason or "Not specified"}',
-                    idea_id=idea.id,
+                    idea_uuid=idea.uuid,
                     related_user_email=user_email
                 )
                 db.add(notification)
@@ -2471,18 +2543,21 @@ def update_idea_sub_status(idea_id):
     finally:
         db.close()
 
-@api_bp.route('/ideas/<int:idea_id>/status-history')
-def get_idea_status_history(idea_id):
+@api_bp.route('/ideas/<identifier>/status-history')
+def get_idea_status_history(identifier):
     """Get the status history for an idea."""
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
+    
     db = get_session()
     try:
         # Check if idea exists
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({'error': 'Idea not found'}), 404
         
         # Get status history
-        history = db.query(StatusHistory).filter_by(idea_id=idea_id).order_by(StatusHistory.changed_at.desc()).all()
+        history = db.query(StatusHistory).filter_by(idea_uuid=idea.uuid).order_by(StatusHistory.changed_at.desc()).all()
         
         history_data = []
         for entry in history:
@@ -2501,13 +2576,16 @@ def get_idea_status_history(idea_id):
     finally:
         db.close()
 
-@api_bp.route('/ideas/<int:idea_id>/stage-data')
-def get_idea_stage_data(idea_id):
+@api_bp.route('/ideas/<identifier>/stage-data')
+def get_idea_stage_data(identifier):
     """Get stage-specific data for an idea and status."""
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
+    
     db = get_session()
     try:
         # Check if idea exists
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({'error': 'Idea not found'}), 404
         
@@ -2793,7 +2871,7 @@ def bulk_upload_users():
                     email=email,
                     name=row['name'].strip(),
                     role=role,
-                    team_id=team.id,
+                    team_uuid=team.uuid,
                     is_verified=row.get('is_verified', 'true').lower() == 'true'
                 )
                 
@@ -2878,11 +2956,11 @@ def get_admin_users():
                 'email': user.email,
                 'name': user.name,
                 'role': user.role,
-                'team_id': user.team_id,
+                'team_uuid': user.team_uuid,
                 'team_name': user.team.name if user.team else None,
-                'managed_team_id': user.managed_team_id,
+                'managed_team_uuid': user.managed_team_uuid,
                 'managed_team_name': user.managed_team.name if user.managed_team else None,
-                'skills': [{'id': skill.id, 'name': skill.name} for skill in user.skills],
+                'skills': [{'id': skill.uuid, 'name': skill.name} for skill in user.skills],
                 'is_verified': user.is_verified,
                 'submitted_ideas_count': submitted_count,
                 'claimed_ideas_count': claimed_count,
@@ -2897,8 +2975,8 @@ def get_admin_users():
             # Add pending manager request details if exists
             if pending_manager_request:
                 user_data['pending_manager_request'] = {
-                    'id': pending_manager_request.id,
-                    'requested_team_id': pending_manager_request.requested_team_id,
+                    'id': pending_manager_request.uuid,
+                    'requested_team_uuid': pending_manager_request.requested_team_uuid,
                     'requested_team': pending_manager_request.team.name if pending_manager_request.team else None,
                     'requested_at': pending_manager_request.requested_at.isoformat() if pending_manager_request.requested_at else None
                 }
@@ -2932,17 +3010,17 @@ def update_admin_user(email):
         
         # Track role changes for manager workflow
         old_role = user.role
-        old_managed_team_id = user.managed_team_id
+        old_managed_team_uuid = user.managed_team_uuid
         
         # Update user fields
         if 'name' in data:
             user.name = data['name']
         if 'role' in data:
             user.role = data['role']
-        if 'team_id' in data:
-            user.team_id = data['team_id']
-        if 'managed_team_id' in data:
-            user.managed_team_id = data['managed_team_id']
+        if 'team_uuid' in data:
+            user.team_uuid = data['team_uuid']
+        if 'managed_team_uuid' in data:
+            user.managed_team_uuid = data['managed_team_uuid']
         if 'is_verified' in data:
             user.is_verified = data['is_verified']
         
@@ -2950,7 +3028,7 @@ def update_admin_user(email):
         if 'role' in data:
             # If changing FROM manager to another role, clear managed team
             if old_role == 'manager' and data['role'] != 'manager':
-                user.managed_team_id = None
+                user.managed_team_uuid = None
                 
             # If changing TO manager and they have a pending request, auto-approve it
             if old_role != 'manager' and data['role'] == 'manager':
@@ -2967,16 +3045,16 @@ def update_admin_user(email):
                     pending_request.processed_by = 'admin'
                     
                     # Set the managed team from the request if not already set
-                    if not user.managed_team_id and pending_request.requested_team_id:
-                        user.managed_team_id = pending_request.requested_team_id
+                    if not user.managed_team_uuid and pending_request.requested_team_uuid:
+                        user.managed_team_uuid = pending_request.requested_team_uuid
         
         # Update skills
-        if 'skill_ids' in data:
+        if 'skill_uuids' in data:
             # Clear existing skills
             user.skills = []
             # Add new skills
-            if data['skill_ids']:
-                skills = db.query(Skill).filter(Skill.id.in_(data['skill_ids'])).all()
+            if data['skill_uuids']:
+                skills = db.query(Skill).filter(Skill.uuid.in_(data['skill_uuids'])).all()
                 user.skills = skills
         
         db.commit()
@@ -3030,15 +3108,17 @@ def delete_admin_user(email):
         db.close()
 
 
-@api_bp.route("/ideas/<int:idea_id>/comments", methods=["GET", "POST"])
-def handle_idea_comments(idea_id):
+@api_bp.route("/ideas/<identifier>/comments", methods=["GET", "POST"])
+def handle_idea_comments(identifier):
     """Get or add comments for an idea."""
+    if not is_valid_uuid(identifier):
+        return jsonify({"error": "Invalid identifier"}), 400
     db = get_session()
     try:
         from models import IdeaComment, IdeaActivity, ActivityType
         
         # Get the idea
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({"error": "Idea not found"}), 404
         
@@ -3049,12 +3129,12 @@ def handle_idea_comments(idea_id):
         
         if request.method == "GET":
             # Get all comments for the idea
-            comments = db.query(IdeaComment).filter_by(idea_id=idea_id).order_by(IdeaComment.created_at.desc()).all()
+            comments = db.query(IdeaComment).filter_by(idea_uuid=idea.uuid).order_by(IdeaComment.created_at.desc()).all()
             
             comments_data = []
             for comment in comments:
                 comments_data.append({
-                    "id": comment.id,
+                    "id": comment.uuid,
                     "author_name": comment.author_name or comment.author_email,
                     "author_email": comment.author_email,
                     "content": comment.content,
@@ -3074,7 +3154,7 @@ def handle_idea_comments(idea_id):
             
             # Create comment
             comment = IdeaComment(
-                idea_id=idea_id,
+                idea_uuid=idea.uuid,
                 author_email=user_email,
                 author_name=session.get("user_name", user_email),
                 content=data["content"],
@@ -3084,7 +3164,7 @@ def handle_idea_comments(idea_id):
             
             # Create activity
             activity = IdeaActivity(
-                idea_id=idea_id,
+                idea_uuid=idea.uuid,
                 activity_type=ActivityType.comment_added,
                 actor_email=user_email,
                 actor_name=session.get("user_name", user_email),
@@ -3094,7 +3174,7 @@ def handle_idea_comments(idea_id):
             
             db.commit()
             
-            return jsonify({"success": True, "comment_id": comment.id})
+            return jsonify({"success": True, "comment_id": comment.uuid})
     
     except Exception as e:
         if request.method == "POST":
@@ -3103,15 +3183,17 @@ def handle_idea_comments(idea_id):
     finally:
         db.close()
 
-@api_bp.route("/ideas/<int:idea_id>/external-links", methods=["GET", "POST"])
-def handle_idea_external_links(idea_id):
+@api_bp.route("/ideas/<identifier>/external-links", methods=["GET", "POST"])
+def handle_idea_external_links(identifier):
     """Get or add external links for an idea."""
+    if not is_valid_uuid(identifier):
+        return jsonify({"error": "Invalid identifier"}), 400
     db = get_session()
     try:
         from models import IdeaExternalLink, ExternalLinkType, IdeaActivity, ActivityType
         
         # Get the idea
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({"error": "Idea not found"}), 404
         
@@ -3122,17 +3204,17 @@ def handle_idea_external_links(idea_id):
         
         if request.method == "GET":
             # Get all links for the idea
-            links = db.query(IdeaExternalLink).filter_by(idea_id=idea_id).order_by(IdeaExternalLink.created_at.desc()).all()
+            links = db.query(IdeaExternalLink).filter_by(idea_uuid=idea.uuid).order_by(IdeaExternalLink.created_at.desc()).all()
             
             links_data = []
             for link in links:
                 links_data.append({
-                    "id": link.id,
+                    "id": link.uuid,
                     "link_type": link.link_type.value,
                     "title": link.title,
                     "url": link.url,
                     "description": link.description,
-                    "creator_name": link.creator.name if link.creator else link.created_by,
+                    "creator_name": db.query(UserProfile).filter_by(email=link.created_by).first().name if db.query(UserProfile).filter_by(email=link.created_by).first() else link.created_by,
                     "created_at": link.created_at.strftime("%B %d, %Y"),
                     "sub_status": link.sub_status.value if link.sub_status else None
                 })
@@ -3148,7 +3230,7 @@ def handle_idea_external_links(idea_id):
             
             # Create link
             link = IdeaExternalLink(
-                idea_id=idea_id,
+                idea_uuid=idea.uuid,
                 link_type=ExternalLinkType(data["link_type"]),
                 title=data["title"],
                 url=data["url"],
@@ -3159,7 +3241,7 @@ def handle_idea_external_links(idea_id):
             
             # Create activity
             activity = IdeaActivity(
-                idea_id=idea_id,
+                idea_uuid=idea.uuid,
                 activity_type=ActivityType.link_added,
                 actor_email=user_email,
                 actor_name=session.get("user_name", user_email),
@@ -3169,7 +3251,7 @@ def handle_idea_external_links(idea_id):
             
             db.commit()
             
-            return jsonify({"success": True, "link_id": link.id})
+            return jsonify({"success": True, "link_id": link.uuid})
     
     except Exception as e:
         if request.method == "POST":
@@ -3178,15 +3260,17 @@ def handle_idea_external_links(idea_id):
     finally:
         db.close()
 
-@api_bp.route("/ideas/<int:idea_id>/activities", methods=["GET"])
-def get_idea_activities(idea_id):
+@api_bp.route("/ideas/<identifier>/activities", methods=["GET"])
+def get_idea_activities(identifier):
     """Get activity feed for an idea."""
+    if not is_valid_uuid(identifier):
+        return jsonify({"error": "Invalid identifier"}), 400
     db = get_session()
     try:
         from models import IdeaActivity
         
         # Get the idea
-        idea = db.query(Idea).get(idea_id)
+        idea = get_by_identifier(Idea, identifier, db)
         if not idea:
             return jsonify({"error": "Idea not found"}), 404
         
@@ -3195,12 +3279,12 @@ def get_idea_activities(idea_id):
         if not check_idea_tab_access(idea, user_email, db):
             return jsonify({"error": "Access denied"}), 403
         
-        activities = db.query(IdeaActivity).filter_by(idea_id=idea_id).order_by(IdeaActivity.created_at.desc()).limit(50).all()
+        activities = db.query(IdeaActivity).filter_by(idea_uuid=idea.uuid).order_by(IdeaActivity.created_at.desc()).limit(50).all()
         
         activities_data = []
         for activity in activities:
             activities_data.append({
-                "id": activity.id,
+                "id": activity.uuid,
                 "activity_type": activity.activity_type.value,
                 "actor_name": activity.actor_name or activity.actor_email,
                 "description": activity.description,

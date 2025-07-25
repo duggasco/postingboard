@@ -3,6 +3,7 @@ from database import get_session
 from auth_utils import create_verification_code, verify_code, get_user_profile, update_user_profile
 from decorators import update_session_from_db
 from models import Skill, Team
+from uuid_utils import is_valid_uuid
 
 auth = Blueprint('auth', __name__)
 
@@ -124,9 +125,9 @@ def update_profile():
     
     name = request.form.get('name', '').strip()
     role = request.form.get('role', '').strip()
-    team_id = request.form.get('team')
+    team_uuid = request.form.get('team')
     custom_team = request.form.get('custom_team', '').strip()
-    managed_team_id = request.form.get('managed_team')
+    managed_team_uuid = request.form.get('managed_team')
     skill_ids = request.form.getlist('skills[]')
     custom_skill = request.form.get('custom_skill', '').strip()
     
@@ -136,13 +137,13 @@ def update_profile():
     if not role:
         return jsonify({'success': False, 'error': 'Role is required.'}), 400
     
-    if not team_id and not custom_team:
+    if not team_uuid and not custom_team:
         return jsonify({'success': False, 'error': 'Please select or enter a team.'}), 400
     
     # Skills are now optional for all roles - no validation needed
     
     # Require managed team for managers
-    if role == 'manager' and not managed_team_id:
+    if role == 'manager' and not managed_team_uuid:
         return jsonify({'success': False, 'error': 'Please select a team to manage.'}), 400
     
     db = get_session()
@@ -155,7 +156,7 @@ def update_profile():
                 new_team = Team(name=custom_team, is_approved=False)  # Needs admin approval
                 db.add(new_team)
                 db.commit()
-                team_id = new_team.id
+                team_uuid = new_team.uuid
                 
                 # Create notification for admins about new team request
                 admin_notification = Notification(
@@ -168,7 +169,7 @@ def update_profile():
                 db.add(admin_notification)
                 db.commit()
             else:
-                team_id = existing_team.id
+                team_uuid = existing_team.uuid
         
         # Handle custom skill if provided
         if custom_skill and role in ['citizen_developer', 'developer']:
@@ -179,14 +180,14 @@ def update_profile():
                 new_skill = Skill(name=custom_skill)
                 db.add(new_skill)
                 db.commit()
-                skill_ids.append(str(new_skill.id))
+                skill_ids.append(str(new_skill.uuid))
             else:
                 # Add existing skill ID if not already selected
-                if str(existing_skill.id) not in skill_ids:
-                    skill_ids.append(str(existing_skill.id))
+                if str(existing_skill.uuid) not in skill_ids:
+                    skill_ids.append(str(existing_skill.uuid))
         
-        # Convert skill IDs to integers
-        skill_ids = [int(sid) for sid in skill_ids if sid.isdigit()] if skill_ids else []
+        # Filter valid skill UUIDs
+        skill_ids = [sid for sid in skill_ids if is_valid_uuid(sid)] if skill_ids else []
         
         # Clear skills for non-developer roles
         if role not in ['citizen_developer', 'developer']:
@@ -194,17 +195,17 @@ def update_profile():
         
         # Clear managed team for non-manager roles
         if role != 'manager':
-            managed_team_id = None
+            managed_team_uuid = None
         
         user = update_user_profile(
             db, 
             session['user_email'], 
             name=name, 
             role=role, 
-            team_id=int(team_id) if team_id else None, 
-            managed_team_id=int(managed_team_id) if managed_team_id else None,
+            team_uuid=team_uuid if team_uuid else None, 
+            managed_team_uuid=managed_team_uuid if managed_team_uuid else None,
             skill_ids=skill_ids,
-            create_manager_request=(role == 'manager' and managed_team_id is not None)
+            create_manager_request=(role == 'manager' and managed_team_uuid is not None)
         )
         
         if user:
@@ -226,7 +227,7 @@ def update_profile():
         error_details = f"Error updating profile for {session.get('user_email')}: {str(e)}"
         print(error_details)
         print(f"Traceback: {traceback.format_exc()}")
-        print(f"Form data - name: {name}, role: {role}, team_id: {team_id}, skills: {skill_ids}")
+        print(f"Form data - name: {name}, role: {role}, team_uuid: {team_uuid}, skills: {skill_ids}")
         return jsonify({
             'success': False,
             'error': 'Failed to update profile. Please try again.'

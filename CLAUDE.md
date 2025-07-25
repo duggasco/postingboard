@@ -73,26 +73,47 @@ templates/
 ```
 
 #### Database Models
-- **Idea**: Main entity with title, description, priority, size, status, bounty (text), and assignment fields
-- **Skill**: Many-to-many relationship with ideas and users
-- **Team**: Stores team names with approval status (predefined teams are auto-approved)
-- **Claim**: Tracks who claimed which idea (created after approvals)
+**IMPORTANT**: All models now use UUID (Universally Unique Identifier) primary keys instead of integer IDs.
+- **Database**: `posting_board_uuid.db` (migrated from `posting_board.db`)
+- **Primary Keys**: All tables use 36-character UUID strings as primary keys
+- **Foreign Keys**: All relationships use UUID references (e.g., `idea_uuid`, `team_uuid`, `skill_uuid`)
+
+**Core Models**:
+- **Idea**: Main entity with UUID primary key, title, description, priority, size, status, bounty (text), and assignment fields
+- **Skill**: Many-to-many relationship with ideas and users (UUID primary key)
+- **Team**: Stores team names with approval status (UUID primary key, predefined teams are auto-approved)
+- **Claim**: Tracks who claimed which idea using `idea_uuid` foreign key (created after approvals)
 - **ClaimApproval**: Tracks claim requests requiring dual approval before claims are created
-- **UserProfile**: Stores user email, name, verification status, role, team, managed team, and skills
-- **VerificationCode**: Tracks email verification codes with expiry and rate limiting
-- **ManagerRequest**: Tracks requests from users to manage teams, requiring admin approval
-- **Bounty**: Tracks monetary bounty details for ideas (is_monetary, is_expensed, amount, approval status)
-- **Notification**: Stores user notifications for various events including bounty approvals
-- **Enums**: PriorityLevel, IdeaSize, IdeaStatus
+- **UserProfile**: Stores user email (primary key), name, verification status, role, `team_uuid`, `managed_team_uuid`, and skills
+- **VerificationCode**: Tracks email verification codes with expiry and rate limiting (UUID primary key)
+- **ManagerRequest**: Tracks requests from users to manage teams, requiring admin approval (UUID primary key)
+- **Bounty**: Tracks monetary bounty details for ideas using `idea_uuid` foreign key
+- **Notification**: Stores user notifications for various events including bounty approvals (UUID primary key)
+
+**SDLC Models** (all with UUID primary keys):
+- **StatusHistory**: Tracks all status and sub-status changes
+- **IdeaComment**: Threaded discussions on ideas
+- **IdeaActivity**: Activity feed tracking all changes
+- **IdeaExternalLink**: External resources linked to ideas
+- **IdeaStageData**: Stage-specific data for development phases
+
+**Enums**: PriorityLevel, IdeaSize, IdeaStatus, SubStatus, ActivityType, ExternalLinkType
 
 ### Flask-Specific Features
+
+#### UUID Migration (July 2025)
+The entire application has been migrated from integer IDs to UUIDs for enhanced security and scalability:
+- **Backward Compatibility**: All API endpoints return UUIDs in the `id` field for client compatibility
+- **UUID Validation**: All endpoints validate UUID format before processing
+- **Session Storage**: Session variables now use `_uuid` suffix (e.g., `user_managed_team_uuid`)
+- **No Integer IDs**: The codebase no longer uses or accepts integer IDs anywhere
 
 #### API Endpoints
 - `/api/ideas` - Get filtered ideas list
 - `/api/my-ideas` - Get user's submitted and claimed ideas (requires authentication)
 - `/api/skills` - Get all available skills
 - `/api/teams` - Get teams (all for admin, approved only for others)
-- `/api/teams/<id>/members` - Get team members (manager only for their team)
+- `/api/teams/<uuid>/members` - Get team members (manager only for their team)
 - `/api/team-stats` - Get comprehensive team statistics (manager only)
 - `/api/admin/stats` - Get dashboard statistics
 - `/api/admin/team-stats` - Get team statistics for admins (all teams or specific team)
@@ -1568,6 +1589,21 @@ All potentially truncated fields show full content on hover:
 - Users endpoint returns wrapped object: `{success: true, users: [...]}`
 
 ## Recent Fixes and Updates
+
+### UUID Migration Implementation (July 2025)
+Completed full migration from integer IDs to UUIDs:
+- **Database Schema**: Created new `posting_board_uuid.db` with UUID-only schema
+- **Model Updates**: All models now use UUID primary keys and foreign keys
+- **API Changes**: 
+  - All endpoints accept and return UUIDs
+  - Removed all `parseInt()` calls for ID handling
+  - Fixed references from `.id` to `.uuid` in SDLC models
+- **Session Updates**: Changed all session storage to use UUID field names
+- **Bug Fixes**:
+  - Fixed `user_skills` table query to use `user_email` instead of `user_uuid`
+  - Fixed `ActivityType.status_change` → `ActivityType.status_changed`
+  - Fixed external link creator lookup
+  - Updated all `_id` references to `_uuid` in session and API code
 
 ### Enhanced SDLC Tracking Implementation (July 2025)
 Implemented comprehensive Software Development Life Cycle tracking features:
