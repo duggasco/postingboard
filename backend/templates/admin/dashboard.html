@@ -928,12 +928,15 @@ document.getElementById('edit-idea-form').addEventListener('submit', async (e) =
         // Bounty fields
         is_monetary: document.getElementById('edit-is-monetary').checked,
         is_expensed: document.getElementById('edit-is-expensed').checked,
-        amount: parseFloat(document.getElementById('edit-amount').value) || 0
+        amount: document.getElementById('edit-is-monetary').checked ? (parseFloat(document.getElementById('edit-amount').value) || 0.0) : 0.0
     };
     
     // Get selected skills (UUIDs)
     const checkedSkills = document.querySelectorAll('#edit-skills-container input[type="checkbox"]:checked');
     data.skill_ids = Array.from(checkedSkills).map(cb => cb.value);
+    
+    // Debug log the data being sent
+    console.log('Updating idea with data:', data);
     
     try {
         await utils.fetchJson(`/api/ideas/${ideaId}`, {
@@ -945,7 +948,9 @@ document.getElementById('edit-idea-form').addEventListener('submit', async (e) =
         loadIdeas();
     } catch (error) {
         console.error('Error updating idea:', error);
-        alert('Error updating idea. Please try again.');
+        // Show more detailed error if available
+        const errorMsg = error.message || 'Error updating idea. Please try again.';
+        alert(errorMsg);
     }
 });
 

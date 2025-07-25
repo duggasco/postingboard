@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest, idea_skills, SubStatus, StatusHistory, IdeaStageData, IdeaActivity, ActivityType, IdeaComment, IdeaExternalLink, ExternalLinkType
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest, idea_skills, SubStatus, StatusHistory, IdeaStageData, IdeaActivity, ActivityType, IdeaComment, IdeaExternalLink, ExternalLinkType, Bounty
 from sqlalchemy import desc, asc, func, or_
 from datetime import datetime
 from decorators import require_verified_email
@@ -785,7 +785,7 @@ def update_idea(identifier):
             idea.skills = []
             # Add new skills
             skill_uuids = data['skill_ids']
-            if skill_uuids:
+            if skill_uuids and len(skill_uuids) > 0:
                 skills = db.query(Skill).filter(Skill.uuid.in_(skill_uuids)).all()
                 idea.skills = skills
         

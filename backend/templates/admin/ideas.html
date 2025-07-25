@@ -575,8 +575,11 @@ async function saveIdea(event) {
         // Bounty fields
         is_monetary: document.getElementById('edit-is-monetary').checked,
         is_expensed: document.getElementById('edit-is-expensed').checked,
-        amount: parseFloat(document.getElementById('edit-amount').value) || 0
+        amount: document.getElementById('edit-is-monetary').checked ? (parseFloat(document.getElementById('edit-amount').value) || 0.0) : 0.0
     };
+    
+    // Debug log the data being sent
+    console.log('Updating idea with data:', data);
     
     try {
         const response = await fetch(`/api/ideas/${ideaId}`, {

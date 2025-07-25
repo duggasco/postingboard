@@ -2077,3 +2077,15 @@ Fixed JavaScript parseInt errors after UUID migration:
   - SMTP port number in email_settings.html
   - Date components in main.js
 - **Result**: Admin edit actions now work correctly with UUID-based system
+
+### Bounty Model Import Fix (July 2025)
+Fixed admin edit error when updating bounty data:
+- **Issue**: "Error updating idea" appeared when editing ideas with bounty information
+- **Root Cause**: `Bounty` model was not imported in `api.py`, causing `NameError: name 'Bounty' is not defined`
+- **Debugging Process**:
+  - Created test script to simulate admin update flow
+  - Identified missing import through API testing
+  - Confirmed error was server-side, not client-side
+- **Fix**: Added `Bounty` to model imports in `/blueprints/api.py`
+- **Testing**: Verified successful update of monetary bounty data ($75 amount, requires approval flag)
+- **Result**: Admin can now successfully update ideas with bounty information
