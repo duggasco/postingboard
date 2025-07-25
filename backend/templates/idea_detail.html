@@ -473,7 +473,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/svg-gantt.js') }}"></script>
+<script src="{{ url_for('static', filename='js/svg-gantt.js') }}?v={{ range(1000, 9999) | random }}"></script>
 <script>
 // Progress mapping for consistent synchronization with GANTT phases
 const progressMapping = {
