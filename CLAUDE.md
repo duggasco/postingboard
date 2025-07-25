@@ -2170,3 +2170,16 @@ Fixed email verification code generation errors:
   - Fixed NOT NULL constraint by providing empty string for name during initial user creation
 - **Rate Limiting**: Enforces 3 attempts per hour limit to prevent abuse
 - **Result**: Email verification codes now generate successfully with proper rate limiting
+
+### Claim Approval Error Fix (July 2025)
+Fixed "failed to approve claim request: undefined" error:
+- **Root Cause**: Multiple issues in claim approval endpoint
+  - Claim model field mismatch: trying to set non-existent fields (claimer_name, claimer_team, claimer_skills)
+  - Inconsistent error response format: backend returned 'message' but frontend expected 'error'
+  - Wrong field reference in deny endpoint: used team_id instead of team_uuid
+- **Fixes Applied**:
+  - Updated Claim creation to only use existing fields (idea_uuid, claimer_email)
+  - Standardized all exception handlers to return {'success': False, 'error': str(e)}
+  - Fixed team_uuid comparison in deny_claim endpoint
+- **Files Updated**: `/blueprints/api.py` - approve_claim and deny_claim endpoints
+- **Result**: Claim approvals now work correctly with proper error messages

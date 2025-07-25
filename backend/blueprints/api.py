@@ -332,7 +332,7 @@ def add_skill():
         return jsonify({'success': True, 'skill': {'uuid': skill.uuid, 'name': skill.name}})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -358,7 +358,7 @@ def update_skill(identifier):
         return jsonify({'success': True})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -385,7 +385,7 @@ def delete_skill(identifier):
         return jsonify({'success': True})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -472,7 +472,7 @@ def add_team():
         return jsonify({'success': True, 'uuid': team.uuid})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -519,7 +519,7 @@ def update_team(identifier):
         return jsonify({'success': True})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -547,7 +547,7 @@ def delete_team(identifier):
         return jsonify({'success': True})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -596,7 +596,7 @@ def deny_team(identifier):
         })
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -681,7 +681,7 @@ def approve_bounty(identifier):
         return jsonify({'success': True, 'message': 'Bounty approved successfully'})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -797,7 +797,7 @@ def update_idea(identifier):
         return jsonify({'success': True})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -820,7 +820,7 @@ def delete_idea(identifier):
         return jsonify({'success': True})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -852,7 +852,7 @@ def unclaim_idea(identifier):
         })
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -2308,7 +2308,7 @@ def approve_manager_request(identifier):
         return jsonify({'success': True})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -2353,7 +2353,7 @@ def deny_manager_request(identifier):
         return jsonify({'success': True})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -2387,7 +2387,7 @@ def remove_manager():
         return jsonify({'success': True})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -2506,11 +2506,7 @@ def approve_claim(identifier):
             # Create the actual claim
             claim = Claim(
                 idea_uuid=approval.idea_uuid,
-                claimer_name=approval.claimer_name,
-                claimer_email=approval.claimer_email,
-                claimer_team=approval.claimer_team,
-                claimer_skills=approval.claimer_skills,
-                claim_date=datetime.now()
+                claimer_email=approval.claimer_email
             )
             
             # Update idea status
@@ -2562,7 +2558,7 @@ def approve_claim(identifier):
         return jsonify({'success': True, 'message': 'Approval recorded successfully'})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -2600,7 +2596,7 @@ def deny_claim(identifier):
         elif session.get('user_role') == 'manager' and approval.manager_approved is None:
             # Verify user manages the claimer's team
             claimer = db.query(UserProfile).filter_by(email=approval.claimer_email).first()
-            if claimer and claimer.team_id == session.get('user_managed_team_uuid'):
+            if claimer and claimer.team_uuid == session.get('user_managed_team_uuid'):
                 approval.manager_approved = False
                 approval.manager_denied_at = datetime.now()
                 approval.manager_approved_by = user_email
@@ -2626,7 +2622,7 @@ def deny_claim(identifier):
         return jsonify({'success': True, 'message': 'Claim request denied'})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -2691,7 +2687,7 @@ def assign_idea(identifier):
         return jsonify({'success': True, 'message': f'Idea assigned to {assignee.name}'})
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
@@ -2896,7 +2892,7 @@ def update_idea_sub_status(identifier):
         
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
 
