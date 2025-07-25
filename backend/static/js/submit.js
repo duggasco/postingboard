@@ -75,6 +75,8 @@
             isMonetaryCheckbox.addEventListener('change', function() {
                 if (this.checked) {
                     monetaryOptions.style.display = 'block';
+                    // Always show amount section when monetary is checked
+                    amountSection.style.display = 'flex';
                 } else {
                     monetaryOptions.style.display = 'none';
                     isExpensedCheckbox.checked = false;
@@ -85,16 +87,11 @@
             });
         }
         
-        // Show/hide amount section based on expense checkbox
+        // Keep the expense checkbox for tracking but don't hide amount
         if (isExpensedCheckbox) {
             isExpensedCheckbox.addEventListener('change', function() {
-                if (this.checked) {
-                    amountSection.style.display = 'flex';
-                } else {
-                    amountSection.style.display = 'none';
-                    amountInput.value = '';
-                    approvalText.style.display = 'none';
-                }
+                // Amount section stays visible regardless of expense status
+                // This just tracks whether it will be expensed or not
             });
         }
         

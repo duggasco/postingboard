@@ -654,26 +654,25 @@ async function unclaimIdea(ideaId) {
 function toggleMonetaryFields() {
     const isMonetary = document.getElementById('edit-is-monetary').checked;
     const monetaryFields = document.getElementById('monetary-fields');
+    const amountField = document.getElementById('amount-field');
+    
     monetaryFields.style.display = isMonetary ? 'block' : 'none';
+    // Always show amount field when monetary is checked
+    amountField.style.display = isMonetary ? 'block' : 'none';
     
     if (!isMonetary) {
         // Reset fields when unchecked
         document.getElementById('edit-is-expensed').checked = false;
         document.getElementById('edit-amount').value = '';
-        toggleAmountField();
-    }
-}
-
-function toggleAmountField() {
-    const isExpensed = document.getElementById('edit-is-expensed').checked;
-    const amountField = document.getElementById('amount-field');
-    amountField.style.display = isExpensed ? 'block' : 'none';
-    
-    if (!isExpensed) {
-        document.getElementById('edit-amount').value = '';
     }
     
     // Check amount for approval note
+    checkApprovalRequired();
+}
+
+function toggleAmountField() {
+    // Amount field visibility is now controlled by toggleMonetaryFields
+    // This function only updates approval requirements
     checkApprovalRequired();
 }
 

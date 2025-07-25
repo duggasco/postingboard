@@ -2048,3 +2048,17 @@ Fixed teams not persisting on fresh installations:
   - Automatically creates 13 predefined teams if none exist
   - Called from `app.py` during app initialization
 - **Result**: Teams always available on both native and Docker deployments
+
+### Monetary Bounty Amount Visibility Fix (July 2025)
+Fixed amount field only showing when "is expensed" was checked:
+- **Issue**: Amount field was hidden unless "Will be expensed" checkbox was checked, preventing non-expensed monetary bounties
+- **Solution**: Show amount field whenever "monetary bounty" is checked, regardless of expense status
+- **Implementation**:
+  - Updated `submit.js` to show amount field when monetary checkbox is checked
+  - Modified `toggleMonetaryFields()` in admin forms to always show amount with monetary bounties
+  - Expense checkbox now only tracks expense status, doesn't control amount visibility
+- **Files Updated**:
+  - `/static/js/submit.js`: Shows amount section when monetary is checked
+  - `/templates/admin/dashboard.html`: Updated toggleMonetaryFields function
+  - `/templates/admin/ideas.html`: Updated toggleMonetaryFields function
+- **Result**: Users can enter bounty amounts for all monetary bounties, whether expensed or not
