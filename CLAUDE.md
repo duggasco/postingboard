@@ -2153,3 +2153,20 @@ Fixed monetary bounty amounts not displaying in idea cards:
   - Adds "(expensed)" indicator only if is_expensed is true
   - Shows "(pending approval)" for unapproved bounties requiring approval
 - **Result**: All monetary bounty amounts now visible with appropriate status indicators
+
+### Email Verification Fix (July 2025)
+Fixed email verification code generation errors:
+- **UUID Migration Issues**:
+  - Changed `verification.id` to `verification.uuid` in auth_utils.py
+  - Fixed all references from `VerificationCode.user_email` to `VerificationCode.email`
+- **Model Updates**:
+  - Added `attempts` field (INTEGER, default=0) to track verification attempts
+  - Added `is_expired()` method to VerificationCode model
+  - Updated both models/__init__.py and models_uuid_only.py
+- **Database Initialization**:
+  - Tables created via SQLAlchemy's Base.metadata.create_all automatically include attempts column
+  - No SQL scripts needed - declarative models handle schema creation
+- **UserProfile Creation**:
+  - Fixed NOT NULL constraint by providing empty string for name during initial user creation
+- **Rate Limiting**: Enforces 3 attempts per hour limit to prevent abuse
+- **Result**: Email verification codes now generate successfully with proper rate limiting
