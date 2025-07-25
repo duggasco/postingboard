@@ -63,9 +63,9 @@ function displaySkills() {
     allSkills.forEach(skill => {
         html += `
             <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
-                <input type="text" value="${utils.escapeHtml(skill.name)}" class="form-control" id="skill-${skill.id}" style="flex: 1;">
-                <button onclick="updateSkill(${skill.id})" class="btn btn-success btn-sm">Save</button>
-                <button onclick="deleteSkill(${skill.id})" class="btn btn-danger btn-sm">Delete</button>
+                <input type="text" value="${utils.escapeHtml(skill.name)}" class="form-control" id="skill-${utils.getUuid(skill)}" style="flex: 1;">
+                <button onclick="updateSkill('${utils.getUuid(skill)}')" class="btn btn-success btn-sm">Save</button>
+                <button onclick="deleteSkill('${utils.getUuid(skill)}')" class="btn btn-danger btn-sm">Delete</button>
             </div>
         `;
     });

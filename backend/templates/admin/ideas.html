@@ -248,7 +248,7 @@ function displayIdeas() {
         
         html += `
             <tr>
-                <td>${idea.id}</td>
+                <td>${utils.formatUuid(utils.getUuid(idea))}</td>
                 <td title="${utils.escapeHtml(idea.title)}">${utils.escapeHtml(idea.title)}</td>
                 <td>${utils.escapeHtml(idea.benefactor_team || '-')}</td>
                 <td>${priorityBadge}</td>
@@ -258,11 +258,11 @@ function displayIdeas() {
                 <td>${idea.claims && idea.claims.length > 0 ? idea.claims.map(c => utils.escapeHtml(c.name || c.email)).join(', ') : '-'}</td>
                 <td>${utils.formatDate(idea.date_submitted)}</td>
                 <td>
-                    <button class="btn btn-primary btn-sm" onclick="editIdea(${idea.id})">Edit</button>
+                    <button class="btn btn-primary btn-sm" onclick="editIdea('${utils.getUuid(idea)}')">Edit</button>
                     ${idea.status === 'claimed' || idea.status === 'complete' ? 
-                        `<button class="btn btn-warning btn-sm" onclick="unclaimIdea(${idea.id})">Unclaim</button>` : 
+                        `<button class="btn btn-warning btn-sm" onclick="unclaimIdea('${utils.getUuid(idea)}')">Unclaim</button>` : 
                         ''}
-                    <button class="btn btn-danger btn-sm" onclick="deleteIdea(${idea.id})">Delete</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteIdea('${utils.getUuid(idea)}')">Delete</button>
                 </td>
             </tr>
         `;
@@ -368,7 +368,7 @@ function clearFilters() {
 }
 
 async function editIdea(ideaId) {
-    const idea = allIdeas.find(i => i.id === ideaId);
+    const idea = allIdeas.find(i => utils.getUuid(i) === ideaId);
     if (!idea) return;
     
     // Ensure teams and skills are loaded
@@ -376,7 +376,7 @@ async function editIdea(ideaId) {
     if (skills.length === 0) await loadSkills();
     
     // Populate form
-    document.getElementById('edit-idea-id').value = idea.id;
+    document.getElementById('edit-idea-id').value = utils.getUuid(idea);
     document.getElementById('edit-title').value = idea.title;
     document.getElementById('edit-description').value = idea.description || '';
     document.getElementById('edit-team').value = idea.benefactor_team || '';
@@ -387,7 +387,7 @@ async function editIdea(ideaId) {
     document.getElementById('edit-email').value = idea.email;
     
     // Populate analytics
-    document.getElementById('info-id').textContent = idea.id;
+    document.getElementById('info-id').innerHTML = utils.formatUuid(utils.getUuid(idea));
     document.getElementById('info-submitted').textContent = utils.formatDate(idea.date_submitted);
     document.getElementById('info-submitter').textContent = idea.submitter_name ? 
         `${idea.submitter_name} (${idea.email})` : idea.email;
@@ -416,7 +416,7 @@ async function getPendingApprovalsCount(ideaId) {
         
         if (data.pending_approvals) {
             const pendingForIdea = data.pending_approvals.filter(approval => 
-                approval.idea_id === ideaId
+                approval.idea_uuid === ideaId
             );
             return pendingForIdea.length;
         }
@@ -437,14 +437,14 @@ function populateSkillsCheckboxes(ideaSkills) {
         return;
     }
     
-    const ideaSkillIds = (ideaSkills || []).map(s => s.id);
+    const ideaSkillIds = (ideaSkills || []).map(s => utils.getUuid(s));
     
     skills.forEach(skill => {
         const div = document.createElement('div');
         div.innerHTML = `
             <label style="display: flex; align-items: center; gap: 4px;">
-                <input type="checkbox" name="skills[]" value="${skill.id}" 
-                    ${ideaSkillIds.includes(skill.id) ? 'checked' : ''}>
+                <input type="checkbox" name="skills[]" value="${utils.getUuid(skill)}" 
+                    ${ideaSkillIds.includes(utils.getUuid(skill)) ? 'checked' : ''}>
                 ${skill.name}
             </label>
         `;

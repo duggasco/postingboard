@@ -221,7 +221,7 @@ function createIdeaCard(idea) {
         <div class="idea-card ${borderClass}">
             ${relationshipBadge}
             <h3 class="idea-title">
-                <a href="/idea/${idea.id}">${utils.escapeHtml(idea.title)}</a>
+                <a href="/idea/${utils.getUuid(idea)}">${utils.escapeHtml(idea.title)}</a>
             </h3>
             <p class="idea-description">${utils.escapeHtml(idea.description)}</p>
             <div class="idea-meta">
@@ -262,7 +262,7 @@ function displayPendingApprovals(approvals) {
             <div class="idea-card idea-pending-approval">
                 <span class="relationship-badge pending">Pending Your Approval</span>
                 <h3 class="idea-title">
-                    <a href="/idea/${idea.id}">${utils.escapeHtml(idea.title)}</a>
+                    <a href="/idea/${utils.getUuid(idea)}">${utils.escapeHtml(idea.title)}</a>
                 </h3>
                 <p class="idea-description">${utils.escapeHtml(idea.description)}</p>
                 <div class="idea-meta">
@@ -275,8 +275,8 @@ function displayPendingApprovals(approvals) {
                     <p>Team: ${utils.escapeHtml(approval.claimer_team || 'N/A')}</p>
                     <p>Skills: ${utils.escapeHtml(approval.claimer_skills || 'N/A')}</p>
                     <div class="approval-actions">
-                        <button class="btn btn-primary btn-sm" onclick="approveClaimRequest(${approval.id})">Approve</button>
-                        <button class="btn btn-danger btn-sm" onclick="denyClaimRequest(${approval.id})">Deny</button>
+                        <button class="btn btn-primary btn-sm" onclick="approveClaimRequest('${utils.getUuid(approval)}')">Approve</button>
+                        <button class="btn btn-danger btn-sm" onclick="denyClaimRequest('${utils.getUuid(approval)}')">Deny</button>
                     </div>
                 </div>
             </div>

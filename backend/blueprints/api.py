@@ -119,7 +119,6 @@ def get_ideas():
         ideas_data = []
         for idea in ideas:
             idea_dict = {
-                'id': idea.uuid,  # Only expose UUID as 'id' for backward compatibility
                 'uuid': idea.uuid,
                 'title': idea.title,
                 'description': idea.description,
@@ -144,7 +143,7 @@ def get_ideas():
                 'expected_completion': idea.expected_completion.strftime('%Y-%m-%d') if idea.expected_completion else None,
                 'needed_by': idea.needed_by.strftime('%Y-%m-%d') if idea.needed_by else None,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
-                'skills': [{'id': s.uuid, 'name': s.name} for s in idea.skills],
+                'skills': [{'uuid': s.uuid, 'name': s.name} for s in idea.skills],
                 'claims': [{
                     'name': db.query(UserProfile).filter_by(email=c.claimer_email).first().name if db.query(UserProfile).filter_by(email=c.claimer_email).first() else c.claimer_email,
                     'email': c.claimer_email,
@@ -163,7 +162,7 @@ def get_skills():
     db = get_session()
     try:
         skills = db.query(Skill).order_by(Skill.name).all()
-        return jsonify([{'id': s.uuid, 'name': s.name} for s in skills])
+        return jsonify([{'uuid': s.uuid, 'name': s.name} for s in skills])
     finally:
         db.close()
 
@@ -188,7 +187,7 @@ def add_skill():
         db.add(skill)
         db.commit()
         
-        return jsonify({'success': True, 'skill': {'id': skill.uuid, 'name': skill.name}})
+        return jsonify({'success': True, 'skill': {'uuid': skill.uuid, 'name': skill.name}})
     except Exception as e:
         db.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -300,11 +299,11 @@ def get_teams():
         if session.get('is_admin'):
             # Admin sees all teams with approval status
             teams = db.query(Team).order_by(Team.name).all()
-            return jsonify([{'id': t.uuid, 'name': t.name, 'is_approved': t.is_approved} for t in teams])
+            return jsonify([{'uuid': t.uuid, 'name': t.name, 'is_approved': t.is_approved} for t in teams])
         else:
             # Non-admin users only see approved teams
             teams = db.query(Team).filter(Team.is_approved == True).order_by(Team.name).all()
-            return jsonify([{'id': t.uuid, 'name': t.name} for t in teams])
+            return jsonify([{'uuid': t.uuid, 'name': t.name} for t in teams])
     finally:
         db.close()
 
@@ -328,7 +327,7 @@ def add_team():
         team = Team(name=name, is_approved=True)
         db.add(team)
         db.commit()
-        return jsonify({'success': True, 'id': team.uuid})
+        return jsonify({'success': True, 'uuid': team.uuid})
     except Exception as e:
         db.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -587,7 +586,7 @@ def unclaim_idea(identifier):
             return jsonify({'success': False, 'message': 'Idea not found'}), 404
         
         # Delete all claims for this idea
-        claims_deleted = db.query(Claim).filter(Claim.idea_uuid == idea_id).delete()
+        claims_deleted = db.query(Claim).filter(Claim.idea_uuid == idea.uuid).delete()
         
         # Reset idea status to open
         idea.status = IdeaStatus.open
@@ -740,11 +739,12 @@ def get_user_notifications():
         notifications_data = []
         for notif in all_notifications[:50]:  # Limit total to 50
             notifications_data.append({
-                'id': notif.uuid,
+                'uuid': notif.uuid,
                 'type': notif.type,
                 'title': notif.title,
                 'message': notif.message,
-                'idea_id': notif.idea_uuid,
+                'idea_id': notif.idea_uuid,  # Keep for backward compatibility
+                'idea_uuid': notif.idea_uuid,  # New field
                 'related_user': notif.related_user_email,
                 'is_read': notif.is_read,
                 'created_at': notif.created_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -904,7 +904,7 @@ def get_team_member(email):
             'role': member.role,
             'team_id': member.team_uuid,
             'team_name': member.team.name if member.team else None,
-            'skills': [{'id': s.uuid, 'name': s.name} for s in member.skills],
+            'skills': [{'uuid': s.uuid, 'name': s.name} for s in member.skills],
             'is_verified': member.is_verified,
             'created_at': member.created_at.isoformat() if member.created_at else None,
             'last_verified_at': member.last_verified_at.isoformat() if member.last_verified_at else None,
@@ -1312,7 +1312,7 @@ def get_admin_team_stats():
                 completion_rate = round((completed_ideas / team_claimed * 100) if team_claimed > 0 else 0, 1)
                 
                 all_teams_stats.append({
-                    'id': team.uuid,
+                    'uuid': team.uuid,
                     'name': team.name,
                     'is_approved': team.is_approved,
                     'member_count': len(team_members),
@@ -1669,7 +1669,7 @@ def get_my_ideas():
                     }
             
             idea_dict = {
-                'id': idea.uuid,
+                'uuid': idea.uuid,
                 'title': idea.title,
                 'description': idea.description,
                 'email': idea.email,
@@ -1686,7 +1686,7 @@ def get_my_ideas():
                 } if idea.bounty_details and len(idea.bounty_details) > 0 else None,
                 'benefactor_team': idea.benefactor_team,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
-                'skills': [{'id': s.uuid, 'name': s.name} for s in idea.skills],
+                'skills': [{'uuid': s.uuid, 'name': s.name} for s in idea.skills],
                 'claims': [{
                     'name': db.query(UserProfile).filter_by(email=c.claimer_email).first().name if db.query(UserProfile).filter_by(email=c.claimer_email).first() else c.claimer_email,
                     'email': c.claimer_email,
@@ -1718,7 +1718,7 @@ def get_my_ideas():
         for approval in pending_claims:
             idea = approval.idea
             pending_claims_data.append({
-                'id': idea.uuid,
+                'uuid': idea.uuid,
                 'title': idea.title,
                 'description': idea.description,
                 'email': idea.email,
@@ -1728,9 +1728,9 @@ def get_my_ideas():
                 'status': 'pending_claim',  # Special status for UI
                 'benefactor_team': idea.benefactor_team,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
-                'skills': [{'id': s.uuid, 'name': s.name} for s in idea.skills],
+                'skills': [{'uuid': s.uuid, 'name': s.name} for s in idea.skills],
                 'pending_approval': {
-                    'id': approval.uuid,
+                    'uuid': approval.uuid,
                     'status': approval.status,
                     'owner_approved': approval.idea_owner_approved,
                     'manager_approved': approval.manager_approved,
@@ -1745,7 +1745,7 @@ def get_my_ideas():
         for approval in pending_owner_approvals:
             idea = approval.idea
             pending_approvals_data.append({
-                'id': approval.uuid,
+                'uuid': approval.uuid,
                 'idea_uuid': approval.idea_uuid,
                 'claimer_name': approval.claimer_name,
                 'claimer_email': approval.claimer_email,
@@ -1755,7 +1755,8 @@ def get_my_ideas():
                 'owner_approved': approval.idea_owner_approved,
                 'manager_approved': approval.manager_approved,
                 'idea': {
-                    'id': idea.uuid,
+                    'id': idea.uuid,  # Keep for backward compatibility
+                    'uuid': idea.uuid,  # Proper field name
                     'title': idea.title,
                     'description': idea.description,
                     'benefactor_team': idea.benefactor_team,
@@ -1867,7 +1868,7 @@ def get_manager_requests():
         pending_data = []
         for req in pending_requests:
             pending_data.append({
-                'id': req.uuid,
+                'uuid': req.uuid,
                 'user_name': req.user.name if req.user else 'N/A',
                 'user_email': req.user_email,
                 'team_name': req.team.name if req.team else 'N/A',
@@ -2074,7 +2075,7 @@ def get_pending_claim_approvals():
         owner_data = []
         for approval in owner_approvals:
             owner_data.append({
-                'id': approval.uuid,
+                'uuid': approval.uuid,
                 'idea_uuid': approval.idea_uuid,
                 'idea_title': approval.idea.title,
                 'claimer_name': approval.claimer_name,
@@ -2086,7 +2087,7 @@ def get_pending_claim_approvals():
         manager_data = []
         for approval in manager_approvals:
             manager_data.append({
-                'id': approval.uuid,
+                'uuid': approval.uuid,
                 'idea_uuid': approval.idea_uuid,
                 'idea_title': approval.idea.title,
                 'claimer_name': approval.claimer_name,
@@ -2601,7 +2602,7 @@ def get_idea_stage_data(identifier):
         
         # Get stage data for this status
         stage_data = db.query(IdeaStageData).filter(
-            IdeaStageData.idea_uuid == idea_id,
+            IdeaStageData.idea_uuid == idea.uuid,
             IdeaStageData.sub_status == sub_status_enum
         ).all()
         
@@ -2960,7 +2961,7 @@ def get_admin_users():
                 'team_name': user.team.name if user.team else None,
                 'managed_team_uuid': user.managed_team_uuid,
                 'managed_team_name': user.managed_team.name if user.managed_team else None,
-                'skills': [{'id': skill.uuid, 'name': skill.name} for skill in user.skills],
+                'skills': [{'uuid': skill.uuid, 'name': skill.name} for skill in user.skills],
                 'is_verified': user.is_verified,
                 'submitted_ideas_count': submitted_count,
                 'claimed_ideas_count': claimed_count,
@@ -2975,7 +2976,7 @@ def get_admin_users():
             # Add pending manager request details if exists
             if pending_manager_request:
                 user_data['pending_manager_request'] = {
-                    'id': pending_manager_request.uuid,
+                    'uuid': pending_manager_request.uuid,
                     'requested_team_uuid': pending_manager_request.requested_team_uuid,
                     'requested_team': pending_manager_request.team.name if pending_manager_request.team else None,
                     'requested_at': pending_manager_request.requested_at.isoformat() if pending_manager_request.requested_at else None

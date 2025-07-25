@@ -53,7 +53,7 @@
                 <select id="team-select" name="team" class="form-control">
                     <option value="">Select a team...</option>
                     {% for team in teams %}
-                    <option value="{{ team.id }}" {% if user.team_id == team.id %}selected{% endif %}>
+                    <option value="{{ team.uuid }}" {% if user.team_uuid == team.uuid %}selected{% endif %}>
                         {{ team.name }}
                     </option>
                     {% endfor %}
@@ -69,8 +69,8 @@
             <select id="managed-team" name="managed_team" class="form-control">
                 <option value="">Select a team to manage...</option>
                 {% for team in teams %}
-                <option value="{{ team.id }}" 
-                    {% if user.managed_team_id == team.id %}selected{% endif %}>
+                <option value="{{ team.uuid }}" 
+                    {% if user.managed_team_uuid == team.uuid %}selected{% endif %}>
                     {{ team.name }}
                 </option>
                 {% endfor %}
@@ -83,10 +83,10 @@
             <div class="skills-grid">
                 {% for skill in skills %}
                 <div class="skill-checkbox">
-                    <input type="checkbox" id="skill-{{ skill.id }}" name="skills[]" 
-                           value="{{ skill.id }}"
+                    <input type="checkbox" id="skill-{{ skill.uuid }}" name="skills[]" 
+                           value="{{ skill.uuid }}"
                            {% if skill in user.skills %}checked{% endif %}>
-                    <label for="skill-{{ skill.id }}">{{ skill.name }}</label>
+                    <label for="skill-{{ skill.uuid }}">{{ skill.name }}</label>
                 </div>
                 {% endfor %}
             </div>

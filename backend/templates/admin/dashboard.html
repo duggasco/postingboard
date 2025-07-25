@@ -534,8 +534,8 @@ function displayIdeas() {
         const statusBadge = `<span class="status-badge status-${idea.status}">${idea.status}</span>`;
         
         tableHtml += `
-            <tr data-idea-id="${idea.id}">
-                <td>${idea.id}</td>
+            <tr data-idea-id="${utils.getUuid(idea)}">
+                <td>${utils.formatUuid(utils.getUuid(idea))}</td>
                 <td title="${utils.escapeHtml(idea.title)}">${utils.escapeHtml(idea.title)}</td>
                 <td>${utils.escapeHtml(idea.benefactor_team || '-')}</td>
                 <td>${priorityBadge}</td>
@@ -545,11 +545,11 @@ function displayIdeas() {
                 <td>${idea.claims && idea.claims.length > 0 ? idea.claims.map(c => utils.escapeHtml(c.name || c.email)).join(', ') : '-'}</td>
                 <td>${utils.formatDate(idea.date_submitted)}</td>
                 <td>
-                    <button class="btn btn-primary btn-sm" onclick="editIdea(${idea.id})">Edit</button>
+                    <button class="btn btn-primary btn-sm" onclick="editIdea('${utils.getUuid(idea)}')">Edit</button>
                     ${idea.status === 'claimed' || idea.status === 'complete' ? 
-                        `<button class="btn btn-warning btn-sm" onclick="unclaimIdea(${idea.id})">Unclaim</button>` : 
+                        `<button class="btn btn-warning btn-sm" onclick="unclaimIdea('${utils.getUuid(idea)}')">Unclaim</button>` : 
                         ''}
-                    <button class="btn btn-danger btn-sm" onclick="deleteIdea(${idea.id})">Delete</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteIdea('${utils.getUuid(idea)}')">Delete</button>
                 </td>
             </tr>
         `;
@@ -646,11 +646,11 @@ function applyFilters() {
 
 // Edit modal functions
 function editIdea(ideaId) {
-    const idea = allIdeas.find(i => i.id === ideaId);
+    const idea = allIdeas.find(i => utils.getUuid(i) === ideaId);
     if (!idea) return;
     
     // Populate analytics info
-    document.getElementById('info-id').textContent = idea.id;
+    document.getElementById('info-id').innerHTML = utils.formatUuid(utils.getUuid(idea));
     document.getElementById('info-submitted').textContent = utils.formatDate(idea.date_submitted);
     document.getElementById('info-submitter').textContent = idea.submitter_name ? 
         `${idea.submitter_name} (${idea.email})` : idea.email;
@@ -662,7 +662,7 @@ function editIdea(ideaId) {
     document.getElementById('info-assigned-by').textContent = idea.assigned_by || '-';
     
     // Populate form fields
-    document.getElementById('edit-idea-id').value = idea.id;
+    document.getElementById('edit-idea-id').value = utils.getUuid(idea);
     document.getElementById('edit-title').value = idea.title;
     document.getElementById('edit-description').value = idea.description || '';
     document.getElementById('edit-priority').value = idea.priority;
@@ -689,7 +689,7 @@ function editIdea(ideaId) {
     skillsContainer.innerHTML = '';
     
     if (allSkills) {
-        const ideaSkillIds = idea.skills ? idea.skills.map(s => s.id) : [];
+        const ideaSkillIds = idea.skills ? idea.skills.map(s => utils.getUuid(s)) : [];
         
         allSkills.forEach(skill => {
             const label = document.createElement('label');
@@ -700,8 +700,8 @@ function editIdea(ideaId) {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.name = 'skills';
-            checkbox.value = skill.id;
-            checkbox.checked = ideaSkillIds.includes(skill.id);
+            checkbox.value = utils.getUuid(skill);
+            checkbox.checked = ideaSkillIds.includes(utils.getUuid(skill));
             
             label.appendChild(checkbox);
             label.appendChild(document.createTextNode(skill.name));

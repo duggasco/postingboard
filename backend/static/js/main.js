@@ -13,6 +13,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Common utility functions
 const utils = {
+    // Get UUID from object (prefers uuid over id for transition period)
+    getUuid: function(obj) {
+        return obj.uuid || obj.id;
+    },
+    
+    // Format UUID with shortened display and full UUID on hover
+    formatUuid: function(uuid) {
+        if (!uuid) return '-';
+        
+        // Check if it's a valid UUID format
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidPattern.test(uuid)) {
+            return uuid; // Return as-is if not a valid UUID
+        }
+        
+        // Show first 8 characters of UUID
+        const shortened = uuid.substring(0, 8);
+        return `<span title="${uuid}" style="cursor: help;">${shortened}...</span>`;
+    },
+    
     // Format date
     formatDate: function(dateString) {
         // Parse date string as local date to avoid timezone issues
@@ -110,8 +130,8 @@ async function loadNotifications() {
                     
                     html += `
                         <div class="notification-item ${unreadClass}">
-                            <button class="notification-delete" onclick="event.stopPropagation(); deleteNotification(${notif.id})" title="Delete notification">×</button>
-                            <div class="notification-content" onclick="handleNotificationClick(${notif.id}, ${notif.idea_id || 'null'}, '${notif.type}')">
+                            <button class="notification-delete" onclick="event.stopPropagation(); deleteNotification('${utils.getUuid(notif)}')" title="Delete notification">×</button>
+                            <div class="notification-content" onclick="handleNotificationClick('${utils.getUuid(notif)}', ${notif.idea_uuid ? `'${notif.idea_uuid}'` : 'null'}, '${notif.type}')">
                                 <div class="notification-title">
                                     ${notif.title}
                                     <span class="notification-type-badge ${typeClass}">${formatNotificationType(notif.type)}</span>

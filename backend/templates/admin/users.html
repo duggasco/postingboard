@@ -270,7 +270,7 @@ async function loadTeams() {
             const teamFilter = document.getElementById('team-filter');
             teams.forEach(team => {
                 const option = document.createElement('option');
-                option.value = team.id;
+                option.value = utils.getUuid(team);
                 option.textContent = team.name;
                 teamFilter.appendChild(option);
             });
@@ -311,12 +311,12 @@ function populateTeamSelects() {
     
     teams.forEach(team => {
         const option1 = document.createElement('option');
-        option1.value = team.id;
+        option1.value = utils.getUuid(team);
         option1.textContent = team.name;
         editTeam.appendChild(option1);
         
         const option2 = document.createElement('option');
-        option2.value = team.id;
+        option2.value = utils.getUuid(team);
         option2.textContent = team.name;
         editManagedTeam.appendChild(option2);
     });
@@ -513,7 +513,7 @@ async function editUser(email) {
     if (user.has_pending_manager_request && user.pending_manager_request) {
         // Store the request for later use
         window.currentEditingUser = user;
-        window.currentManagerRequestId = user.pending_manager_request.id;
+        window.currentManagerRequestId = utils.getUuid(user.pending_manager_request);
         
         document.getElementById('requested-team-name').textContent = user.pending_manager_request.team_name || '-';
         managerRequestActions.style.display = 'block';
@@ -588,14 +588,14 @@ function populateSkillsCheckboxes(userSkills) {
         return;
     }
     
-    const userSkillIds = (userSkills || []).map(s => s.id);
+    const userSkillIds = (userSkills || []).map(s => utils.getUuid(s));
     
     skills.forEach(skill => {
         const div = document.createElement('div');
         div.innerHTML = `
             <label style="display: flex; align-items: center; gap: 4px;">
-                <input type="checkbox" name="skills[]" value="${skill.id}" 
-                    ${userSkillIds.includes(skill.id) ? 'checked' : ''}>
+                <input type="checkbox" name="skills[]" value="${utils.getUuid(skill)}" 
+                    ${userSkillIds.includes(utils.getUuid(skill)) ? 'checked' : ''}>
                 ${skill.name}
             </label>
         `;

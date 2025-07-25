@@ -172,7 +172,7 @@
             skillSelect.innerHTML = '<option value="">Select a skill...</option>';
             skills.forEach(skill => {
                 const option = document.createElement('option');
-                option.value = skill.id;
+                option.value = utils.getUuid(skill);
                 option.textContent = skill.name;
                 option.dataset.name = skill.name;
                 skillSelect.appendChild(option);

@@ -72,9 +72,9 @@ function displayTeams() {
         approvedTeams.forEach(team => {
             html += `
                 <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
-                    <input type="text" value="${utils.escapeHtml(team.name)}" class="form-control" id="team-${team.id}" style="flex: 1;">
-                    <button onclick="updateTeam(${team.id})" class="btn btn-success btn-sm">Save</button>
-                    <button onclick="deleteTeam(${team.id})" class="btn btn-danger btn-sm">Delete</button>
+                    <input type="text" value="${utils.escapeHtml(team.name)}" class="form-control" id="team-${utils.getUuid(team)}" style="flex: 1;">
+                    <button onclick="updateTeam('${utils.getUuid(team)}')" class="btn btn-success btn-sm">Save</button>
+                    <button onclick="deleteTeam('${utils.getUuid(team)}')" class="btn btn-danger btn-sm">Delete</button>
                 </div>
             `;
         });
@@ -90,11 +90,11 @@ function displayTeams() {
         pendingTeams.forEach(team => {
             html += `
                 <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #fff3cd; border-radius: 4px;">
-                    <input type="text" value="${utils.escapeHtml(team.name)}" class="form-control" id="team-${team.id}" style="flex: 1;">
-                    <button onclick="approveTeam(${team.id})" class="btn btn-primary btn-sm">Approve</button>
-                    <button onclick="denyTeam(${team.id})" class="btn btn-warning btn-sm">Deny</button>
-                    <button onclick="updateTeam(${team.id})" class="btn btn-success btn-sm">Save Name</button>
-                    <button onclick="deleteTeam(${team.id})" class="btn btn-danger btn-sm">Delete</button>
+                    <input type="text" value="${utils.escapeHtml(team.name)}" class="form-control" id="team-${utils.getUuid(team)}" style="flex: 1;">
+                    <button onclick="approveTeam('${utils.getUuid(team)}')" class="btn btn-primary btn-sm">Approve</button>
+                    <button onclick="denyTeam('${utils.getUuid(team)}')" class="btn btn-warning btn-sm">Deny</button>
+                    <button onclick="updateTeam('${utils.getUuid(team)}')" class="btn btn-success btn-sm">Save Name</button>
+                    <button onclick="deleteTeam('${utils.getUuid(team)}')" class="btn btn-danger btn-sm">Delete</button>
                 </div>
             `;
         });
@@ -175,7 +175,7 @@ async function approveTeam(teamId) {
 }
 
 async function denyTeam(teamId) {
-    const team = allTeams.find(t => t.id === teamId);
+    const team = allTeams.find(t => utils.getUuid(t) === teamId);
     if (!team) return;
     
     if (!confirm(`Are you sure you want to deny the team "${team.name}"? This will remove the team assignment from all users who requested it.`)) {

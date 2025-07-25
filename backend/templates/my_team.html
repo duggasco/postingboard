@@ -277,7 +277,7 @@ async function loadTeams() {
             if (teamSelect) {
                 teams.forEach(team => {
                     const option = document.createElement('option');
-                    option.value = team.id;
+                    option.value = utils.getUuid(team);
                     option.textContent = team.name;
                     teamSelect.appendChild(option);
                 });
@@ -535,14 +535,14 @@ function populateMemberSkills(userSkills) {
     const container = document.getElementById('edit-skills-container');
     container.innerHTML = '';
     
-    const userSkillIds = (userSkills || []).map(s => s.id);
+    const userSkillIds = (userSkills || []).map(s => utils.getUuid(s));
     
     skills.forEach(skill => {
         const div = document.createElement('div');
         div.innerHTML = `
             <label style="display: flex; align-items: center; gap: 4px;">
-                <input type="checkbox" name="skills[]" value="${skill.id}" 
-                    ${userSkillIds.includes(skill.id) ? 'checked' : ''}>
+                <input type="checkbox" name="skills[]" value="${utils.getUuid(skill)}" 
+                    ${userSkillIds.includes(utils.getUuid(skill)) ? 'checked' : ''}>
                 ${skill.name}
             </label>
         `;
@@ -681,7 +681,7 @@ function createIdeaCard(idea) {
         : fullDescription;
     
     return `
-        <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'">
+        <div class="idea-card" onclick="window.location.href='/idea/${utils.getUuid(idea)}'">
             <div class="idea-header">
                 <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
                 <span class="status-badge ${statusClass}">${idea.status.toUpperCase()}</span>
@@ -708,7 +708,7 @@ function createIdeaCard(idea) {
             
             ${claimInfo}
             
-            <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            <a href="/idea/${utils.getUuid(idea)}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
         </div>
     `;
 }

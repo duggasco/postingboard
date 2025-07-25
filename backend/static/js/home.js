@@ -33,7 +33,7 @@
             skillFilter.innerHTML = '<option value="">All Skills</option>';
             skills.forEach(skill => {
                 const option = document.createElement('option');
-                option.value = skill.id;
+                option.value = utils.getUuid(skill);
                 option.textContent = skill.name;
                 skillFilter.appendChild(option);
             });
@@ -141,7 +141,7 @@
             : fullDescription;
         
         return `
-            <div class="idea-card" onclick="window.location.href='/idea/${idea.id}'">
+            <div class="idea-card" onclick="window.location.href='/idea/${utils.getUuid(idea)}'">
                 <div class="idea-header">
                     <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
                     <span class="status-badge ${statusClass}">${idea.status.toUpperCase()}</span>
@@ -169,7 +169,7 @@
                     ${idea.needed_by ? `<div>Needed by: ${utils.formatDate(idea.needed_by)}</div>` : ''}
                 </div>
                 
-                <a href="/idea/${idea.id}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+                <a href="/idea/${utils.getUuid(idea)}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
             </div>
         `;
     }
