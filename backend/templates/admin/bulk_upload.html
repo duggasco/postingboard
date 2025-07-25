@@ -95,8 +95,11 @@
                     <li><strong>benefactor_team</strong>: Team name (required)</li>
                     <li><strong>size</strong>: small, medium, large, or extra_large (required)</li>
                     <li><strong>priority</strong>: low, medium, or high (required)</li>
-                    <li><strong>skills</strong>: Comma-separated skill names</li>
+                    <li><strong>skills</strong>: Comma-separated skill names (optional)</li>
                     <li><strong>bounty</strong>: Bounty description (optional)</li>
+                    <li><strong>is_monetary</strong>: true or false (optional, for monetary bounties)</li>
+                    <li><strong>is_expensed</strong>: true or false (optional, requires is_monetary=true)</li>
+                    <li><strong>amount</strong>: Dollar amount (optional, requires is_expensed=true, amounts over $50 require approval)</li>
                     <li><strong>needed_by</strong>: Date in YYYY-MM-DD format (required)</li>
                     <li><strong>status</strong>: open, claimed, or complete (optional, defaults to open)</li>
                 </ul>

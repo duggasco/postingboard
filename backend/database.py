@@ -5,8 +5,24 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///posting_board_uuid.db')
-engine = create_engine(DATABASE_URL, echo=True)
+# Support both native and Docker deployments
+if os.path.exists('/app/data'):
+    # Docker environment
+    DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:////app/data/posting_board_uuid.db')
+else:
+    # Native environment
+    DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///posting_board_uuid.db')
+# For SQLite, use StaticPool to avoid isolation issues
+from sqlalchemy.pool import StaticPool
+if DATABASE_URL.startswith('sqlite'):
+    engine = create_engine(
+        DATABASE_URL, 
+        echo=False,  # Turn off SQL logging for production
+        connect_args={'check_same_thread': False},
+        poolclass=StaticPool
+    )
+else:
+    engine = create_engine(DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():

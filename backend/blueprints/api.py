@@ -53,6 +53,144 @@ def check_idea_tab_access(idea, user_email, db):
     
     return False
 
+def calculate_team_spending_analytics(team, team_member_emails, db):
+    """Calculate spending analytics for a team."""
+    from models import Bounty
+    from datetime import datetime, timedelta
+    
+    # Total approved spend (all approved monetary bounties for team's ideas)
+    total_approved_spend = db.query(func.sum(Bounty.amount)).join(
+        Idea, Bounty.idea_uuid == Idea.uuid
+    ).filter(
+        Idea.benefactor_team == team.name,
+        Bounty.is_monetary == True,
+        Bounty.is_expensed == True,
+        Bounty.is_approved == True
+    ).scalar() or 0.0
+    
+    # Pending approval spend (monetary bounties awaiting approval)
+    pending_approval_spend = db.query(func.sum(Bounty.amount)).join(
+        Idea, Bounty.idea_uuid == Idea.uuid
+    ).filter(
+        Idea.benefactor_team == team.name,
+        Bounty.is_monetary == True,
+        Bounty.is_expensed == True,
+        Bounty.requires_approval == True,
+        Bounty.is_approved == None
+    ).scalar() or 0.0
+    
+    # Actual spend (bounties for completed ideas)
+    actual_spend = db.query(func.sum(Bounty.amount)).join(
+        Idea, Bounty.idea_uuid == Idea.uuid
+    ).filter(
+        Idea.benefactor_team == team.name,
+        Idea.status == IdeaStatus.complete,
+        Bounty.is_monetary == True,
+        Bounty.is_expensed == True,
+        Bounty.is_approved == True
+    ).scalar() or 0.0
+    
+    # Committed spend (bounties for claimed but not complete ideas)
+    committed_spend = db.query(func.sum(Bounty.amount)).join(
+        Idea, Bounty.idea_uuid == Idea.uuid
+    ).filter(
+        Idea.benefactor_team == team.name,
+        Idea.status == IdeaStatus.claimed,
+        Bounty.is_monetary == True,
+        Bounty.is_expensed == True,
+        Bounty.is_approved == True
+    ).scalar() or 0.0
+    
+    # Spending by priority
+    spending_by_priority = {}
+    priority_spend_query = db.query(Idea.priority, func.sum(Bounty.amount)).join(
+        Bounty, Idea.uuid == Bounty.idea_uuid
+    ).filter(
+        Idea.benefactor_team == team.name,
+        Bounty.is_monetary == True,
+        Bounty.is_expensed == True,
+        Bounty.is_approved == True
+    ).group_by(Idea.priority).all()
+    
+    for priority, amount in priority_spend_query:
+        spending_by_priority[priority.value] = float(amount or 0)
+    
+    # Spending by size
+    spending_by_size = {}
+    size_spend_query = db.query(Idea.size, func.sum(Bounty.amount)).join(
+        Bounty, Idea.uuid == Bounty.idea_uuid
+    ).filter(
+        Idea.benefactor_team == team.name,
+        Bounty.is_monetary == True,
+        Bounty.is_expensed == True,
+        Bounty.is_approved == True
+    ).group_by(Idea.size).all()
+    
+    for size, amount in size_spend_query:
+        spending_by_size[size.value] = float(amount or 0)
+    
+    # Top spenders (team members with highest bounty claims)
+    top_spenders = []
+    if team_member_emails:
+        spender_query = db.query(
+            Claim.claimer_email,
+            UserProfile.name,
+            func.sum(Bounty.amount).label('total_claimed')
+        ).join(
+            Idea, Claim.idea_uuid == Idea.uuid
+        ).join(
+            Bounty, Idea.uuid == Bounty.idea_uuid
+        ).join(
+            UserProfile, Claim.claimer_email == UserProfile.email
+        ).filter(
+            Claim.claimer_email.in_(team_member_emails),
+            Bounty.is_monetary == True,
+            Bounty.is_expensed == True,
+            Bounty.is_approved == True
+        ).group_by(Claim.claimer_email, UserProfile.name).order_by(
+            func.sum(Bounty.amount).desc()
+        ).limit(10).all()
+        
+        for email, name, total in spender_query:
+            top_spenders.append({
+                'email': email,
+                'name': name,
+                'total_claimed': float(total or 0)
+            })
+    
+    # Monthly spending trend (last 6 months)
+    monthly_spending = []
+    for i in range(5, -1, -1):
+        start_date = datetime.utcnow().replace(day=1) - timedelta(days=i * 30)
+        end_date = (start_date + timedelta(days=32)).replace(day=1)
+        
+        month_spend = db.query(func.sum(Bounty.amount)).join(
+            Idea, Bounty.idea_uuid == Idea.uuid
+        ).filter(
+            Idea.benefactor_team == team.name,
+            Idea.date_submitted >= start_date,
+            Idea.date_submitted < end_date,
+            Bounty.is_monetary == True,
+            Bounty.is_expensed == True,
+            Bounty.is_approved == True
+        ).scalar() or 0.0
+        
+        monthly_spending.append({
+            'month': start_date.strftime('%B %Y'),
+            'amount': float(month_spend)
+        })
+    
+    return {
+        'total_approved_spend': float(total_approved_spend),
+        'pending_approval_spend': float(pending_approval_spend),
+        'actual_spend': float(actual_spend),
+        'committed_spend': float(committed_spend),
+        'spending_by_priority': spending_by_priority,
+        'spending_by_size': spending_by_size,
+        'top_spenders': top_spenders,
+        'monthly_spending': monthly_spending
+    }
+
 @api_bp.route('/health')
 def health_check():
     """Health check endpoint for monitoring."""
@@ -607,6 +745,9 @@ def get_stats():
     """Get dashboard statistics."""
     db = get_session()
     try:
+        from models import Bounty
+        
+        # Basic stats
         stats = {
             'total_ideas': db.query(Idea).count(),
             'open_ideas': db.query(Idea).filter(Idea.status == IdeaStatus.open).count(),
@@ -614,6 +755,72 @@ def get_stats():
             'complete_ideas': db.query(Idea).filter(Idea.status == IdeaStatus.complete).count(),
             'total_skills': db.query(Skill).count()
         }
+        
+        # Organization-wide spending analytics
+        # Total approved spend across all teams
+        total_approved_spend = db.query(func.sum(Bounty.amount)).filter(
+            Bounty.is_monetary == True,
+            Bounty.is_expensed == True,
+            Bounty.is_approved == True
+        ).scalar() or 0.0
+        
+        # Pending approval spend
+        pending_approval_spend = db.query(func.sum(Bounty.amount)).filter(
+            Bounty.is_monetary == True,
+            Bounty.is_expensed == True,
+            Bounty.requires_approval == True,
+            Bounty.is_approved == None
+        ).scalar() or 0.0
+        
+        # Actual spend (completed ideas)
+        actual_spend = db.query(func.sum(Bounty.amount)).join(
+            Idea, Bounty.idea_uuid == Idea.uuid
+        ).filter(
+            Idea.status == IdeaStatus.complete,
+            Bounty.is_monetary == True,
+            Bounty.is_expensed == True,
+            Bounty.is_approved == True
+        ).scalar() or 0.0
+        
+        # Committed spend (claimed ideas)
+        committed_spend = db.query(func.sum(Bounty.amount)).join(
+            Idea, Bounty.idea_uuid == Idea.uuid
+        ).filter(
+            Idea.status == IdeaStatus.claimed,
+            Bounty.is_monetary == True,
+            Bounty.is_expensed == True,
+            Bounty.is_approved == True
+        ).scalar() or 0.0
+        
+        # Top spending teams
+        top_teams_query = db.query(
+            Idea.benefactor_team,
+            func.sum(Bounty.amount).label('total_spend')
+        ).join(
+            Bounty, Idea.uuid == Bounty.idea_uuid
+        ).filter(
+            Bounty.is_monetary == True,
+            Bounty.is_expensed == True,
+            Bounty.is_approved == True
+        ).group_by(Idea.benefactor_team).order_by(
+            func.sum(Bounty.amount).desc()
+        ).limit(10).all()
+        
+        top_spending_teams = []
+        for team_name, total in top_teams_query:
+            top_spending_teams.append({
+                'team': team_name,
+                'total_spend': float(total or 0)
+            })
+        
+        stats['spending'] = {
+            'total_approved_spend': float(total_approved_spend),
+            'pending_approval_spend': float(pending_approval_spend),
+            'actual_spend': float(actual_spend),
+            'committed_spend': float(committed_spend),
+            'top_spending_teams': top_spending_teams
+        }
+        
         return jsonify(stats)
     finally:
         db.close()
@@ -1221,6 +1428,9 @@ def get_team_stats():
             Idea.status == IdeaStatus.complete
         ).count()
         
+        # Calculate spending analytics
+        spending_analytics = calculate_team_spending_analytics(team, team_member_emails, db)
+        
         stats = {
             'teamId': team.uuid,
             'teamName': team.name,
@@ -1255,7 +1465,8 @@ def get_team_stats():
             'recent_activity': {
                 'submissions_30d': recent_submissions,
                 'claims_30d': recent_claims
-            }
+            },
+            'spending': spending_analytics
         }
         
         return jsonify(stats)
@@ -1311,6 +1522,17 @@ def get_admin_team_stats():
                 
                 completion_rate = round((completed_ideas / team_claimed * 100) if team_claimed > 0 else 0, 1)
                 
+                # Get team's total approved spend
+                from models import Bounty
+                total_approved_spend = db.query(func.sum(Bounty.amount)).join(
+                    Idea, Bounty.idea_uuid == Idea.uuid
+                ).filter(
+                    Idea.benefactor_team == team.name,
+                    Bounty.is_monetary == True,
+                    Bounty.is_expensed == True,
+                    Bounty.is_approved == True
+                ).scalar() or 0.0
+                
                 all_teams_stats.append({
                     'uuid': team.uuid,
                     'name': team.name,
@@ -1318,7 +1540,8 @@ def get_admin_team_stats():
                     'member_count': len(team_members),
                     'submitted_count': team_submitted,
                     'claimed_count': team_claimed,
-                    'completion_rate': completion_rate
+                    'completion_rate': completion_rate,
+                    'total_approved_spend': float(total_approved_spend)
                 })
             
             return jsonify({'teams_overview': all_teams_stats})
@@ -1560,6 +1783,9 @@ def get_admin_team_stats():
             Idea.status == IdeaStatus.complete
         ).count()
         
+        # Calculate spending analytics
+        spending_analytics = calculate_team_spending_analytics(team, team_member_emails, db)
+        
         stats = {
             'teamId': team.uuid,
             'teamName': team.name,
@@ -1594,7 +1820,8 @@ def get_admin_team_stats():
             'recent_activity': {
                 'submissions_30d': recent_submissions,
                 'claims_30d': recent_claims
-            }
+            },
+            'spending': spending_analytics
         }
         
         return jsonify(stats)
@@ -2772,6 +2999,32 @@ def bulk_upload_ideas():
                         idea.skills.append(skill)
                 
                 db.add(idea)
+                db.flush()  # Get idea UUID for bounty
+                
+                # Handle monetary bounty fields if present
+                is_monetary = row.get('is_monetary', '').strip().lower() == 'true'
+                is_expensed = row.get('is_expensed', '').strip().lower() == 'true'
+                amount_str = row.get('amount', '').strip()
+                
+                if is_monetary:
+                    try:
+                        amount = float(amount_str) if amount_str else 0.0
+                    except ValueError:
+                        amount = 0.0
+                        errors.append(f"Row {row_num}: Invalid amount '{amount_str}', defaulting to 0")
+                    
+                    # Create bounty record
+                    from models import Bounty
+                    bounty = Bounty(
+                        idea_uuid=idea.uuid,
+                        is_monetary=is_monetary,
+                        is_expensed=is_expensed,
+                        amount=amount,
+                        requires_approval=amount > 50,
+                        is_approved=None  # Pending approval if over $50
+                    )
+                    db.add(bounty)
+                
                 imported_count += 1
                 
             except Exception as e:

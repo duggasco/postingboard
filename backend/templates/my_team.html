@@ -30,6 +30,29 @@
         </div>
     </div>
     
+    <!-- Spending Overview -->
+    <div id="spending-overview" style="margin-bottom: 30px; display: none;">
+        <h4 style="margin: 20px 0 15px 0; color: #1a1d23;">Team Spending Overview</h4>
+        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+            <div class="stat-card" style="background: #e8f5e8;">
+                <h3 id="total-approved-spend">$0</h3>
+                <p>Total Approved</p>
+            </div>
+            <div class="stat-card" style="background: #fff4e5;">
+                <h3 id="pending-approval-spend">$0</h3>
+                <p>Pending Approval</p>
+            </div>
+            <div class="stat-card" style="background: #e3f2fd;">
+                <h3 id="actual-spend">$0</h3>
+                <p>Actual Spend</p>
+            </div>
+            <div class="stat-card" style="background: #f3e5f5;">
+                <h3 id="committed-spend">$0</h3>
+                <p>Committed</p>
+            </div>
+        </div>
+    </div>
+    
     <!-- Admin Team Selector (for admins only) -->
     {% if session.get('is_admin') %}
     <div style="margin-bottom: 30px;">
@@ -52,11 +75,12 @@
                         <th>Ideas Submitted</th>
                         <th>Ideas Claimed</th>
                         <th>Completion Rate</th>
+                        <th>Total Spend</th>
                     </tr>
                 </thead>
                 <tbody id="all-teams-table">
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 20px;">Loading teams data...</td>
+                        <td colspan="7" style="text-align: center; padding: 20px;">Loading teams data...</td>
                     </tr>
                 </tbody>
             </table>
@@ -137,6 +161,50 @@
             <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
                 <h4 style="margin-bottom: 20px; color: #495057;">Skills Needed for Team Ideas</h4>
                 <canvas id="skills-needed-chart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+        
+        <!-- Spending Analytics Charts -->
+        <div id="spending-charts-section" style="display: none; margin-bottom: 40px;">
+            <h4 style="margin: 30px 0 20px 0; color: #1a1d23;">Spending Analysis</h4>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 30px;">
+                <!-- Spending by Priority -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                    <h4 style="margin-bottom: 20px; color: #495057;">Spending by Priority</h4>
+                    <canvas id="spending-priority-chart" style="max-height: 250px;"></canvas>
+                </div>
+                
+                <!-- Spending by Size -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                    <h4 style="margin-bottom: 20px; color: #495057;">Spending by Size</h4>
+                    <canvas id="spending-size-chart" style="max-height: 250px;"></canvas>
+                </div>
+                
+                <!-- Monthly Spending Trend -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                    <h4 style="margin-bottom: 20px; color: #495057;">Monthly Spending Trend</h4>
+                    <canvas id="spending-trend-chart" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+            
+            <!-- Top Spenders Table -->
+            <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">Top Spenders</h4>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Total Claimed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-spenders-table">
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 20px;">No spending data available</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
         
@@ -310,11 +378,12 @@ async function loadAllTeamsOverview() {
                         <td>${team.submitted_count}</td>
                         <td>${team.claimed_count}</td>
                         <td>${team.completion_rate}%</td>
+                        <td>${formatCurrency(team.total_approved_spend || 0)}</td>
                     </tr>
                 `;
             });
             
-            tbody.innerHTML = html || '<tr><td colspan="6" style="text-align: center;">No teams found</td></tr>';
+            tbody.innerHTML = html || '<tr><td colspan="7" style="text-align: center;">No teams found</td></tr>';
         }
     } catch (error) {
         console.error('Error loading teams overview:', error);
@@ -752,6 +821,106 @@ function updateCharts() {
     
     // Create custom bar chart for skills needed with gap highlighting
     createSkillsNeededChart('skills-needed-chart', 'Skills Needed', skillsNeededData, teamSkillsSet);
+    
+    // Update spending analytics if available
+    if (teamStats.spending) {
+        // Show spending sections
+        document.getElementById('spending-overview').style.display = 'block';
+        document.getElementById('spending-charts-section').style.display = 'block';
+        
+        // Update spending overview cards
+        document.getElementById('total-approved-spend').textContent = formatCurrency(teamStats.spending.total_approved_spend);
+        document.getElementById('pending-approval-spend').textContent = formatCurrency(teamStats.spending.pending_approval_spend);
+        document.getElementById('actual-spend').textContent = formatCurrency(teamStats.spending.actual_spend);
+        document.getElementById('committed-spend').textContent = formatCurrency(teamStats.spending.committed_spend);
+        
+        // Create spending charts
+        createDoughnutChart('spending-priority-chart', 'Spending by Priority', teamStats.spending.spending_by_priority);
+        createDoughnutChart('spending-size-chart', 'Spending by Size', teamStats.spending.spending_by_size);
+        
+        // Create monthly spending trend chart
+        createMonthlySpendingChart('spending-trend-chart', teamStats.spending.monthly_spending);
+        
+        // Update top spenders table
+        updateTopSpendersTable(teamStats.spending.top_spenders);
+    }
+}
+
+function formatCurrency(amount) {
+    return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function createMonthlySpendingChart(canvasId, monthlyData) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !monthlyData || monthlyData.length === 0) return;
+    
+    const ctx = canvas.getContext('2d');
+    const labels = monthlyData.map(item => item.month);
+    const values = monthlyData.map(item => item.amount);
+    
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Monthly Spend',
+                data: values,
+                borderColor: '#4a90e2',
+                backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Spend: ' + formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateTopSpendersTable(topSpenders) {
+    const tbody = document.getElementById('top-spenders-table');
+    
+    if (!topSpenders || topSpenders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">No spending data available</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    topSpenders.forEach((spender, index) => {
+        html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${utils.escapeHtml(spender.name)}</td>
+                <td>${utils.escapeHtml(spender.email)}</td>
+                <td>${formatCurrency(spender.total_claimed)}</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
 }
 
 function createDoughnutChart(canvasId, title, data) {

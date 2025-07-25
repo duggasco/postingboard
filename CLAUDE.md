@@ -45,6 +45,11 @@ The `start-flask.sh` script handles Python version detection and virtual environ
 - **Database**: Separate `bounties` table tracks monetary details
   - `is_monetary`, `is_expensed`, `amount`, `requires_approval`
   - `is_approved`, `approved_by`, `approved_at` for approval tracking
+- **Bulk Upload Support**: CSV imports can include bounty fields
+  - `is_monetary`: true/false for monetary bounties
+  - `is_expensed`: true/false (requires is_monetary=true)
+  - `amount`: Dollar amount (requires is_expensed=true)
+  - Amounts over $50 automatically set to require approval
 
 #### Blueprint Structure
 ```
@@ -174,6 +179,12 @@ The entire application has been migrated from integer IDs to UUIDs for enhanced 
     - Highlights missing skills in light red (#ffcccc) with red border
     - Includes "Gap: Team lacks this skill" tooltip for missing skills
     - Helps identify training needs and hiring priorities
+  - **Spending Analytics**: Track team's monetary bounty spending
+    - Total Approved: Sum of all approved bounties
+    - Pending Approval: Bounties awaiting manager/admin approval
+    - Actual Spend: Bounties on completed ideas
+    - Committed Spend: Bounties on claimed ideas
+    - Spending trends chart showing last 6 months
 - **Team Member Management**:
   - Searchable and filterable member list
   - **Column totals row** at top showing sums for all numeric columns (bold formatting)
@@ -195,6 +206,11 @@ The entire application has been migrated from integer IDs to UUIDs for enhanced 
 #### Admin Features
 - Password authentication (password: "2929arch")
 - Dashboard with charts and statistics
+- **Spending Analytics**: Organization-wide bounty spending metrics
+  - Spending Overview cards: Total Approved, Pending, Actual Spend, Committed
+  - Top Spending Teams chart showing top 5 teams by approved spending
+  - Spending by Category breakdown (Approved vs Pending)
+  - Real-time spending trends visualization
 - **Idea Management**: Advanced management interface with modal editing
   - Shows ALL ideas (not just open ones) 
   - Comprehensive filtering by title/description, priority, status, size, and team
@@ -1589,6 +1605,29 @@ All potentially truncated fields show full content on hover:
 - Users endpoint returns wrapped object: `{success: true, users: [...]}`
 
 ## Recent Fixes and Updates
+
+### Team Spending Analytics Implementation (July 2025)
+Added comprehensive spending analytics for monetary bounty tracking:
+- **Backend Implementation**:
+  - Created `calculate_team_spending_analytics()` helper function in api.py
+  - Enhanced `/api/stats` endpoint with organization-wide spending metrics
+  - Updated `/api/team-stats` and `/api/admin/team-stats` with team spending data
+  - Fixed SQLAlchemy isolation issues using StaticPool configuration
+- **My Team Page Enhancements**:
+  - Added spending overview cards showing Total Approved, Pending, Actual, and Committed spend
+  - Implemented spending trends chart with 6-month historical view
+  - Integrated spending metrics into team performance dashboard
+- **Admin Dashboard Updates**:
+  - Added organization-wide spending overview cards
+  - Created "Top Spending Teams" chart showing top 5 teams
+  - Added spending by category breakdown visualization
+- **Bulk Upload Enhancement**:
+  - Updated CSV template to include bounty fields (is_monetary, is_expensed, amount)
+  - Modified bulk upload logic to create Bounty records for monetary bounties
+  - Added automatic approval requirement for amounts over $50
+- **Database Compatibility**:
+  - Supports both native and Docker deployments with automatic path detection
+  - Created sync_database.sh script for database synchronization
 
 ### UUID Migration Implementation (July 2025)
 Completed full migration from integer IDs to UUIDs:

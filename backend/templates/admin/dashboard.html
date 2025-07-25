@@ -50,6 +50,35 @@
         </div>
     </div>
     
+    <!-- Spending Overview Section -->
+    <div style="margin-top: 40px; margin-bottom: 40px;">
+        <h3>Organization Spending Overview</h3>
+        <div class="stats-grid" style="margin-top: 20px;">
+            <div class="stat-card" style="background: #e8f5e8;">
+                <h3 id="total-org-spend">-</h3>
+                <p>Total Approved Spend</p>
+            </div>
+            <div class="stat-card" style="background: #fff4e5;">
+                <h3 id="pending-org-spend">-</h3>
+                <p>Pending Approval</p>
+            </div>
+            <div class="stat-card" style="background: #e3f2fd;">
+                <h3 id="actual-org-spend">-</h3>
+                <p>Actual Spend</p>
+            </div>
+            <div class="stat-card" style="background: #f3e5f5;">
+                <h3 id="committed-org-spend">-</h3>
+                <p>Committed Spend</p>
+            </div>
+        </div>
+        
+        <!-- Top Spending Teams Chart -->
+        <div style="margin-top: 30px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+            <h4 style="margin-bottom: 20px; color: #495057;">Top Spending Teams</h4>
+            <canvas id="top-teams-spending-chart" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+    
     <div style="margin-top: 40px;">
         <h3>Manage Ideas</h3>
         
@@ -173,6 +202,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 /* Removed duplicate .notification-badge CSS - using global styles from styles.css */
 
@@ -331,6 +361,46 @@
     async function loadStats() {
         console.log('Loading stats... readyState:', document.readyState);
         
+        // Simple direct load without complex retry logic
+        try {
+            const response = await fetch('/api/stats');
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const stats = await response.json();
+            console.log('Stats data:', stats);
+            
+            // Update stat cards
+            document.getElementById('total-ideas').textContent = stats.total_ideas || 0;
+            document.getElementById('open-ideas').textContent = stats.open_ideas || 0;
+            document.getElementById('claimed-ideas').textContent = stats.claimed_ideas || 0;
+            document.getElementById('complete-ideas').textContent = stats.complete_ideas || 0;
+            document.getElementById('total-skills').textContent = stats.total_skills || 0;
+            
+            // Update spending analytics if available
+            if (stats.spending) {
+                updateSpendingAnalytics(stats.spending);
+            }
+            
+            console.log('Stats loaded successfully');
+            
+        } catch (error) {
+            console.error('Error loading statistics:', error);
+            document.getElementById('total-ideas').textContent = 'Error';
+            document.getElementById('open-ideas').textContent = 'Error';
+            document.getElementById('claimed-ideas').textContent = 'Error';
+            document.getElementById('complete-ideas').textContent = 'Error';
+            document.getElementById('total-skills').textContent = 'Error';
+        }
+    }
+    
+    // Original complex retry logic
+    async function loadStatsWithRetry() {
+        console.log('Loading stats with retry... readyState:', document.readyState);
+        
         // Double-check elements exist with retry logic
         let retries = 0;
         const maxRetries = 5;
@@ -367,6 +437,11 @@
                     elements.completeIdeas.textContent = stats.complete_ideas || 0;
                     elements.totalSkills.textContent = stats.total_skills || 0;
                     
+                    // Update spending analytics if available
+                    if (stats.spending) {
+                        updateSpendingAnalytics(stats.spending);
+                    }
+                    
                     console.log('Stats loaded successfully');
                     return; // Success, exit the function
                     
@@ -391,36 +466,18 @@
         console.error('Failed to find all required DOM elements after retries');
     }
 
-    // Initialize stats loading with multiple strategies
+    // Initialize stats loading - simplified
     function initStats() {
-        // Strategy 1: If page is already complete, wait a bit then load
-        if (document.readyState === 'complete') {
-            console.log('Page already complete, loading stats after delay');
-            setTimeout(() => {
-                loadStats();
-                loadAdminDashboardNotifications();
-            }, 250);
-        }
+        // Load immediately
+        loadStats();
+        loadAdminDashboardNotifications();
         
-        // Strategy 2: Wait for window load event (includes all resources)
+        // Also load on window load just in case
         window.addEventListener('load', function() {
             console.log('Window load event fired');
-            setTimeout(() => {
-                loadStats();
-                loadAdminDashboardNotifications();
-            }, 250);
+            loadStats();
+            loadAdminDashboardNotifications();
         });
-        
-        // Strategy 3: Use requestAnimationFrame to ensure rendering is complete
-        if (typeof requestAnimationFrame !== 'undefined') {
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    console.log('RequestAnimationFrame triggered');
-                    loadStats();
-                    loadAdminDashboardNotifications();
-                });
-            });
-        }
     }
 
     // Start initialization based on document state
@@ -801,6 +858,88 @@ document.getElementById('clear-filters').addEventListener('click', () => {
     document.getElementById('team-filter').value = '';
     applyFilters();
 });
+
+// Spending Analytics Functions
+function formatCurrency(amount) {
+    return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function updateSpendingAnalytics(spending) {
+    // Update spending overview cards
+    const totalOrgSpend = document.getElementById('total-org-spend');
+    const pendingOrgSpend = document.getElementById('pending-org-spend');
+    const actualOrgSpend = document.getElementById('actual-org-spend');
+    const committedOrgSpend = document.getElementById('committed-org-spend');
+    
+    if (totalOrgSpend) totalOrgSpend.textContent = formatCurrency(spending.total_approved_spend || 0);
+    if (pendingOrgSpend) pendingOrgSpend.textContent = formatCurrency(spending.pending_approval_spend || 0);
+    if (actualOrgSpend) actualOrgSpend.textContent = formatCurrency(spending.actual_spend || 0);
+    if (committedOrgSpend) committedOrgSpend.textContent = formatCurrency(spending.committed_spend || 0);
+    
+    // Create top spending teams chart
+    createTopSpendingTeamsChart(spending.top_spending_teams || []);
+}
+
+function createTopSpendingTeamsChart(topTeams) {
+    const canvas = document.getElementById('top-teams-spending-chart');
+    if (!canvas || topTeams.length === 0) return;
+    
+    const ctx = canvas.getContext('2d');
+    const labels = topTeams.map(team => team.team);
+    const values = topTeams.map(team => team.total_spend);
+    
+    // Destroy existing chart if it exists
+    if (window.topTeamsChart) {
+        window.topTeamsChart.destroy();
+    }
+    
+    window.topTeamsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Spend',
+                data: values,
+                backgroundColor: '#4a90e2',
+                borderColor: '#357abd',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        autoSkip: false,
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+}
 
 // Initialize ideas loading
 loadIdeas();
