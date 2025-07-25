@@ -699,14 +699,13 @@ function createIdeaCard(idea) {
             </p>
             
             ${renderBounty(idea)}
+            ${claimInfo}
             
             <div class="idea-footer">
                 <div>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</div>
                 <div>Team: ${utils.escapeHtml(idea.benefactor_team)}</div>
                 ${idea.needed_by ? `<div>Needed by: ${utils.formatDate(idea.needed_by)}</div>` : ''}
             </div>
-            
-            ${claimInfo}
             
             <a href="/idea/${utils.getUuid(idea)}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
         </div>

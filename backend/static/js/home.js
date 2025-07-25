@@ -124,16 +124,6 @@
             ? `<div class="claim-info">Claimed by ${utils.escapeHtml(idea.claims[0].name)}</div>`
             : '';
         
-        // Add sub-status display for claimed ideas
-        const subStatusHtml = idea.status === 'claimed' && idea.sub_status
-            ? `<div class="sub-status-info" style="margin-top: 8px; font-size: 12px; color: #6c757d;">
-                   <span class="sub-status-badge sub-status-${idea.sub_status}">
-                       ${idea.sub_status.replace(/_/g, ' ').toUpperCase()}
-                   </span>
-                   ${idea.progress_percentage !== undefined ? ` • ${idea.progress_percentage}% complete` : ''}
-               </div>`
-            : '';
-        
         // Create full description for tooltip
         const fullDescription = utils.escapeHtml(idea.description);
         const truncatedDescription = idea.description.length > 150 
@@ -159,8 +149,6 @@
                 </p>
                 
                 ${renderBounty(idea)}
-                
-                ${subStatusHtml}
                 ${claimInfo}
                 
                 <div class="idea-footer">

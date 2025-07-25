@@ -345,9 +345,9 @@ Once an idea is claimed and approved, it enters the development lifecycle with d
 
 #### UI Components
 - **Idea Detail Page**: Shows current sub-status with progress bar and update controls
-- **Browse Ideas**: Displays sub-status badge and progress percentage for claimed ideas
-- **My Ideas**: Shows sub-status information for all personal ideas
-- **Status Timeline**: Visual representation of status changes over time
+- **Browse Ideas**: Shows basic idea information (title, status, priority, size, skills, bounty, claim info)
+- **My Ideas**: Shows personal idea information with relationship indicators
+- **Status Timeline**: Visual representation of status changes over time (on detail page)
 
 #### API Endpoints
 - `PUT /api/ideas/<id>/sub-status`: Update sub-status with validation and permissions
@@ -1643,10 +1643,14 @@ Enhanced the browse ideas cards layout and styling for better consistency and us
   - Priority: High (red tones), Medium (orange tones), Low (green tones)
   - Size: Small (teal), Medium (blue), Large (purple), Extra Large (pink)
 - **Description Tooltips**: Added mouseover tooltips for truncated descriptions
+- **Sub-Status Removal**: Removed sub-status display from idea cards to reduce clutter
+  - Sub-status information still available on idea detail pages
+  - Cards now cleaner and more focused on essential information
 - **Files Updated**:
-  - `static/js/home.js`: Restructured card layout, stacked badges, implemented tooltips
+  - `static/js/home.js`: Restructured card layout, stacked badges, implemented tooltips, removed sub-status
   - `static/css/styles.css`: Added background colors for priority/size badges
-  - `templates/my_team.html`: Updated chart colors for consistency
+  - `templates/my_team.html`: Updated chart colors for consistency, removed sub-status from cards
+  - `templates/my_ideas.html`: Removed sub-status from personal idea cards
 - **Visual Consistency**: All components now use the same refined color palette
 
 ### Team Request Notification Fix (July 2025)
