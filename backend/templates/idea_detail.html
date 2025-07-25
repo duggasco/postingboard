@@ -3,24 +3,68 @@
 {% block title %}{{ idea.title }} - Citizen Developer Posting Board{% endblock %}
 
 {% block content %}
+<style>
+/* Larger styles for idea detail page */
+.idea-detail-bounty {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.idea-detail-bounty span {
+    display: inline-flex;
+    align-items: center;
+}
+
+.idea-detail-status {
+    padding: 6px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 16px;
+}
+
+.idea-detail-priority,
+.idea-detail-size {
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 12px;
+}
+
+.idea-detail-skill {
+    background-color: #f1f3f5;
+    color: #495057;
+    padding: 4px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+}
+</style>
 <div class="page-container">
     <a href="{{ url_for('main.home') }}" style="display: inline-block; margin-bottom: 20px;">← Back to All Ideas</a>
     
     <div class="idea-header" style="margin-bottom: 30px;">
         <h2 class="page-title" style="margin-bottom: 10px; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">{{ idea.title }}</h2>
-        <span class="status-badge status-{{ idea.status.value }}">{{ idea.status.value.upper() }}</span>
+        <span class="status-badge status-{{ idea.status.value }} idea-detail-status">{{ idea.status.value.upper() }}</span>
     </div>
     
     <div class="idea-meta" style="margin-bottom: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px;">
-        <div class="priority-badge priority-{{ idea.priority.value }}" style="display: inline-block;">Priority: {{ idea.priority.value }}</div>
-        <div class="size-badge size-{{ idea.size.value }}" style="display: inline-block;">Size: {{ idea.size.value.replace('_', ' ') }}</div>
+        <div class="priority-badge priority-{{ idea.priority.value }} idea-detail-priority" style="display: inline-block;">Priority: {{ idea.priority.value }}</div>
+        <div class="size-badge size-{{ idea.size.value }} idea-detail-size" style="display: inline-block;">Size: {{ idea.size.value.replace('_', ' ') }}</div>
     </div>
     
     
     {% if idea.skills %}
     <div class="skills-tags" style="margin-bottom: 20px;">
         {% for skill in idea.skills %}
-        <span class="skill-tag">{{ skill.name }}</span>
+        <span class="skill-tag idea-detail-skill">{{ skill.name }}</span>
         {% endfor %}
     </div>
     {% endif %}
@@ -35,20 +79,20 @@
     </div>
     
     {% if idea.bounty or idea.bounty_details %}
-    <div class="bounty" style="margin-bottom: 20px;">
+    <div class="idea-detail-bounty">
         <span>Bounty:</span>
         {% if idea.bounty %}
             {{ idea.bounty }}
         {% endif %}
         {% if idea.bounty_details and idea.bounty_details.is_monetary %}
             {% if idea.bounty %} {% endif %}
-            <span style="color: #28a745;">
+            <span style="color: #28a745; font-size: 16px; font-weight: 600;">
                 ${{ "%.2f"|format(idea.bounty_details.amount) }}
                 {% if idea.bounty_details.is_expensed %}
-                    <span style="color: #6c757d; font-size: 9px;">(expensed)</span>
+                    <span style="color: #6c757d; font-size: 11px;">(expensed)</span>
                 {% endif %}
                 {% if idea.bounty_details.requires_approval and not idea.bounty_details.is_approved %}
-                    <span style="color: #856404; font-size: 9px; margin-left: 4px;">
+                    <span style="color: #856404; font-size: 11px; margin-left: 6px;">
                         <i class="fas fa-info-circle"></i> Pending approval
                     </span>
                 {% endif %}
