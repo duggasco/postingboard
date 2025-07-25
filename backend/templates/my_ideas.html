@@ -211,7 +211,7 @@ function createIdeaCard(idea) {
         <div class="idea-card ${borderClass}">
             ${relationshipBadge}
             <h3 class="idea-title">
-                <a href="/idea/${idea.id}">💡 ${utils.escapeHtml(idea.title)}</a>
+                <a href="/idea/${idea.id}">${utils.escapeHtml(idea.title)}</a>
             </h3>
             <p class="idea-description">${utils.escapeHtml(idea.description)}</p>
             <div class="idea-meta">
