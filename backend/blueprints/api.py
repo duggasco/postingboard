@@ -86,6 +86,12 @@ def get_ideas():
                 'size': idea.size.value,
                 'status': idea.status.value,
                 'bounty': idea.bounty,
+                'bounty_details': {
+                    'is_monetary': idea.bounty_details.is_monetary,
+                    'is_expensed': idea.bounty_details.is_expensed,
+                    'amount': idea.bounty_details.amount,
+                    'requires_approval': idea.bounty_details.requires_approval
+                } if idea.bounty_details else None,
                 'needed_by': idea.needed_by.strftime('%Y-%m-%d') if idea.needed_by else None,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
                 'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],
@@ -1574,6 +1580,13 @@ def get_my_ideas():
                 'priority': idea.priority.value,
                 'size': idea.size.value,
                 'status': idea.status.value,
+                'bounty': idea.bounty,
+                'bounty_details': {
+                    'is_monetary': idea.bounty_details.is_monetary,
+                    'is_expensed': idea.bounty_details.is_expensed,
+                    'amount': idea.bounty_details.amount,
+                    'requires_approval': idea.bounty_details.requires_approval
+                } if idea.bounty_details else None,
                 'benefactor_team': idea.benefactor_team,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
                 'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],

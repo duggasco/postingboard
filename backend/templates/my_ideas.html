@@ -135,6 +135,42 @@ function displayIdeas(ideas) {
     container.innerHTML = html;
 }
 
+// Render bounty information
+function renderBounty(idea) {
+    if (!idea.bounty && !idea.bounty_details) return '';
+    
+    let bountyHtml = '<div class="bounty">';
+    bountyHtml += '<span style="font-weight: 600;">Bounty: </span>';
+    
+    const parts = [];
+    
+    if (idea.bounty) {
+        parts.push(utils.escapeHtml(idea.bounty));
+    }
+    
+    if (idea.bounty_details && idea.bounty_details.is_monetary) {
+        let monetaryPart = '';
+        if (idea.bounty_details.is_expensed) {
+            monetaryPart = `<span style="color: #28a745; font-weight: 600;">$${idea.bounty_details.amount.toFixed(2)}</span>`;
+            if (idea.bounty_details.requires_approval) {
+                monetaryPart += ' <span style="color: #856404; font-size: 11px;">(pending approval)</span>';
+            }
+        } else {
+            monetaryPart = '<span style="color: #28a745;">Monetary bounty available</span>';
+        }
+        parts.push(monetaryPart);
+    }
+    
+    if (parts.length === 0) {
+        bountyHtml += '<span style="color: #6c757d;">None specified</span>';
+    } else {
+        bountyHtml += parts.join(' + ');
+    }
+    
+    bountyHtml += '</div>';
+    return bountyHtml;
+}
+
 function createIdeaCard(idea) {
     const statusClass = `status-${idea.status}`;
     const priorityClass = `priority-${idea.priority}`;
@@ -184,6 +220,7 @@ function createIdeaCard(idea) {
                 <span class="size-badge ${sizeClass}">${idea.size.replace('_', ' ')}</span>
                 <span class="status-badge ${statusClass}">${idea.status}</span>
             </div>
+            ${renderBounty(idea)}
             ${claimStatus}
             <div class="idea-footer">
                 Submitted: ${utils.formatDate(idea.date_submitted)}

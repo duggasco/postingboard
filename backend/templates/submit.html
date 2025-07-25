@@ -81,39 +81,38 @@
             <input type="date" id="needed_by" name="needed_by" class="form-control">
         </div>
         
-        <div class="form-group">
-            <label for="bounty">Bounty (Optional)</label>
-            <input type="text" id="bounty" name="bounty" class="form-control" placeholder="e.g., Company swag, Lunch with leadership, Team shoutout">
-        </div>
-        
         <!-- Bounty Section -->
-        <div class="form-group" style="margin-top: 25px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-            <h4 style="margin-top: 0; margin-bottom: 15px; font-size: 16px;">Monetary Bounty (Optional)</h4>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="is_monetary" name="is_monetary" style="width: 18px; height: 18px;">
-                    <span>This idea has a monetary bounty</span>
+        <div class="form-group" style="margin-top: 20px;">
+            <label for="bounty" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                <span>Bounty (Optional)</span>
+                <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: normal; cursor: pointer;">
+                    <input type="checkbox" id="is_monetary" name="is_monetary" style="width: 16px; height: 16px; margin: 0;">
+                    <span style="font-size: 13px; color: #6c757d;">Monetary bounty?</span>
                 </label>
-            </div>
+            </label>
             
-            <div id="expense-section" style="display: none; margin-left: 26px;">
-                <div style="margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="is_expensed" name="is_expensed" style="width: 18px; height: 18px;">
-                        <span>Will be expensed</span>
+            <!-- Text bounty input (always visible) -->
+            <input type="text" id="bounty" name="bounty" class="form-control" 
+                   placeholder="e.g., Company swag, Lunch with leadership, Team shoutout, or leave blank if monetary only"
+                   style="margin-bottom: 12px;">
+            
+            <!-- Monetary options (conditionally visible) -->
+            <div id="monetary-options" style="display: none; padding: 12px; background: #f8f9fa; border-radius: 6px; border: 1px solid #dee2e6;">
+                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                    <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="is_expensed" name="is_expensed" style="width: 16px; height: 16px; margin: 0;">
+                        <span style="font-size: 13px;">Will be expensed</span>
                     </label>
-                </div>
-                
-                <div id="amount-section" style="display: none;">
-                    <label for="amount">Amount</label>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 18px;">$</span>
-                        <input type="number" id="amount" name="amount" class="form-control" 
-                               placeholder="0.00" min="0" step="0.01" style="max-width: 150px;">
-                    </div>
-                    <div id="approval-notice" style="margin-top: 10px; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; display: none;">
-                        <strong>Note:</strong> Amounts over $50 require manager or admin approval.
+                    
+                    <div id="amount-section" style="display: none; flex: 1; min-width: 200px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px; color: #495057;">$</span>
+                            <input type="number" id="amount" name="amount" class="form-control" 
+                                   placeholder="0.00" min="0" step="0.01" style="max-width: 120px; height: 32px; padding: 4px 8px;">
+                            <span id="approval-text" style="display: none; font-size: 12px; color: #856404; margin-left: 10px;">
+                                <i class="fas fa-info-circle"></i> Requires approval (>$50)
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>

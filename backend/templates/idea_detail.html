@@ -33,9 +33,30 @@
         {% endif %}
     </div>
     
-    {% if idea.bounty %}
+    {% if idea.bounty or idea.bounty_details %}
     <div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
-        <strong>Bounty:</strong> {{ idea.bounty }}
+        <strong>Bounty:</strong>
+        {% if idea.bounty %}
+            {{ idea.bounty }}
+        {% endif %}
+        {% if idea.bounty_details and idea.bounty_details.is_monetary %}
+            {% if idea.bounty %} + {% endif %}
+            <span style="color: #28a745; font-weight: 600;">
+                {% if idea.bounty_details.is_expensed %}
+                    ${{ "%.2f"|format(idea.bounty_details.amount) }} (monetary)
+                    {% if idea.bounty_details.requires_approval %}
+                        <span style="color: #856404; font-size: 12px; margin-left: 8px;">
+                            <i class="fas fa-info-circle"></i> Pending approval
+                        </span>
+                    {% endif %}
+                {% else %}
+                    Monetary bounty available
+                {% endif %}
+            </span>
+        {% endif %}
+        {% if not idea.bounty and (not idea.bounty_details or not idea.bounty_details.is_monetary) %}
+            <span style="color: #6c757d;">No bounty specified</span>
+        {% endif %}
     </div>
     {% endif %}
     

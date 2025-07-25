@@ -74,6 +74,42 @@
         }
     }
     
+    // Render bounty information
+    function renderBounty(idea) {
+        if (!idea.bounty && !idea.bounty_details) return '';
+        
+        let bountyHtml = '<div class="bounty">';
+        bountyHtml += '<span style="font-weight: 600;">Bounty: </span>';
+        
+        const parts = [];
+        
+        if (idea.bounty) {
+            parts.push(utils.escapeHtml(idea.bounty));
+        }
+        
+        if (idea.bounty_details && idea.bounty_details.is_monetary) {
+            let monetaryPart = '';
+            if (idea.bounty_details.is_expensed) {
+                monetaryPart = `<span style="color: #28a745; font-weight: 600;">$${idea.bounty_details.amount.toFixed(2)}</span>`;
+                if (idea.bounty_details.requires_approval) {
+                    monetaryPart += ' <span style="color: #856404; font-size: 11px;">(pending approval)</span>';
+                }
+            } else {
+                monetaryPart = '<span style="color: #28a745;">Monetary bounty available</span>';
+            }
+            parts.push(monetaryPart);
+        }
+        
+        if (parts.length === 0) {
+            bountyHtml += '<span style="color: #6c757d;">None specified</span>';
+        } else {
+            bountyHtml += parts.join(' + ');
+        }
+        
+        bountyHtml += '</div>';
+        return bountyHtml;
+    }
+    
     // Create idea card HTML
     function createIdeaCard(idea) {
         const statusClass = `status-${idea.status}`;
@@ -112,7 +148,7 @@
                     ${truncatedDescription}
                 </p>
                 
-                ${idea.bounty ? `<div class="bounty">Bounty: ${utils.escapeHtml(idea.bounty)}</div>` : ''}
+                ${renderBounty(idea)}
                 
                 <div class="idea-footer">
                     <div>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</div>

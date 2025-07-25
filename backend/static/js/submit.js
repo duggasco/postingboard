@@ -64,23 +64,23 @@
         
         // Bounty functionality
         const isMonetaryCheckbox = document.getElementById('is_monetary');
-        const expenseSection = document.getElementById('expense-section');
+        const monetaryOptions = document.getElementById('monetary-options');
         const isExpensedCheckbox = document.getElementById('is_expensed');
         const amountSection = document.getElementById('amount-section');
         const amountInput = document.getElementById('amount');
-        const approvalNotice = document.getElementById('approval-notice');
+        const approvalText = document.getElementById('approval-text');
         
-        // Show/hide expense section based on monetary checkbox
+        // Show/hide monetary options based on monetary checkbox
         if (isMonetaryCheckbox) {
             isMonetaryCheckbox.addEventListener('change', function() {
                 if (this.checked) {
-                    expenseSection.style.display = 'block';
+                    monetaryOptions.style.display = 'block';
                 } else {
-                    expenseSection.style.display = 'none';
+                    monetaryOptions.style.display = 'none';
                     isExpensedCheckbox.checked = false;
                     amountSection.style.display = 'none';
                     amountInput.value = '';
-                    approvalNotice.style.display = 'none';
+                    approvalText.style.display = 'none';
                 }
             });
         }
@@ -89,30 +89,30 @@
         if (isExpensedCheckbox) {
             isExpensedCheckbox.addEventListener('change', function() {
                 if (this.checked) {
-                    amountSection.style.display = 'block';
+                    amountSection.style.display = 'flex';
                 } else {
                     amountSection.style.display = 'none';
                     amountInput.value = '';
-                    approvalNotice.style.display = 'none';
+                    approvalText.style.display = 'none';
                 }
             });
         }
         
-        // Show/hide approval notice based on amount
+        // Show/hide approval text based on amount
         if (amountInput) {
             amountInput.addEventListener('input', function() {
                 const amount = parseFloat(this.value) || 0;
                 if (amount > 50) {
-                    approvalNotice.style.display = 'block';
+                    approvalText.style.display = 'inline';
                 } else {
-                    approvalNotice.style.display = 'none';
+                    approvalText.style.display = 'none';
                 }
             });
             
             // Ensure only valid monetary amounts
             amountInput.addEventListener('blur', function() {
                 const value = parseFloat(this.value);
-                if (!isNaN(value)) {
+                if (!isNaN(value) && value > 0) {
                     this.value = value.toFixed(2);
                 }
             });
