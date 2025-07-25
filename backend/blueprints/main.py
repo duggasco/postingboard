@@ -166,7 +166,23 @@ def idea_detail(idea_id):
         if not idea:
             flash('Idea not found', 'error')
             return redirect(url_for('main.home'))
-        return render_template('idea_detail.html', idea=idea)
+        
+        # Serialize status history for JavaScript
+        status_history_data = []
+        if idea.status_history:
+            for history in idea.status_history:
+                status_history_data.append({
+                    'from_status': history.from_status.value if history.from_status else None,
+                    'to_status': history.to_status.value if history.to_status else None,
+                    'from_sub_status': history.from_sub_status.value if history.from_sub_status else None,
+                    'to_sub_status': history.to_sub_status.value if history.to_sub_status else None,
+                    'changed_by': history.changed_by,
+                    'changed_at': history.changed_at.isoformat() if history.changed_at else None,
+                    'comment': history.comment,
+                    'duration_minutes': history.duration_minutes
+                })
+        
+        return render_template('idea_detail.html', idea=idea, status_history_json=status_history_data)
     finally:
         db.close()
 

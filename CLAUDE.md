@@ -1329,6 +1329,16 @@ All potentially truncated fields show full content on hover:
 
 ## Recent Fixes and Updates
 
+### Sub-Status Implementation Fix (July 2025)
+Fixed 500 error on idea detail pages when implementing sub-status tracking:
+- **Issue**: Jinja2 template syntax error - list comprehensions not supported in templates
+- **Fix**: Replaced list comprehension with proper Jinja2 loop and variable assignment
+- **Database Updates**: 
+  - Created status_history table for tracking all status changes
+  - Added sub_status columns to ideas table (sub_status, progress_percentage, blocked_reason, etc.)
+- **Template Fix**: Changed from `idea.status_history` to `status_history_json` to properly serialize data
+- **Note**: Sub-status features only display when idea has status='claimed' AND sub_status is not null
+
 ### Browse Ideas Cards Updates (July 2025)
 Enhanced the browse ideas cards layout and styling for better consistency and usability:
 - **Layout Changes**:

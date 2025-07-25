@@ -109,7 +109,13 @@
         {% endif %}
         
         <!-- Update controls for authorized users -->
-        {% if session.get('user_email') and (session.get('user_email') in [claim.claimer_email for claim in idea.claims] or 
+        {% set is_claimer = false %}
+        {% for claim in idea.claims %}
+            {% if claim.claimer_email == session.get('user_email') %}
+                {% set is_claimer = true %}
+            {% endif %}
+        {% endfor %}
+        {% if session.get('user_email') and (is_claimer or 
               session.get('is_admin') or 
               (session.get('user_managed_team_id') and idea.claims and idea.claims[0].claimer_team == session.get('user_team'))) %}
         <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
@@ -350,7 +356,7 @@ if (updateSubStatusForm) {
 }
 
 // Display status history timeline if available
-const statusHistory = {{ idea.status_history | tojson if idea.status_history else '[]' }};
+const statusHistory = {{ status_history_json | tojson }};
 if (statusHistory.length > 0) {
     const timeline = document.getElementById('status-history-timeline');
     if (timeline) {
