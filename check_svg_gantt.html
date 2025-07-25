@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SVG GANTT Test</title>
+    <script>
+        // Test if the SVG GANTT is working
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const svg = document.getElementById('gantt-svg');
+                const groups = svg ? svg.querySelectorAll('g') : [];
+                const phases = svg ? svg.querySelectorAll('.phase') : [];
+                
+                console.log('SVG element:', svg);
+                console.log('Groups found:', groups.length);
+                console.log('Phase elements:', phases.length);
+                
+                // Check for errors
+                if (window.ganttError) {
+                    console.error('GANTT Error:', window.ganttError);
+                }
+                
+                // Display results on page
+                const results = document.getElementById('results');
+                results.innerHTML = `
+                    <h2>SVG GANTT Test Results:</h2>
+                    <p>SVG Element: ${svg ? '✓ Found' : '✗ Not Found'}</p>
+                    <p>SVG Groups: ${groups.length}</p>
+                    <p>Phase Elements: ${phases.length}</p>
+                    <p>Errors: ${window.ganttError || 'None'}</p>
+                `;
+            }, 2000); // Wait 2 seconds for GANTT to render
+        });
+    </script>
+</head>
+<body>
+    <h1>Testing SVG GANTT</h1>
+    <div id="results">Loading...</div>
+    <iframe src="http://localhost:9094/idea/3" width="100%" height="800" id="test-frame"></iframe>
+</body>
+</html>

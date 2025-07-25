@@ -140,7 +140,7 @@
                 
                 <!-- GANTT Chart Timeline -->
                 <div id="gantt-chart-container" style="position: relative; min-height: 200px; background: white; border: 1px solid #dee2e6; border-radius: 4px; padding: 20px; margin-bottom: 15px;">
-                    <!-- SVG will be inserted here by JavaScript -->
+                    <canvas id="gantt-canvas" style="width: 100%; height: 100%;"></canvas>
                 </div>
                 
                 <div style="margin-top: 15px; font-size: 12px; color: #6c757d;">
@@ -473,7 +473,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/svg-gantt.js') }}"></script>
 <script>
 // Progress mapping for consistent synchronization with GANTT phases
 const progressMapping = {
@@ -1005,57 +1004,252 @@ function displayStatusHistory() {
 
 // GANTT Chart Rendering
 function renderGanttChart() {
-    console.log('renderGanttChart called');
-    const container = document.getElementById('gantt-chart-container');
-    if (!container) {
-        console.error('GANTT container not found');
-        return;
-    }
+    const canvas = document.getElementById('gantt-canvas');
+    if (!canvas) return;
     
-    // Get idea data with linked items count
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = 250;
+    
+    // Get idea data
     const ideaData = {
-        id: {{ idea.id }},
         size: '{{ idea.size.value }}',
         status: '{{ idea.status.value }}',
         subStatus: '{{ idea.sub_status.value if idea.sub_status else "" }}',
         progress: {{ idea.progress_percentage or 0 }},
         dateSubmitted: new Date('{{ idea.date_submitted.isoformat() }}'),
         neededBy: {% if idea.needed_by %}new Date('{{ idea.needed_by.isoformat() }}'){% else %}null{% endif %},
-        claimDate: {% if idea.claims %}new Date('{{ idea.claims[0].claim_date.isoformat() }}'){% else %}null{% endif %},
-        linkedItems: {
-            comments: {{ idea.comments | length if idea.comments else 0 }},
-            links: {{ idea.external_links | length if idea.external_links else 0 }},
-            activities: {{ idea.activities | length if idea.activities else 0 }}
-        }
+        claimDate: {% if idea.claims %}new Date('{{ idea.claims[0].claim_date.isoformat() }}'){% else %}null{% endif %}
     };
     
     // Check for custom settings
     const customSettings = sessionStorage.getItem(`gantt-settings-{{ idea.id }}`);
+    let startDate, endDate, phases;
+    
     if (customSettings) {
         const settings = JSON.parse(customSettings);
-        ideaData.customSettings = settings;
+        startDate = new Date(settings.startDate);
+        endDate = new Date(settings.endDate);
+        phases = [
+            { name: 'Planning', duration: settings.phases.planning, status: 'planning' },
+            { name: 'Development', duration: settings.phases.development, status: 'in_development' },
+            { name: 'Testing', duration: settings.phases.testing, status: 'testing' },
+            { name: 'Deployment', duration: settings.phases.deployment, status: 'awaiting_deployment' },
+            { name: 'Verification', duration: settings.phases.verification, status: 'deployed,verified' }
+        ];
+    } else {
+        // Calculate timeline based on size
+        const sizeDurations = {
+            'small': 5,      // 5 days
+            'medium': 10,    // 10 days
+            'large': 20,     // 20 days
+            'extra_large': 30 // 30 days
+        };
+        
+        const estimatedDays = sizeDurations[ideaData.size] || 10;
+        startDate = ideaData.claimDate || new Date();
+        endDate = ideaData.neededBy || new Date(startDate.getTime() + (estimatedDays * 24 * 60 * 60 * 1000));
+        
+        // Define phases with start offsets to show dependencies and potential overlaps
+        phases = [
+            { name: 'Planning', startOffset: 0, duration: 0.15, status: 'planning' },
+            { name: 'Development', startOffset: 0.10, duration: 0.45, status: 'in_development' },
+            { name: 'Testing', startOffset: 0.40, duration: 0.30, status: 'testing' },
+            { name: 'Deployment', startOffset: 0.65, duration: 0.15, status: 'awaiting_deployment' },
+            { name: 'Verification', startOffset: 0.75, duration: 0.15, status: 'deployed,verified' }
+        ];
     }
     
-    // Create and render the SVG GANTT chart
-    try {
-        const ganttChart = new SVGGanttChart('gantt-chart-container', ideaData);
-        ganttChart.render();
+    // Calculate phase positions
+    const totalDuration = endDate - startDate;
+    const pixelsPerDay = (canvas.width - 100) / (totalDuration / (1000 * 60 * 60 * 24));
+    
+    // Draw timeline header
+    ctx.fillStyle = '#f8f9fa';
+    ctx.fillRect(0, 0, canvas.width, 40);
+    
+    // Draw month labels
+    ctx.fillStyle = '#495057';
+    ctx.font = '12px sans-serif';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    let currentDate = new Date(startDate);
+    let x = 100;
+    while (currentDate <= endDate) {
+        const monthLabel = months[currentDate.getMonth()] + ' ' + currentDate.getDate();
+        ctx.fillText(monthLabel, x, 25);
+        x += pixelsPerDay * 7; // Weekly markers
+        currentDate.setDate(currentDate.getDate() + 7);
+    }
+    
+    // Draw grid lines for better readability
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 1;
+    
+    // Vertical grid lines (weekly)
+    let gridDate = new Date(startDate);
+    while (gridDate <= endDate) {
+        const gridX = 100 + ((gridDate - startDate) / (1000 * 60 * 60 * 24)) * pixelsPerDay;
+        ctx.beginPath();
+        ctx.moveTo(gridX, 40);
+        ctx.lineTo(gridX, 235);
+        ctx.stroke();
+        gridDate.setDate(gridDate.getDate() + 7);
+    }
+    
+    // Draw phases as traditional GANTT chart with proper timeline positioning
+    const barHeight = 25;
+    const rowSpacing = 35;
+    let startY = 60;
+    
+    phases.forEach((phase, index) => {
+        const phaseStart = new Date(startDate.getTime() + (phase.startOffset * totalDuration));
+        const phaseDuration = phase.duration * totalDuration;
+        const phaseEnd = new Date(phaseStart.getTime() + phaseDuration);
         
-        // Store instance for export functionality
-        window.currentGanttChart = ganttChart;
-    } catch (error) {
-        console.error('Error rendering SVG GANTT chart:', error);
-        container.innerHTML = '<p style="color: #dc3545;">Error loading GANTT chart</p>';
+        // Calculate x position based on phase start offset
+        const x1 = 100 + (phase.startOffset * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay;
+        const x2 = x1 + (phaseDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay;
+        const barY = startY + (index * rowSpacing);
+        
+        // Draw phase label on the left
+        ctx.fillStyle = '#212529';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(phase.name, 90, barY + barHeight/2 + 4);
+        ctx.textAlign = 'left';
+        
+        // Determine phase color based on progress percentage
+        let fillColor = '#e9ecef'; // Not started
+        const phaseStartProgress = phase.startOffset * 100;
+        const phaseEndProgress = phaseStartProgress + (phase.duration * 100);
+        
+        if (ideaData.progress >= phaseEndProgress) {
+            fillColor = '#28a745'; // Completed
+        } else if (ideaData.progress > phaseStartProgress && ideaData.progress < phaseEndProgress) {
+            fillColor = '#ffc107'; // In progress
+        }
+        
+        // Override color if blocked or on hold
+        if (ideaData.subStatus === 'blocked' || ideaData.subStatus === 'on_hold') {
+            if (ideaData.progress > phaseStartProgress && ideaData.progress <= phaseEndProgress) {
+                fillColor = '#dc3545'; // Blocked/on hold
+            }
+        }
+        
+        // Draw phase bar
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(x1, barY, x2 - x1, barHeight);
+        
+        // Draw phase border
+        ctx.strokeStyle = '#dee2e6';
+        ctx.strokeRect(x1, barY, x2 - x1, barHeight);
+        
+        // Draw duration text to the right of the bar
+        ctx.fillStyle = '#6c757d';
+        ctx.font = '11px sans-serif';
+        const durationDays = Math.round(phaseDuration / (1000 * 60 * 60 * 24));
+        ctx.fillText(`${durationDays} days (${Math.round(phase.duration * 100)}%)`, x2 + 10, barY + barHeight/2 + 4);
+        
+        // Draw progress within current phase
+        if (ideaData.progress > phaseStartProgress && ideaData.progress < phaseEndProgress) {
+            const phaseProgress = (ideaData.progress - phaseStartProgress) / (phase.duration * 100);
+            if (phaseProgress > 0 && phaseProgress <= 1) {
+                // Use different overlay for blocked/on hold
+                if (ideaData.subStatus === 'blocked' || ideaData.subStatus === 'on_hold') {
+                    ctx.fillStyle = 'rgba(220, 53, 69, 0.3)'; // Red overlay
+                } else {
+                    ctx.fillStyle = 'rgba(40, 167, 69, 0.3)'; // Green overlay
+                }
+                ctx.fillRect(x1, barY, (x2 - x1) * phaseProgress, barHeight);
+            }
+        }
+        
+    });
+    
+    // Draw dependency lines between phases
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]);
+    
+    // Planning → Development
+    ctx.beginPath();
+    ctx.moveTo(100 + (0.15 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + 12);
+    ctx.lineTo(100 + (0.10 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + rowSpacing + 12);
+    ctx.stroke();
+    
+    // Development → Testing
+    ctx.beginPath();
+    ctx.moveTo(100 + (0.55 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + rowSpacing + 12);
+    ctx.lineTo(100 + (0.40 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (2 * rowSpacing) + 12);
+    ctx.stroke();
+    
+    // Testing → Deployment
+    ctx.beginPath();
+    ctx.moveTo(100 + (0.70 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (2 * rowSpacing) + 12);
+    ctx.lineTo(100 + (0.65 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (3 * rowSpacing) + 12);
+    ctx.stroke();
+    
+    // Deployment → Verification
+    ctx.beginPath();
+    ctx.moveTo(100 + (0.80 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (3 * rowSpacing) + 12);
+    ctx.lineTo(100 + (0.75 * totalDuration / (1000 * 60 * 60 * 24)) * pixelsPerDay, startY + (4 * rowSpacing) + 12);
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+    
+    // Draw progress indicator
+    if (ideaData.progress > 0 && ideaData.progress < 100) {
+        const totalDays = totalDuration / (1000 * 60 * 60 * 24);
+        const progressDays = (ideaData.progress / 100) * totalDays;
+        const progressX = 100 + (progressDays * pixelsPerDay);
+        
+        // Draw progress line across all phases
+        ctx.strokeStyle = '#007bff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(progressX, 50);
+        ctx.lineTo(progressX, startY + (phases.length * rowSpacing) - 10);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        
+        // Draw progress label at top
+        ctx.fillStyle = '#007bff';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(`Progress: ${ideaData.progress}%`, progressX - 30, 45);
+    }
+    
+    // Draw current date marker
+    const today = new Date();
+    if (today >= startDate && today <= endDate) {
+        const daysFromStart = (today - startDate) / (1000 * 60 * 60 * 24);
+        const todayX = 100 + (daysFromStart * pixelsPerDay);
+        
+        ctx.strokeStyle = '#dc3545';
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(todayX, 40);
+        ctx.lineTo(todayX, startY + (phases.length * rowSpacing));
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = '#dc3545';
+        ctx.font = '11px sans-serif';
+        ctx.fillText('Today', todayX - 15, startY + (phases.length * rowSpacing) + 15);
     }
 }
 
 // Export GANTT chart as PNG
 function exportGanttChart() {
-    if (window.currentGanttChart && window.currentGanttChart.exportAsPNG) {
-        window.currentGanttChart.exportAsPNG();
-    } else {
-        console.error('GANTT chart not available for export');
-    }
+    const canvas = document.getElementById('gantt-canvas');
+    if (!canvas) return;
+    
+    // Create a link element and trigger download
+    const link = document.createElement('a');
+    link.download = `gantt-chart-idea-{{ idea.id }}-${new Date().toISOString().split('T')[0]}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
 }
 
 // Show GANTT settings modal
@@ -1172,21 +1366,9 @@ function closeGanttSettingsModal() {
 }
 
 // Render GANTT chart when overview tab is shown
-if (document.getElementById('gantt-chart-container')) {
-    setTimeout(function() {
-        try {
-            renderGanttChart();
-        } catch (error) {
-            console.error('Error rendering GANTT chart:', error);
-        }
-    }, 100);
-    window.addEventListener('resize', function() {
-        try {
-            renderGanttChart();
-        } catch (error) {
-            console.error('Error rendering GANTT chart on resize:', error);
-        }
-    });
+if (document.getElementById('gantt-canvas')) {
+    setTimeout(renderGanttChart, 100);
+    window.addEventListener('resize', renderGanttChart);
 }
 
 // Claim functionality
