@@ -1614,6 +1614,21 @@ All potentially truncated fields show full content on hover:
 
 ## Recent Fixes and Updates
 
+### Bounty Tracking Fix - Include All Monetary Bounties (January 2025)
+Fixed spending analytics to track ALL monetary bounties regardless of expense status:
+- **Issue**: Spending analytics were only counting bounties marked as "expensed", excluding non-expensed monetary bounties
+- **Impact**: Organizations were under-reporting their total financial commitments
+- **Fix Details**:
+  - Removed `Bounty.is_expensed == True` filter from all spending queries in `calculate_team_spending_analytics()`
+  - Updated organization-wide spending queries in `/api/stats` endpoint
+  - Fixed pending approval logic to check for both `is_approved == False` and `is_approved == None`
+  - Added `spending_analytics` field to `/api/stats` response
+- **Result**: Spending totals now accurately include ALL monetary bounties:
+  - Total Approved Spend: Sum of all approved monetary bounties (expensed or not)
+  - Pending Approval: Sum of all unapproved monetary bounties requiring approval
+  - Actual Spend: Completed ideas with approved monetary bounties
+  - Committed Spend: Claimed ideas with approved monetary bounties
+
 ### Team Spending Analytics Implementation (July 2025)
 Added comprehensive spending analytics for monetary bounty tracking:
 - **Backend Implementation**:

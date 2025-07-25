@@ -64,7 +64,6 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
     ).filter(
         Idea.benefactor_team == team.name,
         Bounty.is_monetary == True,
-        Bounty.is_expensed == True,
         Bounty.is_approved == True
     ).scalar() or 0.0
     
@@ -74,9 +73,8 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
     ).filter(
         Idea.benefactor_team == team.name,
         Bounty.is_monetary == True,
-        Bounty.is_expensed == True,
         Bounty.requires_approval == True,
-        Bounty.is_approved == None
+        or_(Bounty.is_approved == None, Bounty.is_approved == False)
     ).scalar() or 0.0
     
     # Actual spend (bounties for completed ideas)
@@ -86,7 +84,6 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
         Idea.benefactor_team == team.name,
         Idea.status == IdeaStatus.complete,
         Bounty.is_monetary == True,
-        Bounty.is_expensed == True,
         Bounty.is_approved == True
     ).scalar() or 0.0
     
@@ -97,7 +94,6 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
         Idea.benefactor_team == team.name,
         Idea.status == IdeaStatus.claimed,
         Bounty.is_monetary == True,
-        Bounty.is_expensed == True,
         Bounty.is_approved == True
     ).scalar() or 0.0
     
@@ -108,7 +104,6 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
     ).filter(
         Idea.benefactor_team == team.name,
         Bounty.is_monetary == True,
-        Bounty.is_expensed == True,
         Bounty.is_approved == True
     ).group_by(Idea.priority).all()
     
@@ -122,7 +117,6 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
     ).filter(
         Idea.benefactor_team == team.name,
         Bounty.is_monetary == True,
-        Bounty.is_expensed == True,
         Bounty.is_approved == True
     ).group_by(Idea.size).all()
     
@@ -145,7 +139,6 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
         ).filter(
             Claim.claimer_email.in_(team_member_emails),
             Bounty.is_monetary == True,
-            Bounty.is_expensed == True,
             Bounty.is_approved == True
         ).group_by(Claim.claimer_email, UserProfile.name).order_by(
             func.sum(Bounty.amount).desc()
@@ -171,7 +164,6 @@ def calculate_team_spending_analytics(team, team_member_emails, db):
             Idea.date_submitted >= start_date,
             Idea.date_submitted < end_date,
             Bounty.is_monetary == True,
-            Bounty.is_expensed == True,
             Bounty.is_approved == True
         ).scalar() or 0.0
         
@@ -872,16 +864,14 @@ def get_stats():
         # Total approved spend across all teams
         total_approved_spend = db.query(func.sum(Bounty.amount)).filter(
             Bounty.is_monetary == True,
-            Bounty.is_expensed == True,
             Bounty.is_approved == True
         ).scalar() or 0.0
         
         # Pending approval spend
         pending_approval_spend = db.query(func.sum(Bounty.amount)).filter(
             Bounty.is_monetary == True,
-            Bounty.is_expensed == True,
             Bounty.requires_approval == True,
-            Bounty.is_approved == None
+            or_(Bounty.is_approved == None, Bounty.is_approved == False)
         ).scalar() or 0.0
         
         # Actual spend (completed ideas)
@@ -890,7 +880,6 @@ def get_stats():
         ).filter(
             Idea.status == IdeaStatus.complete,
             Bounty.is_monetary == True,
-            Bounty.is_expensed == True,
             Bounty.is_approved == True
         ).scalar() or 0.0
         
@@ -900,7 +889,6 @@ def get_stats():
         ).filter(
             Idea.status == IdeaStatus.claimed,
             Bounty.is_monetary == True,
-            Bounty.is_expensed == True,
             Bounty.is_approved == True
         ).scalar() or 0.0
         
@@ -912,7 +900,6 @@ def get_stats():
             Bounty, Idea.uuid == Bounty.idea_uuid
         ).filter(
             Bounty.is_monetary == True,
-            Bounty.is_expensed == True,
             Bounty.is_approved == True
         ).group_by(Idea.benefactor_team).order_by(
             func.sum(Bounty.amount).desc()
@@ -926,6 +913,15 @@ def get_stats():
             })
         
         stats['spending'] = {
+            'total_approved_spend': float(total_approved_spend),
+            'pending_approval_spend': float(pending_approval_spend),
+            'actual_spend': float(actual_spend),
+            'committed_spend': float(committed_spend),
+            'top_spending_teams': top_spending_teams
+        }
+        
+        # Add spending_analytics to stats
+        stats['spending_analytics'] = {
             'total_approved_spend': float(total_approved_spend),
             'pending_approval_spend': float(pending_approval_spend),
             'actual_spend': float(actual_spend),
@@ -1641,7 +1637,6 @@ def get_admin_team_stats():
                 ).filter(
                     Idea.benefactor_team == team.name,
                     Bounty.is_monetary == True,
-                    Bounty.is_expensed == True,
                     Bounty.is_approved == True
                 ).scalar() or 0.0
                 
