@@ -22,6 +22,21 @@ class IdeaStatus(enum.Enum):
     claimed = "claimed"
     complete = "complete"
 
+class SubStatus(enum.Enum):
+    # Development lifecycle statuses
+    planning = "planning"
+    in_development = "in_development"
+    testing = "testing"
+    awaiting_deployment = "awaiting_deployment"
+    deployed = "deployed"
+    verified = "verified"
+    
+    # Special states
+    on_hold = "on_hold"
+    blocked = "blocked"
+    cancelled = "cancelled"
+    rolled_back = "rolled_back"
+
 idea_skills = Table('idea_skills', Base.metadata,
     Column('idea_id', Integer, ForeignKey('ideas.id'), primary_key=True),
     Column('skill_id', Integer, ForeignKey('skills.id'), primary_key=True)
@@ -40,6 +55,12 @@ class Idea(Base):
     needed_by = Column(DateTime, nullable=False)
     priority = Column(Enum(PriorityLevel), nullable=False)
     status = Column(Enum(IdeaStatus), default=IdeaStatus.open)
+    sub_status = Column(Enum(SubStatus), nullable=True)  # Only used when status is 'claimed'
+    sub_status_updated_at = Column(DateTime)
+    sub_status_updated_by = Column(String(120))
+    progress_percentage = Column(Integer, default=0)  # 0-100
+    blocked_reason = Column(Text)  # Reason if sub_status is 'blocked' or 'on_hold'
+    expected_completion = Column(DateTime)  # Target completion date
     date_submitted = Column(DateTime, default=datetime.utcnow)
     assigned_to_email = Column(String(120))  # Manager can assign to team member
     assigned_at = Column(DateTime)
@@ -222,3 +243,20 @@ class Bounty(Base):
     
     # Relationships
     idea = relationship('Idea', backref=backref('bounty_details', uselist=False))
+
+class StatusHistory(Base):
+    __tablename__ = 'status_history'
+    
+    id = Column(Integer, primary_key=True)
+    idea_id = Column(Integer, ForeignKey('ideas.id'), nullable=False)
+    from_status = Column(Enum(IdeaStatus))
+    to_status = Column(Enum(IdeaStatus))
+    from_sub_status = Column(Enum(SubStatus))
+    to_sub_status = Column(Enum(SubStatus))
+    changed_by = Column(String(120), nullable=False)  # Email of user who made the change
+    changed_at = Column(DateTime, default=datetime.utcnow)
+    comment = Column(Text)  # Optional comment about the change
+    duration_minutes = Column(Integer)  # Time spent in previous status
+    
+    # Relationships
+    idea = relationship('Idea', backref='status_history')

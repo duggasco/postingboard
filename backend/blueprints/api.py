@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from database import get_session
-from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest, idea_skills
+from models import Idea, Skill, Team, Claim, IdeaStatus, PriorityLevel, IdeaSize, EmailSettings, UserProfile, Notification, user_skills, ClaimApproval, ManagerRequest, idea_skills, SubStatus, StatusHistory
 from sqlalchemy import desc, asc, func, or_
 from datetime import datetime
 from decorators import require_verified_email
@@ -92,6 +92,12 @@ def get_ideas():
                     'amount': idea.bounty_details.amount,
                     'requires_approval': idea.bounty_details.requires_approval
                 } if idea.bounty_details else None,
+                'sub_status': idea.sub_status.value if idea.sub_status else None,
+                'sub_status_updated_at': idea.sub_status_updated_at.strftime('%Y-%m-%d %H:%M') if idea.sub_status_updated_at else None,
+                'sub_status_updated_by': idea.sub_status_updated_by,
+                'progress_percentage': idea.progress_percentage or 0,
+                'blocked_reason': idea.blocked_reason,
+                'expected_completion': idea.expected_completion.strftime('%Y-%m-%d') if idea.expected_completion else None,
                 'needed_by': idea.needed_by.strftime('%Y-%m-%d') if idea.needed_by else None,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),
                 'skills': [{'id': s.id, 'name': s.name} for s in idea.skills],
@@ -2220,6 +2226,192 @@ def assign_idea(idea_id):
     except Exception as e:
         db.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/ideas/<int:idea_id>/sub-status', methods=['PUT'])
+@require_verified_email
+def update_idea_sub_status(idea_id):
+    """Update the sub-status of a claimed idea."""
+    db = get_session()
+    try:
+        idea = db.query(Idea).get(idea_id)
+        if not idea:
+            return jsonify({'success': False, 'message': 'Idea not found'}), 404
+        
+        # Check permissions
+        user_email = session.get('user_email')
+        user_role = session.get('user_role')
+        is_admin = session.get('is_admin')
+        
+        # Check if user can update status
+        can_update = False
+        if is_admin:
+            can_update = True
+        elif idea.assigned_to_email == user_email:
+            # Assigned developer can update
+            can_update = True
+        elif any(claim.claimer_email == user_email for claim in idea.claims):
+            # Claimer can update
+            can_update = True
+        elif user_role == 'manager' and session.get('user_managed_team_id'):
+            # Manager can update if idea is for their team
+            user_profile = db.query(UserProfile).filter_by(email=user_email).first()
+            if user_profile and user_profile.managed_team and idea.benefactor_team == user_profile.managed_team.name:
+                can_update = True
+        
+        if not can_update:
+            return jsonify({'success': False, 'message': 'Unauthorized to update this idea'}), 403
+        
+        # Get the new sub-status
+        new_sub_status = request.json.get('sub_status')
+        if not new_sub_status:
+            return jsonify({'success': False, 'message': 'Sub-status is required'}), 400
+        
+        # Validate sub-status
+        try:
+            sub_status_enum = SubStatus(new_sub_status)
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid sub-status'}), 400
+        
+        # Calculate duration in previous status
+        duration_minutes = None
+        if idea.sub_status_updated_at:
+            duration = datetime.utcnow() - idea.sub_status_updated_at
+            duration_minutes = int(duration.total_seconds() / 60)
+        
+        # Create status history entry
+        history = StatusHistory(
+            idea_id=idea.id,
+            from_status=idea.status,
+            to_status=idea.status,
+            from_sub_status=idea.sub_status,
+            to_sub_status=sub_status_enum,
+            changed_by=user_email,
+            comment=request.json.get('comment'),
+            duration_minutes=duration_minutes
+        )
+        db.add(history)
+        
+        # Update idea
+        old_sub_status = idea.sub_status
+        idea.sub_status = sub_status_enum
+        idea.sub_status_updated_at = datetime.utcnow()
+        idea.sub_status_updated_by = user_email
+        
+        # Update progress percentage based on sub-status
+        progress_map = {
+            SubStatus.planning: 10,
+            SubStatus.in_development: 30,
+            SubStatus.testing: 60,
+            SubStatus.awaiting_deployment: 80,
+            SubStatus.deployed: 90,
+            SubStatus.verified: 100,
+            SubStatus.on_hold: idea.progress_percentage,  # Keep current
+            SubStatus.blocked: idea.progress_percentage,  # Keep current
+            SubStatus.cancelled: idea.progress_percentage,  # Keep current
+            SubStatus.rolled_back: 85  # Back to before deployment
+        }
+        idea.progress_percentage = progress_map.get(sub_status_enum, idea.progress_percentage)
+        
+        # Handle special fields
+        if sub_status_enum in [SubStatus.blocked, SubStatus.on_hold]:
+            idea.blocked_reason = request.json.get('blocked_reason')
+        else:
+            idea.blocked_reason = None
+            
+        if request.json.get('expected_completion'):
+            idea.expected_completion = datetime.strptime(request.json.get('expected_completion'), '%Y-%m-%d')
+        
+        # Update main status if needed
+        if sub_status_enum in [SubStatus.verified, SubStatus.cancelled]:
+            idea.status = IdeaStatus.complete
+        
+        # Create notifications
+        notification_messages = {
+            SubStatus.planning: 'has started planning',
+            SubStatus.in_development: 'is now in development',
+            SubStatus.testing: 'is now in testing',
+            SubStatus.awaiting_deployment: 'is ready for deployment',
+            SubStatus.deployed: 'has been deployed',
+            SubStatus.verified: 'has been verified and completed',
+            SubStatus.on_hold: 'has been put on hold',
+            SubStatus.blocked: 'is blocked',
+            SubStatus.cancelled: 'has been cancelled',
+            SubStatus.rolled_back: 'has been rolled back'
+        }
+        
+        # Notify idea submitter
+        if idea.email != user_email:
+            notification = Notification(
+                user_email=idea.email,
+                type='status_change',
+                title=f'Idea "{idea.title}" status updated',
+                message=f'Your idea {notification_messages.get(sub_status_enum, "status has changed")}.',
+                idea_id=idea.id,
+                related_user_email=user_email
+            )
+            db.add(notification)
+        
+        # Notify manager if it's a special state
+        if sub_status_enum in [SubStatus.blocked, SubStatus.on_hold, SubStatus.rolled_back]:
+            manager_profile = db.query(UserProfile).filter_by(
+                managed_team_id=db.query(Team).filter_by(name=idea.benefactor_team).first().id if idea.benefactor_team else None,
+                role='manager'
+            ).first()
+            if manager_profile and manager_profile.email != user_email:
+                notification = Notification(
+                    user_email=manager_profile.email,
+                    type='status_change',
+                    title=f'Idea "{idea.title}" needs attention',
+                    message=f'The idea {notification_messages.get(sub_status_enum, "needs your attention")}. Reason: {idea.blocked_reason or "Not specified"}',
+                    idea_id=idea.id,
+                    related_user_email=user_email
+                )
+                db.add(notification)
+        
+        db.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Sub-status updated successfully',
+            'sub_status': sub_status_enum.value,
+            'progress_percentage': idea.progress_percentage
+        })
+        
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/ideas/<int:idea_id>/status-history')
+def get_idea_status_history(idea_id):
+    """Get the status history for an idea."""
+    db = get_session()
+    try:
+        # Check if idea exists
+        idea = db.query(Idea).get(idea_id)
+        if not idea:
+            return jsonify({'error': 'Idea not found'}), 404
+        
+        # Get status history
+        history = db.query(StatusHistory).filter_by(idea_id=idea_id).order_by(StatusHistory.changed_at.desc()).all()
+        
+        history_data = []
+        for entry in history:
+            history_data.append({
+                'from_status': entry.from_status.value if entry.from_status else None,
+                'to_status': entry.to_status.value if entry.to_status else None,
+                'from_sub_status': entry.from_sub_status.value if entry.from_sub_status else None,
+                'to_sub_status': entry.to_sub_status.value if entry.to_sub_status else None,
+                'changed_by': entry.changed_by,
+                'changed_at': entry.changed_at.strftime('%Y-%m-%d %H:%M'),
+                'comment': entry.comment,
+                'duration_minutes': entry.duration_minutes
+            })
+        
+        return jsonify(history_data)
     finally:
         db.close()
 

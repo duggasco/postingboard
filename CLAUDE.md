@@ -287,6 +287,49 @@ The application will be accessible at http://localhost:9094
 - **Private Workflow**: Approval states only visible to involved parties, not on public pages
 - **Approval Interface**: Integrated into My Ideas page with approve/deny buttons
 
+### Development Sub-Status Tracking
+Once an idea is claimed and approved, it enters the development lifecycle with detailed sub-status tracking:
+
+#### Sub-Status Options
+- **planning**: Initial planning and requirements gathering (10% progress)
+- **in_development**: Active development work (30% progress)
+- **testing**: QA and testing phase (60% progress)
+- **awaiting_deployment**: Ready for deployment (80% progress)
+- **deployed**: Deployed to production (90% progress)
+- **verified**: Fully verified and complete (100% progress)
+- **on_hold**: Temporarily paused (maintains current progress)
+- **blocked**: Blocked by dependencies or issues (maintains current progress)
+- **cancelled**: Development cancelled (0% progress)
+- **rolled_back**: Deployment rolled back (0% progress)
+
+#### Features
+- **Progress Tracking**: Visual progress bar showing 0-100% completion
+- **Status Updates**: Authorized users (claimer, admin, manager) can update status
+- **Blocked Reasons**: Required explanation when marking as blocked/on hold
+- **Expected Completion**: Optional target completion date
+- **Status History**: Full timeline of all status changes with:
+  - Who made the change and when
+  - Duration in previous status
+  - Optional comments
+  - Visual timeline display
+- **Notifications**: Automatic notifications sent to:
+  - Idea owner when status changes
+  - Manager when ideas are blocked/cancelled
+  - All parties when idea is verified/complete
+
+#### UI Components
+- **Idea Detail Page**: Shows current sub-status with progress bar and update controls
+- **Browse Ideas**: Displays sub-status badge and progress percentage for claimed ideas
+- **My Ideas**: Shows sub-status information for all personal ideas
+- **Status Timeline**: Visual representation of status changes over time
+
+#### API Endpoints
+- `PUT /api/ideas/<id>/sub-status`: Update sub-status with validation and permissions
+  - Request body: `{sub_status, progress_percentage, blocked_reason, expected_completion, comment}`
+  - Validates status transitions and permissions
+  - Creates status history record
+  - Sends notifications
+
 ### Manager Capabilities
 - **Team Oversight**: View all team members' submitted and claimed ideas
 - **Claim Approvals**: Approve/deny team members' claim requests

@@ -499,6 +499,68 @@ body {
     color: #c2185b;
 }
 
+/* Sub-status badges */
+.sub-status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sub-status-planning {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.sub-status-in_development {
+    background-color: #fff3e0;
+    color: #e65100;
+}
+
+.sub-status-testing {
+    background-color: #f3e5f5;
+    color: #6a1b9a;
+}
+
+.sub-status-awaiting_deployment {
+    background-color: #fff8e1;
+    color: #f57c00;
+}
+
+.sub-status-deployed {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.sub-status-verified {
+    background-color: #e8f5e9;
+    color: #1b5e20;
+    font-weight: 600;
+}
+
+.sub-status-on_hold {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.sub-status-blocked {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.sub-status-cancelled {
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+.sub-status-rolled_back {
+    background-color: #fce4ec;
+    color: #c2185b;
+}
+
 .skills-tags {
     display: flex;
     flex-wrap: wrap;

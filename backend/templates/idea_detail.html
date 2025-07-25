@@ -68,6 +68,57 @@
         <p style="white-space: pre-wrap;">{{ idea.description }}</p>
     </div>
     
+    {% if idea.status.value == 'claimed' and idea.sub_status %}
+    <div style="margin-bottom: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #4a90e2;">
+        <h3 style="margin-top: 0; margin-bottom: 15px;">Development Progress</h3>
+        
+        <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-weight: 600; color: #495057;">Status: 
+                    <span class="sub-status-badge sub-status-{{ idea.sub_status.value }}">
+                        {{ idea.sub_status.value.replace('_', ' ').title() }}
+                    </span>
+                </span>
+                <span style="font-size: 14px; color: #6c757d;">{{ idea.progress_percentage }}% Complete</span>
+            </div>
+            
+            <!-- Progress bar -->
+            <div style="background-color: #e9ecef; border-radius: 4px; height: 20px; position: relative; overflow: hidden;">
+                <div style="background-color: {% if idea.sub_status.value in ['blocked', 'on_hold'] %}#dc3545{% elif idea.sub_status.value == 'verified' %}#28a745{% else %}#4a90e2{% endif %}; 
+                           height: 100%; width: {{ idea.progress_percentage }}%; transition: width 0.3s ease;"></div>
+            </div>
+        </div>
+        
+        {% if idea.expected_completion %}
+        <div style="margin-bottom: 10px;">
+            <strong>Expected Completion:</strong> {{ idea.expected_completion.strftime('%B %d, %Y') }}
+        </div>
+        {% endif %}
+        
+        {% if idea.blocked_reason and idea.sub_status.value in ['blocked', 'on_hold'] %}
+        <div style="margin-bottom: 10px; padding: 10px; background-color: #fff3cd; border-radius: 4px; border-left: 3px solid #ffc107;">
+            <strong>Reason:</strong> {{ idea.blocked_reason }}
+        </div>
+        {% endif %}
+        
+        {% if idea.sub_status_updated_at %}
+        <div style="font-size: 12px; color: #6c757d;">
+            Last updated: {{ idea.sub_status_updated_at.strftime('%B %d, %Y at %I:%M %p') }}
+            {% if idea.sub_status_updated_by %} by {{ idea.sub_status_updated_by }}{% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Update controls for authorized users -->
+        {% if session.get('user_email') and (session.get('user_email') in [claim.claimer_email for claim in idea.claims] or 
+              session.get('is_admin') or 
+              (session.get('user_managed_team_id') and idea.claims and idea.claims[0].claimer_team == session.get('user_team'))) %}
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+            <button class="btn btn-sm btn-secondary" onclick="showUpdateSubStatusModal()">Update Status</button>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
     {% if idea.claims %}
     <div style="margin-bottom: 30px;">
         <h3>Claim History</h3>
@@ -83,6 +134,15 @@
     </div>
     {% endif %}
     
+    {% if idea.status_history and idea.status_history|length > 0 %}
+    <div style="margin-bottom: 30px;">
+        <h3>Status History</h3>
+        <div id="status-history-timeline" style="position: relative; padding-left: 30px;">
+            <!-- Timeline will be populated by JavaScript -->
+        </div>
+    </div>
+    {% endif %}
+    
     {% if idea.status.value == 'open' and session.get('user_role') in ['citizen_developer', 'developer'] %}
     <div style="margin-top: 30px;">
         <button id="claim-btn" class="btn btn-primary">Claim This Idea</button>
@@ -93,6 +153,61 @@
         <a href="{{ url_for('auth.profile') }}">Update your profile</a> if you'd like to claim ideas.</p>
     </div>
     {% endif %}
+</div>
+
+<!-- Update Sub-Status Modal -->
+<div id="update-sub-status-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Update Development Status</h3>
+            <button class="modal-close" onclick="closeUpdateSubStatusModal()">&times;</button>
+        </div>
+        
+        <form id="update-sub-status-form">
+            <div class="form-group">
+                <label for="sub-status">Status <span style="color: red;">*</span></label>
+                <select id="sub-status" class="form-control" required>
+                    <option value="">Select a status...</option>
+                    <option value="planning" {% if idea.sub_status and idea.sub_status.value == 'planning' %}selected{% endif %}>Planning</option>
+                    <option value="in_development" {% if idea.sub_status and idea.sub_status.value == 'in_development' %}selected{% endif %}>In Development</option>
+                    <option value="testing" {% if idea.sub_status and idea.sub_status.value == 'testing' %}selected{% endif %}>Testing</option>
+                    <option value="awaiting_deployment" {% if idea.sub_status and idea.sub_status.value == 'awaiting_deployment' %}selected{% endif %}>Awaiting Deployment</option>
+                    <option value="deployed" {% if idea.sub_status and idea.sub_status.value == 'deployed' %}selected{% endif %}>Deployed</option>
+                    <option value="verified" {% if idea.sub_status and idea.sub_status.value == 'verified' %}selected{% endif %}>Verified</option>
+                    <option value="on_hold" {% if idea.sub_status and idea.sub_status.value == 'on_hold' %}selected{% endif %}>On Hold</option>
+                    <option value="blocked" {% if idea.sub_status and idea.sub_status.value == 'blocked' %}selected{% endif %}>Blocked</option>
+                    <option value="cancelled" {% if idea.sub_status and idea.sub_status.value == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    <option value="rolled_back" {% if idea.sub_status and idea.sub_status.value == 'rolled_back' %}selected{% endif %}>Rolled Back</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="progress-group">
+                <label for="progress">Progress (%) <span style="color: red;">*</span></label>
+                <input type="number" id="progress" class="form-control" min="0" max="100" value="{{ idea.progress_percentage or 0 }}" required>
+                <small class="form-text text-muted">Enter a value between 0 and 100</small>
+            </div>
+            
+            <div class="form-group" id="blocked-reason-group" style="display: none;">
+                <label for="blocked-reason">Reason <span style="color: red;">*</span></label>
+                <textarea id="blocked-reason" class="form-control" rows="3" placeholder="Please explain why this is blocked or on hold...">{{ idea.blocked_reason or '' }}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="expected-completion">Expected Completion Date</label>
+                <input type="date" id="expected-completion" class="form-control" value="{% if idea.expected_completion %}{{ idea.expected_completion.strftime('%Y-%m-%d') }}{% endif %}">
+            </div>
+            
+            <div class="form-group">
+                <label for="comment">Comment (Optional)</label>
+                <textarea id="comment" class="form-control" rows="2" placeholder="Add any additional notes about this status change..."></textarea>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Update Status</button>
+                <button type="button" class="btn btn-secondary" onclick="closeUpdateSubStatusModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Claim Modal -->
@@ -130,6 +245,144 @@
 
 {% block extra_js %}
 <script>
+// Sub-status update functionality
+const updateSubStatusModal = document.getElementById('update-sub-status-modal');
+const updateSubStatusForm = document.getElementById('update-sub-status-form');
+const subStatusSelect = document.getElementById('sub-status');
+const progressGroup = document.getElementById('progress-group');
+const blockedReasonGroup = document.getElementById('blocked-reason-group');
+
+function showUpdateSubStatusModal() {
+    updateSubStatusModal.classList.add('active');
+}
+
+function closeUpdateSubStatusModal() {
+    updateSubStatusModal.classList.remove('active');
+}
+
+// Show/hide fields based on status selection
+if (subStatusSelect) {
+    subStatusSelect.addEventListener('change', function() {
+        const status = this.value;
+        
+        // Show blocked reason for blocked/on_hold statuses
+        if (status === 'blocked' || status === 'on_hold') {
+            blockedReasonGroup.style.display = 'block';
+            document.getElementById('blocked-reason').required = true;
+        } else {
+            blockedReasonGroup.style.display = 'none';
+            document.getElementById('blocked-reason').required = false;
+        }
+        
+        // Auto-set progress based on status
+        const progressInput = document.getElementById('progress');
+        switch(status) {
+            case 'planning':
+                progressInput.value = 10;
+                break;
+            case 'in_development':
+                progressInput.value = 30;
+                break;
+            case 'testing':
+                progressInput.value = 60;
+                break;
+            case 'awaiting_deployment':
+                progressInput.value = 80;
+                break;
+            case 'deployed':
+                progressInput.value = 90;
+                break;
+            case 'verified':
+                progressInput.value = 100;
+                break;
+            case 'cancelled':
+            case 'rolled_back':
+                progressInput.value = 0;
+                break;
+            // blocked/on_hold keep current progress
+        }
+    });
+}
+
+// Handle sub-status update submission
+if (updateSubStatusForm) {
+    updateSubStatusForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            sub_status: document.getElementById('sub-status').value,
+            progress_percentage: parseInt(document.getElementById('progress').value),
+            comment: document.getElementById('comment').value
+        };
+        
+        // Add optional fields
+        if (formData.sub_status === 'blocked' || formData.sub_status === 'on_hold') {
+            formData.blocked_reason = document.getElementById('blocked-reason').value;
+        }
+        
+        const expectedCompletion = document.getElementById('expected-completion').value;
+        if (expectedCompletion) {
+            formData.expected_completion = expectedCompletion;
+        }
+        
+        try {
+            const response = await fetch(`/api/ideas/{{ idea.id }}/sub-status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Status updated successfully!');
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to update status'));
+            }
+        } catch (error) {
+            alert('Error updating status. Please try again.');
+            console.error('Error:', error);
+        }
+    });
+}
+
+// Display status history timeline if available
+const statusHistory = {{ idea.status_history | tojson if idea.status_history else '[]' }};
+if (statusHistory.length > 0) {
+    const timeline = document.getElementById('status-history-timeline');
+    if (timeline) {
+        let timelineHtml = '';
+        statusHistory.forEach((entry, index) => {
+            const isLast = index === statusHistory.length - 1;
+            const fromStatus = entry.from_sub_status || entry.from_status;
+            const toStatus = entry.to_sub_status || entry.to_status;
+            
+            timelineHtml += `
+                <div style="position: relative; margin-bottom: ${isLast ? '0' : '20px'};">
+                    <div style="position: absolute; left: -30px; top: 5px; width: 12px; height: 12px; 
+                               background-color: ${isLast ? '#4a90e2' : '#dee2e6'}; 
+                               border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 3px #f8f9fa;"></div>
+                    ${!isLast ? '<div style="position: absolute; left: -25px; top: 17px; width: 2px; height: calc(100% + 20px); background-color: #dee2e6;"></div>' : ''}
+                    <div style="background-color: #f8f9fa; padding: 12px 16px; border-radius: 8px; border-left: 3px solid ${isLast ? '#4a90e2' : '#dee2e6'};">
+                        <div style="font-weight: 600; margin-bottom: 4px;">
+                            ${fromStatus ? `${fromStatus.replace(/_/g, ' ')} → ` : ''}${toStatus.replace(/_/g, ' ')}
+                        </div>
+                        <div style="font-size: 12px; color: #6c757d;">
+                            ${new Date(entry.changed_at).toLocaleString()} by ${entry.changed_by}
+                            ${entry.duration_minutes ? ` • Duration: ${entry.duration_minutes} minutes` : ''}
+                        </div>
+                        ${entry.comment ? `<div style="margin-top: 4px; font-size: 13px; color: #495057;">${entry.comment}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        timeline.innerHTML = timelineHtml;
+    }
+}
+
 // Claim functionality
 const claimBtn = document.getElementById('claim-btn');
 const claimModal = document.getElementById('claim-modal');
