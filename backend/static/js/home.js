@@ -88,15 +88,18 @@
         }
         
         if (idea.bounty_details && idea.bounty_details.is_monetary) {
-            let monetaryPart = '';
+            let monetaryPart = `<span style="color: #28a745; font-weight: 600;">$${idea.bounty_details.amount.toFixed(2)}</span>`;
+            
+            // Add expense indicator if expensed
             if (idea.bounty_details.is_expensed) {
-                monetaryPart = `<span style="color: #28a745; font-weight: 600;">$${idea.bounty_details.amount.toFixed(2)}</span>`;
-                if (idea.bounty_details.requires_approval) {
-                    monetaryPart += ' <span style="color: #856404; font-size: 11px;">(pending approval)</span>';
-                }
-            } else {
-                monetaryPart = '<span style="color: #28a745;">Monetary bounty available</span>';
+                monetaryPart += ' <span style="color: #6c757d; font-size: 11px;">(expensed)</span>';
             }
+            
+            // Add approval status if needed
+            if (idea.bounty_details.requires_approval && !idea.bounty_details.is_approved) {
+                monetaryPart += ' <span style="color: #856404; font-size: 11px;">(pending approval)</span>';
+            }
+            
             parts.push(monetaryPart);
         }
         

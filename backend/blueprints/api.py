@@ -274,7 +274,8 @@ def get_ideas():
                     'is_monetary': idea.bounty_details[0].is_monetary,
                     'is_expensed': idea.bounty_details[0].is_expensed,
                     'amount': idea.bounty_details[0].amount,
-                    'requires_approval': idea.bounty_details[0].requires_approval
+                    'requires_approval': idea.bounty_details[0].requires_approval,
+                    'is_approved': idea.bounty_details[0].is_approved
                 } if idea.bounty_details and len(idea.bounty_details) > 0 else None,
                 'sub_status': idea.sub_status.value if idea.sub_status else None,
                 'sub_status_updated_at': idea.sub_status_updated_at.strftime('%Y-%m-%d %H:%M') if idea.sub_status_updated_at else None,
@@ -2036,7 +2037,8 @@ def get_my_ideas():
                     'is_monetary': idea.bounty_details[0].is_monetary,
                     'is_expensed': idea.bounty_details[0].is_expensed,
                     'amount': idea.bounty_details[0].amount,
-                    'requires_approval': idea.bounty_details[0].requires_approval
+                    'requires_approval': idea.bounty_details[0].requires_approval,
+                    'is_approved': idea.bounty_details[0].is_approved
                 } if idea.bounty_details and len(idea.bounty_details) > 0 else None,
                 'benefactor_team': idea.benefactor_team,
                 'date_submitted': idea.date_submitted.strftime('%Y-%m-%d'),

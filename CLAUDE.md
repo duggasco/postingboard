@@ -1614,6 +1614,22 @@ All potentially truncated fields show full content on hover:
 
 ## Recent Fixes and Updates
 
+### Bounty Amount Display Fix (January 2025)
+Fixed monetary bounty amounts not displaying properly in idea cards:
+- **Issue**: Monetary bounty amounts were only shown for expensed bounties; non-expensed bounties showed "Monetary bounty available" without the amount
+- **Root Cause**: JavaScript `renderBounty` function only displayed amounts when `is_expensed=true`
+- **Fix Details**:
+  - Updated `renderBounty` functions in home.js, my_ideas.html, and my_team.html
+  - Now ALL monetary bounties display their dollar amount regardless of expense status
+  - Added `is_approved` field to API bounty_details response
+  - Updated idea_detail.html template to show all monetary amounts
+- **New Display Format**:
+  - All monetary bounties show amount: `$500.00`
+  - Expensed bounties add indicator: `$500.00 (expensed)`
+  - Pending approval adds indicator: `$500.00 (pending approval)`
+  - Both indicators can appear together when applicable
+- **Impact**: Organizations can now see ALL monetary bounty commitments in idea cards, improving financial visibility
+
 ### Total Expensed Metric Addition (January 2025)
 Added "Total Expensed" metric to provide visibility into expense reimbursement vs. recognition-only bounties:
 - **Purpose**: Organizations need to distinguish between monetary bounties that will be expensed vs. those for recognition only
@@ -2121,3 +2137,19 @@ Fixed admin edit error when updating bounty data:
 - **Fix**: Added `Bounty` to model imports in `/blueprints/api.py`
 - **Testing**: Verified successful update of monetary bounty data ($75 amount, requires approval flag)
 - **Result**: Admin can now successfully update ideas with bounty information
+
+### Bounty Display Fix (July 2025)
+Fixed monetary bounty amounts not displaying in idea cards:
+- **Issue**: Dollar amounts only showed for expensed bounties, not for all monetary bounties
+- **Root Cause**: renderBounty functions checked `is_expensed` before showing amounts
+- **Files Fixed**:
+  - `/static/js/home.js`: Updated renderBounty to show all monetary amounts
+  - `/templates/my_ideas.html`: Fixed renderBounty function
+  - `/templates/my_team.html`: Updated renderBounty logic
+  - `/templates/idea_detail.html`: Fixed Jinja2 template display
+- **API Enhancement**: Added `is_approved` field to bounty_details in API responses
+- **Display Logic**:
+  - Shows dollar amount for ALL monetary bounties (green color)
+  - Adds "(expensed)" indicator only if is_expensed is true
+  - Shows "(pending approval)" for unapproved bounties requiring approval
+- **Result**: All monetary bounty amounts now visible with appropriate status indicators
