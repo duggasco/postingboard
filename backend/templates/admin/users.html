@@ -1,0 +1,778 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - Admin - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Manage Users</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+        <a href="{{ url_for('admin.teams') }}" class="admin-nav-link">Manage Teams</a>
+        <a href="{{ url_for('admin.users') }}" class="admin-nav-link active">Manage Users</a>
+        <a href="{{ url_for('admin.email_settings') }}" class="admin-nav-link">Email Settings</a>
+        <a href="{{ url_for('admin.bulk_upload') }}" class="admin-nav-link">Bulk Upload</a>
+    </div>
+    
+    <div style="margin-bottom: 30px;">
+        <h3>Filter Users</h3>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="search-input" placeholder="Search by name or email..." class="form-control" style="max-width: 300px;">
+            <select id="role-filter" class="form-control" style="max-width: 200px;">
+                <option value="">All Roles</option>
+                <option value="manager">Manager</option>
+                <option value="idea_submitter">Idea Submitter</option>
+                <option value="citizen_developer">Citizen Developer</option>
+                <option value="developer">Developer</option>
+            </select>
+            <select id="team-filter" class="form-control" style="max-width: 200px;">
+                <option value="">All Teams</option>
+            </select>
+            <button id="clear-filters" class="btn btn-secondary">Clear Filters</button>
+        </div>
+    </div>
+    
+    <div>
+        <h3>All Users</h3>
+        <div id="users-table-container">
+            <div class="loading">Loading users...</div>
+        </div>
+        
+        <div id="pagination-container" style="margin-top: 20px; text-align: center;"></div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div id="edit-user-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit User</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="edit-user-form">
+            <input type="hidden" id="edit-user-email" name="email">
+            <div id="user-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+                <h4 style="margin-top: 0; font-size: 16px;">User Analytics</h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div><strong>Email:</strong> <span id="info-email">-</span></div>
+                    <div><strong>Created:</strong> <span id="info-created">-</span></div>
+                    <div><strong>Last Verified:</strong> <span id="info-verified">-</span></div>
+                    <div><strong>Ideas Submitted:</strong> <span id="info-submitted">0</span></div>
+                    <div><strong>Ideas Claimed:</strong> <span id="info-claimed">0</span></div>
+                    <div><strong>Ideas Completed:</strong> <span id="info-completed">0</span></div>
+                    <div><strong>Pending Claims:</strong> <span id="info-pending">0</span></div>
+                    <div id="manager-request-info"><strong>Manager Request:</strong> <span id="info-manager-request">No</span></div>
+                </div>
+                <div id="manager-request-actions" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; display: none;">
+                    <h5 style="margin-bottom: 10px;">Pending Manager Request</h5>
+                    <p style="margin-bottom: 10px;">This user has requested to manage: <strong id="requested-team-name">-</strong></p>
+                    <button type="button" class="btn btn-success btn-sm" onclick="approveManagerRequestFromEdit()">Approve Request</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="denyManagerRequestFromEdit()">Deny Request</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="edit-name">Name</label>
+                <input type="text" id="edit-name" name="name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-role">Role</label>
+                <select id="edit-role" name="role" class="form-control" required>
+                    <option value="manager">Manager</option>
+                    <option value="idea_submitter">Idea Submitter</option>
+                    <option value="citizen_developer">Citizen Developer</option>
+                    <option value="developer">Developer</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-team">Team</label>
+                <select id="edit-team" name="team_uuid" class="form-control">
+                    <option value="">No Team</option>
+                </select>
+            </div>
+            <div class="form-group" id="edit-managed-team-group" style="display: none;">
+                <label for="edit-managed-team">Managed Team</label>
+                <select id="edit-managed-team" name="managed_team_uuid" class="form-control">
+                    <option value="">No Managed Team</option>
+                </select>
+                <div id="remove-manager-container" style="margin-top: 10px; display: none;">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeManagerFromEdit()">Remove as Manager</button>
+                </div>
+            </div>
+            <div class="form-group" id="edit-skills-group" style="display: none;">
+                <label>Skills</label>
+                <div id="edit-skills-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;"></div>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="edit-verified" name="is_verified" style="width: auto;">
+                    <span>Email Verified</span>
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<style>
+/* Compact users table styling */
+.users-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    font-size: 11px;
+    table-layout: fixed;
+}
+
+.users-data-table th,
+.users-data-table td {
+    padding: 6px 4px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.users-data-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.users-data-table tr:hover {
+    background-color: #fafbfc;
+}
+
+/* Column widths */
+.users-data-table th:nth-child(1),
+.users-data-table td:nth-child(1) { width: 10%; } /* Name */
+.users-data-table th:nth-child(2),
+.users-data-table td:nth-child(2) { width: 12%; } /* Email */
+.users-data-table th:nth-child(3),
+.users-data-table td:nth-child(3) { width: 8%; } /* Role */
+.users-data-table th:nth-child(4),
+.users-data-table td:nth-child(4) { width: 9%; } /* Team */
+.users-data-table th:nth-child(5),
+.users-data-table td:nth-child(5) { width: 9%; } /* Managed */
+.users-data-table th:nth-child(6),
+.users-data-table td:nth-child(6) { width: 15%; } /* Skills */
+.users-data-table th:nth-child(7),
+.users-data-table td:nth-child(7) { width: 5%; } /* Status */
+.users-data-table th:nth-child(8),
+.users-data-table td:nth-child(8) { width: 4%; } /* Ideas */
+.users-data-table th:nth-child(9),
+.users-data-table td:nth-child(9) { width: 4%; } /* Claims */
+.users-data-table th:nth-child(10),
+.users-data-table td:nth-child(10) { width: 4%; } /* Complete */
+.users-data-table th:nth-child(11),
+.users-data-table td:nth-child(11) { width: 4%; } /* Pending */
+.users-data-table th:nth-child(12),
+.users-data-table td:nth-child(12) { width: 6%; } /* Created */
+.users-data-table th:nth-child(13),
+.users-data-table td:nth-child(13) { width: 10%; } /* Actions */
+
+/* Compact status badges */
+.users-data-table .status-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+}
+
+/* Compact buttons */
+.users-data-table .btn-sm {
+    padding: 3px 8px;
+    font-size: 10px;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 20px;
+}
+
+.pagination button {
+    padding: 6px 12px;
+    border: 1px solid #dee2e6;
+    background: white;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+.pagination button.active {
+    background: #4a90e2;
+    color: white;
+    border-color: #4a90e2;
+}
+
+.pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+</style>
+
+<script>
+let currentPage = 1;
+const itemsPerPage = 20;
+let allUsers = [];
+let filteredUsers = [];
+let teams = [];
+let skills = [];
+
+async function loadUsers() {
+    try {
+        const response = await fetch('/api/admin/users');
+        const data = await response.json();
+        
+        if (data.success) {
+            allUsers = data.users;
+            filteredUsers = [...allUsers];
+            displayUsers();
+        } else {
+            console.error('Failed to load users:', data.error);
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+async function loadTeams() {
+    try {
+        const response = await fetch('/api/teams');
+        const data = await response.json();
+        
+        // API returns direct array, not object with teams property
+        if (Array.isArray(data)) {
+            teams = data;
+            
+            // Populate team filter
+            const teamFilter = document.getElementById('team-filter');
+            teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = utils.getUuid(team);
+                option.textContent = team.name;
+                teamFilter.appendChild(option);
+            });
+            
+            // Populate edit form team selects
+            populateTeamSelects();
+        } else {
+            console.error('Unexpected teams data format:', data);
+        }
+    } catch (error) {
+        console.error('Error loading teams:', error);
+    }
+}
+
+async function loadSkills() {
+    try {
+        const response = await fetch('/api/skills');
+        const data = await response.json();
+        
+        // API returns direct array, not object with skills property
+        if (Array.isArray(data)) {
+            skills = data;
+        } else {
+            console.error('Unexpected skills data format:', data);
+        }
+    } catch (error) {
+        console.error('Error loading skills:', error);
+    }
+}
+
+function populateTeamSelects() {
+    const editTeam = document.getElementById('edit-team');
+    const editManagedTeam = document.getElementById('edit-managed-team');
+    
+    // Clear existing options
+    editTeam.innerHTML = '<option value="">No Team</option>';
+    editManagedTeam.innerHTML = '<option value="">No Managed Team</option>';
+    
+    teams.forEach(team => {
+        const option1 = document.createElement('option');
+        option1.value = utils.getUuid(team);
+        option1.textContent = team.name;
+        editTeam.appendChild(option1);
+        
+        const option2 = document.createElement('option');
+        option2.value = utils.getUuid(team);
+        option2.textContent = team.name;
+        editManagedTeam.appendChild(option2);
+    });
+}
+
+function displayUsers() {
+    const container = document.getElementById('users-table-container');
+    
+    if (filteredUsers.length === 0) {
+        container.innerHTML = '<p>No users found.</p>';
+        document.getElementById('pagination-container').innerHTML = '';
+        return;
+    }
+    
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const usersToDisplay = filteredUsers.slice(startIndex, endIndex);
+    
+    let html = `
+        <table class="users-data-table">
+            <thead>
+                <tr>
+                    <th title="User Name">Name</th>
+                    <th title="Email Address">Email</th>
+                    <th title="User Role">Role</th>
+                    <th title="Team">Team</th>
+                    <th title="Managed Team">Managed</th>
+                    <th title="Skills">Skills</th>
+                    <th title="Verification Status">Status</th>
+                    <th title="Ideas Submitted">Ideas</th>
+                    <th title="Ideas Claimed">Claims</th>
+                    <th title="Completed Ideas">Done</th>
+                    <th title="Pending Claims">Pend</th>
+                    <th title="Created Date">Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    usersToDisplay.forEach(user => {
+        const verifiedBadge = user.is_verified 
+            ? '<span class="status-badge status-complete" title="Verified">✓</span>'
+            : '<span class="status-badge status-pending" title="Unverified">✗</span>';
+        
+        // Abbreviate role names
+        const roleDisplay = user.role 
+            ? (user.role === 'citizen_developer' ? 'CitDev' :
+               user.role === 'idea_submitter' ? 'Submitter' :
+               user.role === 'developer' ? 'Dev' :
+               user.role === 'manager' ? 'Mgr' : user.role)
+            : '-';
+        
+        const skillsList = user.skills.map(s => s.name).join(', ') || '-';
+        
+        html += `
+            <tr>
+                <td title="${user.name || '-'}">${user.name || '-'}</td>
+                <td title="${user.email}">${user.email}</td>
+                <td title="${user.role ? user.role.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '-'}">${roleDisplay}</td>
+                <td title="${user.team_name || '-'}">${user.team_name || '-'}</td>
+                <td title="${user.managed_team_name || '-'}">${user.managed_team_name || '-'}</td>
+                <td title="${skillsList}">${skillsList}</td>
+                <td>${verifiedBadge}</td>
+                <td>${user.submitted_ideas_count || 0}</td>
+                <td>${user.claimed_ideas_count || 0}</td>
+                <td>${(user.complete_submitted_count || 0) + (user.complete_claimed_count || 0)}</td>
+                <td>${user.pending_claims_count || 0}${user.has_pending_manager_request ? ' 📋' : ''}</td>
+                <td title="${user.created_at ? new Date(user.created_at).toLocaleString() : '-'}">${user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit'}) : '-'}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="editUser('${user.email}')">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.email}')">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    
+    displayPagination();
+}
+
+function displayPagination() {
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const paginationContainer = document.getElementById('pagination-container');
+    
+    if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination">';
+    
+    // Previous button
+    html += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `<button onclick="changePage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += '<span>...</span>';
+        }
+    }
+    
+    // Next button
+    html += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+    
+    html += '</div>';
+    paginationContainer.innerHTML = html;
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        displayUsers();
+    }
+}
+
+function applyFilters() {
+    const searchInput = document.getElementById('search-input').value.toLowerCase();
+    const roleFilter = document.getElementById('role-filter').value;
+    const teamFilter = document.getElementById('team-filter').value;
+    
+    filteredUsers = allUsers.filter(user => {
+        // Search filter
+        if (searchInput) {
+            const nameMatch = user.name && user.name.toLowerCase().includes(searchInput);
+            const emailMatch = user.email && user.email.toLowerCase().includes(searchInput);
+            if (!nameMatch && !emailMatch) {
+                return false;
+            }
+        }
+        
+        // Role filter
+        if (roleFilter && user.role !== roleFilter) {
+            return false;
+        }
+        
+        // Team filter
+        if (teamFilter && user.team_uuid !== teamFilter) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    currentPage = 1;
+    displayUsers();
+}
+
+function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('role-filter').value = '';
+    document.getElementById('team-filter').value = '';
+    filteredUsers = [...allUsers];
+    currentPage = 1;
+    displayUsers();
+}
+
+async function editUser(email) {
+    const user = allUsers.find(u => u.email === email);
+    if (!user) return;
+    
+    // Ensure teams and skills are loaded
+    if (teams.length === 0) await loadTeams();
+    if (skills.length === 0) await loadSkills();
+    
+    // Re-populate team selects to ensure they're up to date
+    populateTeamSelects();
+    
+    // Populate form
+    document.getElementById('edit-user-email').value = user.email;
+    document.getElementById('edit-name').value = user.name || '';
+    document.getElementById('edit-role').value = user.role || 'idea_submitter';
+    document.getElementById('edit-team').value = user.team_uuid || '';
+    document.getElementById('edit-managed-team').value = user.managed_team_uuid || '';
+    document.getElementById('edit-verified').checked = user.is_verified;
+    
+    // Populate analytics
+    document.getElementById('info-email').textContent = user.email;
+    document.getElementById('info-created').textContent = user.created_at ? new Date(user.created_at).toLocaleString() : '-';
+    document.getElementById('info-verified').textContent = user.last_verified_at ? new Date(user.last_verified_at).toLocaleString() : 'Never';
+    document.getElementById('info-submitted').textContent = user.submitted_ideas_count || 0;
+    document.getElementById('info-claimed').textContent = user.claimed_ideas_count || 0;
+    document.getElementById('info-completed').textContent = (user.complete_submitted_count || 0) + (user.complete_claimed_count || 0);
+    document.getElementById('info-pending').textContent = user.pending_claims_count || 0;
+    document.getElementById('info-manager-request').textContent = user.has_pending_manager_request ? 'Yes (Pending)' : 'No';
+    
+    // Handle pending manager request
+    const managerRequestActions = document.getElementById('manager-request-actions');
+    if (user.has_pending_manager_request && user.pending_manager_request) {
+        // Store the request for later use
+        window.currentEditingUser = user;
+        window.currentManagerRequestId = utils.getUuid(user.pending_manager_request);
+        
+        document.getElementById('requested-team-name').textContent = user.pending_manager_request.team_name || '-';
+        managerRequestActions.style.display = 'block';
+    } else {
+        managerRequestActions.style.display = 'none';
+        window.currentEditingUser = null;
+        window.currentManagerRequestId = null;
+    }
+    
+    // Show/hide fields based on role
+    const role = user.role;
+    const managedTeamGroup = document.getElementById('edit-managed-team-group');
+    const skillsGroup = document.getElementById('edit-skills-group');
+    const removeManagerContainer = document.getElementById('remove-manager-container');
+    
+    if (role === 'manager') {
+        managedTeamGroup.style.display = 'block';
+        skillsGroup.style.display = 'none';
+        // Show remove manager button if they are currently managing a team
+        removeManagerContainer.style.display = user.managed_team_uuid ? 'block' : 'none';
+    } else if (role === 'citizen_developer' || role === 'developer') {
+        managedTeamGroup.style.display = 'none';
+        skillsGroup.style.display = 'block';
+        populateSkillsCheckboxes(user.skills || []);
+    } else {
+        managedTeamGroup.style.display = 'none';
+        skillsGroup.style.display = 'none';
+    }
+    
+    // Add role change listener
+    document.getElementById('edit-role').onchange = function() {
+        const newRole = this.value;
+        if (newRole === 'manager') {
+            managedTeamGroup.style.display = 'block';
+            skillsGroup.style.display = 'none';
+            // Show remove manager button if they currently have a managed team
+            const currentManagedTeam = document.getElementById('edit-managed-team').value;
+            removeManagerContainer.style.display = currentManagedTeam ? 'block' : 'none';
+        } else if (newRole === 'citizen_developer' || newRole === 'developer') {
+            managedTeamGroup.style.display = 'none';
+            skillsGroup.style.display = 'block';
+            removeManagerContainer.style.display = 'none';
+            // Always repopulate skills when showing the skills section
+            populateSkillsCheckboxes(user.skills || []);
+        } else {
+            managedTeamGroup.style.display = 'none';
+            skillsGroup.style.display = 'none';
+            removeManagerContainer.style.display = 'none';
+        }
+    };
+    
+    // Add managed team change listener
+    document.getElementById('edit-managed-team').onchange = function() {
+        const selectedTeam = this.value;
+        const role = document.getElementById('edit-role').value;
+        if (role === 'manager') {
+            removeManagerContainer.style.display = selectedTeam ? 'block' : 'none';
+        }
+    };
+    
+    document.getElementById('edit-user-modal').classList.add('active');
+}
+
+function populateSkillsCheckboxes(userSkills) {
+    const container = document.getElementById('edit-skills-container');
+    container.innerHTML = '';
+    
+    // Ensure skills array is loaded
+    if (!skills || skills.length === 0) {
+        container.innerHTML = '<p>Loading skills...</p>';
+        loadSkills().then(() => populateSkillsCheckboxes(userSkills));
+        return;
+    }
+    
+    const userSkillIds = (userSkills || []).map(s => utils.getUuid(s));
+    
+    skills.forEach(skill => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label style="display: flex; align-items: center; gap: 4px;">
+                <input type="checkbox" name="skills[]" value="${utils.getUuid(skill)}" 
+                    ${userSkillIds.includes(utils.getUuid(skill)) ? 'checked' : ''}>
+                ${skill.name}
+            </label>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function closeModal() {
+    document.getElementById('edit-user-modal').classList.remove('active');
+}
+
+async function saveUser(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        email: formData.get('email'),
+        name: formData.get('name'),
+        role: formData.get('role'),
+        team_uuid: formData.get('team_uuid') || null,
+        managed_team_uuid: formData.get('managed_team_uuid') || null,
+        is_verified: formData.get('is_verified') === 'on',
+        skill_ids: formData.getAll('skills[]')
+    };
+    
+    try {
+        const response = await fetch(`/api/admin/users/${data.email}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('User updated successfully!');
+            closeModal();
+            loadUsers();
+        } else {
+            alert('Failed to update user: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+        alert('Failed to update user');
+    }
+}
+
+async function deleteUser(email) {
+    if (!confirm(`Are you sure you want to delete user ${email}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/users/${email}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('User deleted successfully!');
+            loadUsers();
+        } else {
+            alert('Failed to delete user: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Failed to delete user');
+    }
+}
+
+async function approveManagerRequestFromEdit() {
+    if (!window.currentManagerRequestId) return;
+    
+    if (!confirm('Approve this manager request?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/manager-requests/${window.currentManagerRequestId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Manager request approved successfully!');
+            closeModal();
+            loadUsers(); // Reload to refresh data
+        } else {
+            alert('Failed to approve request: ' + (result.message || result.error));
+        }
+    } catch (error) {
+        console.error('Error approving manager request:', error);
+        alert('Failed to approve manager request');
+    }
+}
+
+async function denyManagerRequestFromEdit() {
+    if (!window.currentManagerRequestId) return;
+    
+    if (!confirm('Deny this manager request?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/manager-requests/${window.currentManagerRequestId}/deny`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Manager request denied.');
+            closeModal();
+            loadUsers(); // Reload to refresh data
+        } else {
+            alert('Failed to deny request: ' + (result.message || result.error));
+        }
+    } catch (error) {
+        console.error('Error denying manager request:', error);
+        alert('Failed to deny manager request');
+    }
+}
+
+async function removeManagerFromEdit() {
+    if (!window.currentEditingUser) return;
+    
+    const email = window.currentEditingUser.email;
+    if (!confirm(`Remove ${window.currentEditingUser.name || email} as manager of their team?`)) return;
+    
+    try {
+        const response = await fetch('/api/admin/remove-manager', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Manager removed from team successfully!');
+            closeModal();
+            loadUsers(); // Reload to refresh data
+        } else {
+            alert('Failed to remove manager: ' + (result.message || result.error));
+        }
+    } catch (error) {
+        console.error('Error removing manager:', error);
+        alert('Failed to remove manager');
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    loadTeams();
+    loadSkills();
+    loadUsers();
+    
+    document.getElementById('search-input').addEventListener('input', applyFilters);
+    document.getElementById('role-filter').addEventListener('change', applyFilters);
+    document.getElementById('team-filter').addEventListener('change', applyFilters);
+    document.getElementById('clear-filters').addEventListener('click', clearFilters);
+    document.getElementById('edit-user-form').addEventListener('submit', saveUser);
+    
+    // Close modal when clicking outside
+    document.getElementById('edit-user-modal').onclick = function(event) {
+        if (event.target === this) {
+            closeModal();
+        }
+    };
+});
+</script>
+{% endblock %}

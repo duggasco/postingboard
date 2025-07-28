@@ -1,0 +1,20 @@
+services:
+  flask-app:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      args:
+        - GIT_COMMIT=${GIT_COMMIT:-unknown}
+    ports:
+      - "9094:9094"
+    environment:
+      - DATABASE_URL=sqlite:///posting_board_uuid.db
+      - PYTHONUNBUFFERED=1
+      - FLASK_APP=app.py
+    volumes:
+      # Mount directory for database persistence
+      - ./backend/data:/app/data
+      - ./backend/flask_session:/app/flask_session
+      - ./backend/static:/app/static
+      - ./backend/templates:/app/templates
+    restart: unless-stopped

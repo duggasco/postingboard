@@ -1,0 +1,4 @@
+title,description,email,benefactor_team,size,priority,skills,bounty,is_monetary,is_expensed,amount,needed_by,status
+"Sample Idea Title","Detailed description of what needs to be built","submitter@example.com","Cash - GPP","small","medium","Python,SQL/Databases","Recognition in team meeting","false","false","0","2025-12-31","open"
+"Another Example","This idea requires frontend skills","john.doe@example.com","SL - Tech","medium","high","Frontend/UI - Web,JavaScript","Team lunch and recognition","true","true","500","2025-08-15","open"
+"Large Project","Complex system requiring multiple skills","jane.manager@example.com","Cash - PMG","large","high","Python,SQL/Databases,Frontend/UI - Web","Quarterly bonus consideration","true","true","5000","2025-09-30","open"

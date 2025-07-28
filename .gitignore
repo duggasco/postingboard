@@ -13,6 +13,8 @@ ENV/
 # Flask
 instance/
 .env
+flask_session/
+backend/flask_session/
 
 # Database
 *.db
@@ -46,5 +48,12 @@ Thumbs.db
 *.log
 /tmp/
 
+# Temporary files
+cookies.txt
+*_test_*.json
+*_test_*.txt
+test_*.csv
+*test_cookies.txt
+
 # Docker
-docker-compose.override.yml
+docker-compose.override.ymlflask-app.pid

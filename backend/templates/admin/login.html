@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width: 400px; margin: 50px auto;">
+    <h2 class="page-title">Admin Login</h2>
+    
+    <form method="POST" action="{{ url_for('admin.login') }}">
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" class="form-control" required autofocus>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+    </form>
+</div>
+{% endblock %}

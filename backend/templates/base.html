@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Citizen Developer Posting Board{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v={{ range(1000, 9999) | random }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">Citizen Developer Posting Board</h1>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('main.home') }}" class="{% if request.endpoint == 'main.home' %}active{% endif %}">All Ideas</a></li>
+                <li><a href="{{ url_for('main.my_ideas') }}" class="{% if request.endpoint == 'main.my_ideas' %}active{% endif %}">My Ideas</a></li>
+                {% if session.get('user_role') == 'manager' or session.get('is_admin') %}
+                <li><a href="{{ url_for('main.my_team') }}" class="{% if request.endpoint == 'main.my_team' %}active{% endif %}">My Team</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('main.submit') }}" class="{% if request.endpoint == 'main.submit' %}active{% endif %}">Submit Idea</a></li>
+                {% if session.get('user_email') %}
+                    <li class="nav-notification">
+                        <button id="notification-bell" class="notification-bell" onclick="toggleNotifications()">
+                            <span class="notification-icon">🔔</span>
+                            <span id="notification-count" class="notification-badge" style="display: none;">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-user-dropdown">
+                        <button class="user-menu-button" onclick="toggleUserMenu(event)">
+                            <span class="user-avatar">
+                                {%- if session.get('user_name') -%}
+                                    {{ session.get('user_name')[0].upper() }}
+                                {%- else -%}
+                                    {{ session.get('user_email')[0].upper() if session.get('user_email') else 'U' }}
+                                {%- endif -%}
+                            </span>
+                            <span class="dropdown-arrow">▾</span>
+                        </button>
+                        <div id="user-dropdown-menu" class="user-dropdown-menu">
+                            <div class="user-info-header">
+                                <div class="user-name">{{ session.get('user_name') or 'User' }}</div>
+                                <div class="user-email-small">{{ session.get('user_email') }}</div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            {% if not session.get('is_admin') %}
+                            <a href="{{ url_for('auth.profile') }}" class="dropdown-item">
+                                <span class="dropdown-icon">👤</span>
+                                <span>Profile</span>
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('admin.logout' if session.get('is_admin') else 'auth.logout') }}" class="dropdown-item">
+                                <span class="dropdown-icon">🚪</span>
+                                <span>Logout</span>
+                            </a>
+                        </div>
+                    </li>
+                {% else %}
+                    <li><a href="{{ url_for('auth.verify_email') }}" class="{% if request.endpoint == 'auth.verify_email' %}active{% endif %}">Login</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Notifications Panel -->
+    <div id="notifications-panel" class="notifications-panel" style="display: none;">
+        <div class="notifications-header">
+            <h3>Notifications</h3>
+            <button class="close-btn" onclick="toggleNotifications()">×</button>
+        </div>
+        <div id="notifications-list" class="notifications-list">
+            <div class="loading">Loading notifications...</div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            {{ message }}
+                            <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}?v={{ range(1000, 9999) | random }}"></script>
+    {% block extra_js %}{% endblock %}
+    
+    <!-- Version indicator -->
+    <a href="{{ url_for('admin.index') }}" class="version-indicator" title="Admin Portal">
+        v.{{ git_commit }}
+    </a>
+</body>
+</html>

@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}My Ideas - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <h2 class="page-title">My Ideas</h2>
+    
+    <div id="stats-container" class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <div class="stat-card">
+            <h3 id="submitted-count">0</h3>
+            <p>Submitted</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="claimed-by-me-count">0</h3>
+            <p>Claimed by Me</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="open-count">0</h3>
+            <p>Open</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="complete-count">0</h3>
+            <p>Complete</p>
+        </div>
+    </div>
+    
+    <!-- Pending Approvals Section -->
+    <div id="pending-approvals-section" style="display: none;">
+        <h3>Pending Approvals</h3>
+        <div id="pending-approvals-container" class="ideas-grid">
+            <!-- Populated by JavaScript -->
+        </div>
+    </div>
+    
+    <!-- My Pending Claims Section -->
+    <div id="my-pending-claims-section" style="display: none;">
+        <h3>My Pending Claims</h3>
+        <div id="my-pending-claims-container" class="ideas-grid">
+            <!-- Populated by JavaScript -->
+        </div>
+    </div>
+    
+    <!-- My Ideas Section -->
+    <h3>My Ideas</h3>
+    <div id="ideas-container" class="ideas-grid">
+        <div class="loading">Loading your ideas...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Load user's personal ideas
+async function loadMyIdeas() {
+    try {
+        const response = await fetch('/api/my-ideas');
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Error:', data.error);
+            document.getElementById('ideas-container').innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                    <p style="font-size: 16px; color: #dc3545; margin: 0;">
+                        Error loading ideas. Please try again.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Update stats
+        updateStats(data.ideas);
+        
+        // Display ideas
+        displayIdeas(data.ideas);
+        
+        // Display pending approvals if user has any ideas that need approval
+        if (data.pending_approvals && data.pending_approvals.length > 0) {
+            displayPendingApprovals(data.pending_approvals);
+        }
+        
+    } catch (error) {
+        console.error('Error loading ideas:', error);
+        document.getElementById('ideas-container').innerHTML = '<p>Error loading ideas. Please try again.</p>';
+    }
+}
+
+function updateStats(ideas) {
+    let submitted = 0;
+    let claimedByMe = 0;
+    let open = 0;
+    let complete = 0;
+    
+    ideas.forEach(idea => {
+        if (idea.relationship === 'submitted' || idea.relationship === 'both') {
+            submitted++;
+            if (idea.status === 'open') open++;
+            if (idea.status === 'complete') complete++;
+        }
+        if (idea.relationship === 'claimed' || idea.relationship === 'both') {
+            claimedByMe++;
+            if (idea.status === 'complete') complete++;
+        }
+    });
+    
+    document.getElementById('submitted-count').textContent = submitted;
+    document.getElementById('claimed-by-me-count').textContent = claimedByMe;
+    document.getElementById('open-count').textContent = open;
+    document.getElementById('complete-count').textContent = complete;
+}
+
+function displayIdeas(ideas) {
+    const container = document.getElementById('ideas-container');
+    
+    if (ideas.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                <p style="font-size: 16px; color: #6c757d; margin: 0;">
+                    No ideas found. 
+                    <a href="/submit" style="color: #4a90e2; text-decoration: none; font-weight: 500;">
+                        Submit your first idea!
+                    </a>
+                </p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    ideas.forEach(idea => {
+        html += createIdeaCard(idea);
+    });
+    
+    container.innerHTML = html;
+}
+
+// Render bounty information
+function renderBounty(idea) {
+    if (!idea.bounty && !idea.bounty_details) return '';
+    
+    let bountyHtml = '<div class="bounty">';
+    bountyHtml += '<span>Bounty: </span>';
+    
+    const parts = [];
+    
+    if (idea.bounty) {
+        parts.push(utils.escapeHtml(idea.bounty));
+    }
+    
+    if (idea.bounty_details && idea.bounty_details.is_monetary) {
+        let monetaryPart = `<span style="color: #28a745;">$${idea.bounty_details.amount.toFixed(2)}</span>`;
+        
+        // Add expense indicator if expensed
+        if (idea.bounty_details.is_expensed) {
+            monetaryPart += ' <span style="color: #6c757d; font-size: 9px;">(expensed)</span>';
+        }
+        
+        // Add approval status if needed
+        if (idea.bounty_details.requires_approval && !idea.bounty_details.is_approved) {
+            monetaryPart += ' <span style="color: #856404; font-size: 9px;">(pending approval)</span>';
+        }
+        
+        parts.push(monetaryPart);
+    }
+    
+    if (parts.length === 0) {
+        bountyHtml += '<span style="color: #6c757d;">None specified</span>';
+    } else {
+        bountyHtml += parts.join(' ');
+    }
+    
+    bountyHtml += '</div>';
+    return bountyHtml;
+}
+
+function createIdeaCard(idea) {
+    const statusClass = `status-${idea.status}`;
+    const priorityClass = `priority-${idea.priority}`;
+    const sizeClass = `size-${idea.size}`;
+    
+    let borderClass = '';
+    if (idea.relationship === 'submitted') borderClass = 'idea-submitted';
+    else if (idea.relationship === 'claimed') borderClass = 'idea-claimed';
+    else if (idea.relationship === 'both') borderClass = 'idea-both';
+    
+    let relationshipBadge = '';
+    if (idea.relationship === 'both') {
+        relationshipBadge = '<span class="relationship-badge both">Submitted & Claimed</span>';
+    } else if (idea.relationship === 'submitted') {
+        relationshipBadge = '<span class="relationship-badge submitted">Submitted</span>';
+    } else if (idea.relationship === 'claimed') {
+        relationshipBadge = '<span class="relationship-badge claimed">Claimed</span>';
+    }
+    
+    // Handle pending claims
+    let claimStatus = '';
+    if (idea.pending_claims && idea.pending_claims.length > 0) {
+        const pendingClaim = idea.pending_claims.find(c => c.claimer_email === '{{ session.get("user_email") }}');
+        if (pendingClaim) {
+            claimStatus = `<div class="claim-status pending">Claim Status: Pending Approvals</div>`;
+        }
+    }
+    
+    // Show claim denied status
+    if (idea.denied_claims && idea.denied_claims.length > 0) {
+        const deniedClaim = idea.denied_claims.find(c => c.claimer_email === '{{ session.get("user_email") }}');
+        if (deniedClaim) {
+            claimStatus = `<div class="claim-status denied">Claim Status: Denied</div>`;
+        }
+    }
+    
+    
+    return `
+        <div class="idea-card ${borderClass}">
+            ${relationshipBadge}
+            <h3 class="idea-title">
+                <a href="/idea/${utils.getUuid(idea)}">${utils.escapeHtml(idea.title)}</a>
+            </h3>
+            <p class="idea-description">${utils.escapeHtml(idea.description)}</p>
+            <div class="idea-meta">
+                <span class="team">${utils.escapeHtml(idea.benefactor_team)}</span>
+                <span class="priority-badge ${priorityClass}">${idea.priority}</span>
+                <span class="size-badge ${sizeClass}">${idea.size.replace('_', ' ')}</span>
+                <span class="status-badge ${statusClass}">${idea.status}</span>
+            </div>
+            ${renderBounty(idea)}
+            ${claimStatus}
+            <div class="idea-footer">
+                Submitted: ${utils.formatDate(idea.date_submitted)}
+                ${idea.needed_by ? ` • Needed by: ${utils.formatDate(idea.needed_by)}` : ''}
+            </div>
+            ${idea.claim_info ? `
+                <div class="claim-info">
+                    Claimed by ${utils.escapeHtml(idea.claim_info.name)} on ${utils.formatDate(idea.claim_info.date)}
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function displayPendingApprovals(approvals) {
+    const section = document.getElementById('pending-approvals-section');
+    const container = document.getElementById('pending-approvals-container');
+    
+    section.style.display = 'block';
+    
+    let html = '';
+    approvals.forEach(approval => {
+        const idea = approval.idea;
+        const statusClass = `status-${idea.status}`;
+        const priorityClass = `priority-${idea.priority}`;
+        
+        html += `
+            <div class="idea-card idea-pending-approval">
+                <span class="relationship-badge pending">Pending Your Approval</span>
+                <h3 class="idea-title">
+                    <a href="/idea/${utils.getUuid(idea)}">${utils.escapeHtml(idea.title)}</a>
+                </h3>
+                <p class="idea-description">${utils.escapeHtml(idea.description)}</p>
+                <div class="idea-meta">
+                    <span class="team">${utils.escapeHtml(idea.benefactor_team)}</span>
+                    <span class="priority-badge ${priorityClass}">${idea.priority}</span>
+                    <span class="status-badge ${statusClass}">${idea.status}</span>
+                </div>
+                <div class="approval-request">
+                    <p><strong>${utils.escapeHtml(approval.claimer_name)}</strong> wants to claim this idea</p>
+                    <p>Team: ${utils.escapeHtml(approval.claimer_team || 'N/A')}</p>
+                    <p>Skills: ${utils.escapeHtml(approval.claimer_skills || 'N/A')}</p>
+                    <div class="approval-actions">
+                        <button class="btn btn-primary btn-sm" onclick="approveClaimRequest('${utils.getUuid(approval)}')">Approve</button>
+                        <button class="btn btn-danger btn-sm" onclick="denyClaimRequest('${utils.getUuid(approval)}')">Deny</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function approveClaimRequest(approvalId) {
+    if (!confirm('Are you sure you want to approve this claim request?')) return;
+    
+    try {
+        const response = await fetch(`/api/claim-approvals/${approvalId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message || 'Claim request approved!');
+            loadMyIdeas(); // Reload to update the display
+        } else {
+            alert('Failed to approve claim request: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error approving claim request:', error);
+        alert('Failed to approve claim request');
+    }
+}
+
+async function denyClaimRequest(approvalId) {
+    if (!confirm('Are you sure you want to deny this claim request?')) return;
+    
+    try {
+        const response = await fetch(`/api/claim-approvals/${approvalId}/deny`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message || 'Claim request denied.');
+            loadMyIdeas(); // Reload to update the display
+        } else {
+            alert('Failed to deny claim request: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error denying claim request:', error);
+        alert('Failed to deny claim request');
+    }
+}
+
+// Load ideas on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadMyIdeas();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(loadMyIdeas, 30000);
+});
+</script>
+{% endblock %}

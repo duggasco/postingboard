@@ -1,0 +1,1226 @@
+{% extends "base.html" %}
+
+{% block title %}My Team - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <h2 class="page-title">My Team</h2>
+    
+    <!-- Team Overview Stats -->
+    <div id="team-stats-cards" class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px;">
+        <div class="stat-card">
+            <h3 id="team-members-count">0</h3>
+            <p>Team Members</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="team-submitted-count">0</h3>
+            <p>Ideas Submitted</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="team-claimed-count">0</h3>
+            <p>Ideas Claimed</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="team-completion-rate">0%</h3>
+            <p>Completion Rate</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="team-pending-approvals">0</h3>
+            <p>Pending Approvals</p>
+        </div>
+    </div>
+    
+    <!-- Spending Overview -->
+    <div id="spending-overview" style="margin-bottom: 30px; display: none;">
+        <h4 style="margin: 20px 0 15px 0; color: #1a1d23;">Team Spending Overview</h4>
+        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+            <div class="stat-card" style="background: #e8f5e8;">
+                <h3 id="total-approved-spend">$0</h3>
+                <p>Total Approved</p>
+            </div>
+            <div class="stat-card" style="background: #f0e6ff;">
+                <h3 id="total-expensed">$0</h3>
+                <p>Total Expensed</p>
+            </div>
+            <div class="stat-card" style="background: #fff4e5;">
+                <h3 id="pending-approval-spend">$0</h3>
+                <p>Pending Approval</p>
+            </div>
+            <div class="stat-card" style="background: #e3f2fd;">
+                <h3 id="actual-spend">$0</h3>
+                <p>Actual Spend</p>
+            </div>
+            <div class="stat-card" style="background: #f3e5f5;">
+                <h3 id="committed-spend">$0</h3>
+                <p>Committed</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Admin Team Selector (for admins only) -->
+    {% if session.get('is_admin') %}
+    <div style="margin-bottom: 30px;">
+        <label for="admin-team-select" style="font-weight: 500; margin-right: 10px;">Select Team:</label>
+        <select id="admin-team-select" class="form-control" style="width: 300px; display: inline-block;">
+            <option value="">All Teams (Overview)</option>
+        </select>
+    </div>
+    
+    <!-- All Teams Overview (shown when no team selected) -->
+    <div id="all-teams-overview" style="display: none;">
+        <div class="table-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 30px;">
+            <h4 style="margin-bottom: 20px; color: #495057;">All Teams Overview</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Team Name</th>
+                        <th>Status</th>
+                        <th>Members</th>
+                        <th>Ideas Submitted</th>
+                        <th>Ideas Claimed</th>
+                        <th>Completion Rate</th>
+                        <th>Total Spend</th>
+                    </tr>
+                </thead>
+                <tbody id="all-teams-table">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 20px;">Loading teams data...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Team Stats Container -->
+    <div id="team-stats-container">
+        <!-- Recent Activity -->
+        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 40px;">
+            <h4 style="margin-bottom: 20px; color: #495057;">Recent Team Activity (Last 30 Days)</h4>
+            <div style="display: flex; gap: 40px;">
+                <div>
+                    <h2 id="recent-submissions" style="color: #4a90e2; margin: 0;">0</h2>
+                    <p style="margin: 5px 0 0 0; color: #6c757d;">Submissions</p>
+                </div>
+                <div>
+                    <h2 id="recent-claims" style="color: #28a745; margin: 0;">0</h2>
+                    <p style="margin: 5px 0 0 0; color: #6c757d;">Claims</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Submitted Ideas Charts -->
+        <h4 style="margin: 30px 0 20px 0; color: #1a1d23;">Submitted Ideas Analysis</h4>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 40px;">
+            <!-- Submitted Ideas by Status -->
+            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">Submitted by Status</h4>
+                <canvas id="submitted-status-chart" style="max-height: 250px;"></canvas>
+            </div>
+            
+            <!-- Submitted Ideas by Priority -->
+            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">Submitted by Priority</h4>
+                <canvas id="submitted-priority-chart" style="max-height: 250px;"></canvas>
+            </div>
+            
+            <!-- Submitted Ideas by Size -->
+            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">Submitted by Size</h4>
+                <canvas id="submitted-size-chart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+        
+        <!-- Claimed Ideas Charts -->
+        <h4 style="margin: 30px 0 20px 0; color: #1a1d23;">Claimed Ideas Analysis</h4>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 40px;">
+            <!-- Claimed Ideas by Status -->
+            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">Claimed by Status</h4>
+                <canvas id="claimed-status-chart" style="max-height: 250px;"></canvas>
+            </div>
+            
+            <!-- Claimed Ideas by Priority -->
+            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">Claimed by Priority</h4>
+                <canvas id="claimed-priority-chart" style="max-height: 250px;"></canvas>
+            </div>
+            
+            <!-- Claimed Ideas by Size -->
+            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">Claimed by Size</h4>
+                <canvas id="claimed-size-chart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+        
+        <!-- Team Skills Charts -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin-bottom: 40px;">
+            <!-- My Team's Skills -->
+            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">My Team's Skills</h4>
+                <canvas id="team-skills-chart" style="max-height: 250px;"></canvas>
+            </div>
+            
+            <!-- Skills Needed for Team Ideas -->
+            <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">Skills Needed for Team Ideas</h4>
+                <canvas id="skills-needed-chart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+        
+        <!-- Spending Analytics Charts -->
+        <div id="spending-charts-section" style="display: none; margin-bottom: 40px;">
+            <h4 style="margin: 30px 0 20px 0; color: #1a1d23;">Spending Analysis</h4>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 30px;">
+                <!-- Spending by Priority -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                    <h4 style="margin-bottom: 20px; color: #495057;">Spending by Priority</h4>
+                    <canvas id="spending-priority-chart" style="max-height: 250px;"></canvas>
+                </div>
+                
+                <!-- Spending by Size -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                    <h4 style="margin-bottom: 20px; color: #495057;">Spending by Size</h4>
+                    <canvas id="spending-size-chart" style="max-height: 250px;"></canvas>
+                </div>
+                
+                <!-- Monthly Spending Trend -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                    <h4 style="margin-bottom: 20px; color: #495057;">Monthly Spending Trend</h4>
+                    <canvas id="spending-trend-chart" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+            
+            <!-- Top Spenders Table -->
+            <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <h4 style="margin-bottom: 20px; color: #495057;">Top Spenders</h4>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Total Claimed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-spenders-table">
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 20px;">No spending data available</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Team Member Management -->
+        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 40px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h4 style="margin: 0; color: #495057;">Team Members</h4>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="member-search-input" placeholder="Search by name or email..." class="form-control" style="width: 250px;">
+                    <select id="member-role-filter" class="form-control" style="width: 150px;">
+                        <option value="">All Roles</option>
+                        <option value="manager">Manager</option>
+                        <option value="idea_submitter">Idea Submitter</option>
+                        <option value="citizen_developer">Citizen Developer</option>
+                        <option value="developer">Developer</option>
+                    </select>
+                </div>
+            </div>
+            <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Team Member</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Role</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Skills</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Ideas<br>Submitted</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Total<br>Claimed</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6; background: #e8f4f8;">Claims for<br>Own Team</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6; background: #fef5e7;">Claims for<br>Other Teams</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Total<br>Completed</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="team-members-tbody">
+                    <!-- Populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Team Ideas Section -->
+        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+            <h4 style="margin-bottom: 20px; color: #495057;">Team Ideas</h4>
+            <div id="team-ideas-container">
+                <div class="loading">Loading team ideas...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Team Member Modal -->
+<div id="edit-member-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Team Member</h3>
+            <button class="modal-close" onclick="closeMemberModal()">&times;</button>
+        </div>
+        <form id="edit-member-form">
+            <input type="hidden" id="edit-member-email" name="email">
+            <div id="member-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+                <h4 style="margin-top: 0; font-size: 16px;">Member Analytics</h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div><strong>Email:</strong> <span id="info-email">-</span></div>
+                    <div><strong>Joined:</strong> <span id="info-joined">-</span></div>
+                    <div><strong>Ideas Submitted:</strong> <span id="info-submitted">0</span></div>
+                    <div><strong>Ideas Claimed:</strong> <span id="info-claimed">0</span></div>
+                    <div><strong>Ideas Completed:</strong> <span id="info-completed">0</span></div>
+                    <div><strong>Pending Claims:</strong> <span id="info-pending">0</span></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="edit-name">Name</label>
+                <input type="text" id="edit-name" name="name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-role">Role</label>
+                <select id="edit-role" name="role" class="form-control" required>
+                    <option value="citizen_developer">Citizen Developer</option>
+                    <option value="developer">Developer</option>
+                </select>
+            </div>
+            <div class="form-group" id="edit-skills-group">
+                <label>Skills</label>
+                <div id="edit-skills-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;"></div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeMemberModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Team management functionality
+let currentTeamId = null;
+let allMembers = [];
+let filteredMembers = [];
+let teams = [];
+let skills = [];
+let teamStats = null;
+let chartInstances = {};
+
+// Load team data based on role
+async function loadTeamData() {
+    const isAdmin = {{ 'true' if session.get('is_admin') else 'false' }};
+    
+    if (isAdmin) {
+        // Load teams for admin dropdown
+        await loadTeams();
+        
+        // Show all teams overview by default
+        document.getElementById('all-teams-overview').style.display = 'block';
+        document.getElementById('team-stats-container').style.display = 'none';
+        document.getElementById('team-stats-cards').style.display = 'none';
+        loadAllTeamsOverview();
+    } else {
+        // Manager - load their team data directly
+        currentTeamId = '{{ session.get('user_managed_team_uuid') or '' }}' || null;
+        if (currentTeamId) {
+            document.getElementById('team-stats-cards').style.display = 'grid';
+            loadTeamStats();
+        }
+    }
+}
+
+async function loadTeams() {
+    try {
+        const response = await fetch('/api/teams');
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            teams = data;
+            
+            // Populate admin team selector
+            const teamSelect = document.getElementById('admin-team-select');
+            if (teamSelect) {
+                teams.forEach(team => {
+                    const option = document.createElement('option');
+                    option.value = utils.getUuid(team);
+                    option.textContent = team.name;
+                    teamSelect.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading teams:', error);
+    }
+}
+
+async function loadAllTeamsOverview() {
+    try {
+        const response = await fetch('/api/admin/team-stats');
+        const data = await response.json();
+        
+        if (data.teams_overview) {
+            const tbody = document.getElementById('all-teams-table');
+            let html = '';
+            
+            data.teams_overview.forEach(team => {
+                const statusBadge = team.is_approved 
+                    ? '<span class="status-badge status-complete">Approved</span>'
+                    : '<span class="status-badge status-pending">Pending</span>';
+                
+                html += `
+                    <tr>
+                        <td>${utils.escapeHtml(team.name)}</td>
+                        <td>${statusBadge}</td>
+                        <td>${team.member_count}</td>
+                        <td>${team.submitted_count}</td>
+                        <td>${team.claimed_count}</td>
+                        <td>${team.completion_rate}%</td>
+                        <td>${formatCurrency(team.total_approved_spend || 0)}</td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html || '<tr><td colspan="7" style="text-align: center;">No teams found</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading teams overview:', error);
+    }
+}
+
+async function loadTeamStats() {
+    try {
+        const isAdmin = {{ 'true' if session.get('is_admin') else 'false' }};
+        let url = '/api/team-stats';
+        
+        if (isAdmin && currentTeamId) {
+            url = `/api/admin/team-stats?team_id=${currentTeamId}`;
+        }
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Error loading team stats:', data.error);
+            return;
+        }
+        
+        teamStats = data;
+        
+        // Update overview stats
+        document.getElementById('team-members-count').textContent = data.overview.total_members;
+        document.getElementById('team-submitted-count').textContent = data.overview.ideas_submitted;
+        document.getElementById('team-claimed-count').textContent = data.overview.ideas_claimed;
+        document.getElementById('team-completion-rate').textContent = data.overview.completion_rate + '%';
+        document.getElementById('team-pending-approvals').textContent = data.overview.pending_approvals;
+        
+        // Update recent activity
+        document.getElementById('recent-submissions').textContent = data.recent_activity.submissions_30d;
+        document.getElementById('recent-claims').textContent = data.recent_activity.claims_30d;
+        
+        // Load team members
+        allMembers = data.member_activity || [];
+        
+        // Fix member data structure for display
+        allMembers.forEach(member => {
+            // Add missing fields from the API response
+            member.role = member.role || 'developer';
+            member.skills = member.skills || [];
+        });
+        
+        filteredMembers = [...allMembers];
+        displayMembers();
+        
+        // Update charts
+        updateCharts();
+        
+        // Load team ideas
+        loadTeamIdeas();
+        
+    } catch (error) {
+        console.error('Error loading team stats:', error);
+    }
+}
+
+function displayMembers() {
+    const tbody = document.getElementById('team-members-tbody');
+    
+    if (filteredMembers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px;">No team members found.</td></tr>';
+        return;
+    }
+    
+    // Calculate totals
+    let totals = {
+        submitted: 0,
+        claimed: 0,
+        own_team_claims: 0,
+        other_team_claims: 0,
+        completed: 0
+    };
+    
+    filteredMembers.forEach(member => {
+        totals.submitted += member.submitted || 0;
+        totals.claimed += member.claimed || 0;
+        totals.own_team_claims += member.own_team_claims || 0;
+        totals.other_team_claims += member.other_team_claims || 0;
+        totals.completed += member.completed || 0;
+    });
+    
+    console.log('Totals calculated:', totals);
+    console.log('Filtered members count:', filteredMembers.length);
+    
+    // Add totals row first
+    let html = `
+        <tr style="background: #f8f9fa; font-weight: bold; border-bottom: 3px solid #dee2e6;">
+            <td style="padding: 12px;">TOTALS</td>
+            <td style="padding: 12px; text-align: center;">-</td>
+            <td style="padding: 12px; text-align: center;">-</td>
+            <td style="padding: 12px; text-align: center;">${totals.submitted}</td>
+            <td style="padding: 12px; text-align: center;">${totals.claimed}</td>
+            <td style="padding: 12px; text-align: center; background: #e8f4f8;">${totals.own_team_claims}</td>
+            <td style="padding: 12px; text-align: center; background: #fef5e7;">${totals.other_team_claims}</td>
+            <td style="padding: 12px; text-align: center;">${totals.completed}</td>
+            <td style="padding: 12px; text-align: center;">-</td>
+        </tr>
+    `;
+    
+    filteredMembers.forEach(member => {
+        let roleDisplay = 'Developer';
+        if (member.role === 'citizen_developer') {
+            roleDisplay = 'Citizen Developer';
+        } else if (member.role === 'manager') {
+            roleDisplay = 'Manager';
+        } else if (member.role === 'idea_submitter') {
+            roleDisplay = 'Idea Submitter';
+        }
+        const skillsList = member.skills ? member.skills.join(', ') : '-';
+        
+        html += `
+            <tr>
+                <td style="padding: 12px;">
+                    ${utils.escapeHtml(member.name)}<br>
+                    <small style="color: #6c757d;">${utils.escapeHtml(member.email)}</small>
+                </td>
+                <td style="padding: 12px; text-align: center;">${roleDisplay}</td>
+                <td style="padding: 12px; text-align: center;" title="${utils.escapeHtml(skillsList)}">${skillsList.length > 30 ? skillsList.substring(0, 30) + '...' : skillsList}</td>
+                <td style="padding: 12px; text-align: center;">${member.submitted}</td>
+                <td style="padding: 12px; text-align: center;">${member.claimed}</td>
+                <td style="padding: 12px; text-align: center; background: #e8f4f8;">${member.own_team_claims}</td>
+                <td style="padding: 12px; text-align: center; background: #fef5e7;">${member.other_team_claims}</td>
+                <td style="padding: 12px; text-align: center;">${member.completed}</td>
+                <td style="padding: 12px; text-align: center;">
+                    <button class="btn btn-primary btn-sm" onclick="editMember('${member.email}')">Edit</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function applyMemberFilters() {
+    const searchInput = document.getElementById('member-search-input').value.toLowerCase();
+    const roleFilter = document.getElementById('member-role-filter').value;
+    
+    filteredMembers = allMembers.filter(member => {
+        // Search filter
+        if (searchInput) {
+            const nameMatch = member.name && member.name.toLowerCase().includes(searchInput);
+            const emailMatch = member.email && member.email.toLowerCase().includes(searchInput);
+            if (!nameMatch && !emailMatch) {
+                return false;
+            }
+        }
+        
+        // Role filter
+        if (roleFilter && member.role !== roleFilter) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    displayMembers();
+}
+
+async function editMember(email) {
+    const member = allMembers.find(m => m.email === email);
+    if (!member) return;
+    
+    // Load skills if not already loaded
+    if (skills.length === 0) {
+        await loadSkills();
+    }
+    
+    // Fetch full member details
+    try {
+        const response = await fetch(`/api/team/members/${email}`);
+        const memberDetails = await response.json();
+        
+        if (memberDetails.success) {
+            const user = memberDetails.user;
+            
+            // Populate form
+            document.getElementById('edit-member-email').value = user.email;
+            document.getElementById('edit-name').value = user.name || '';
+            document.getElementById('edit-role').value = user.role || 'developer';
+            
+            // Populate analytics
+            document.getElementById('info-email').textContent = user.email;
+            document.getElementById('info-joined').textContent = user.created_at ? new Date(user.created_at).toLocaleDateString() : '-';
+            document.getElementById('info-submitted').textContent = user.submitted_ideas_count || 0;
+            document.getElementById('info-claimed').textContent = user.claimed_ideas_count || 0;
+            document.getElementById('info-completed').textContent = (user.complete_submitted_count || 0) + (user.complete_claimed_count || 0);
+            document.getElementById('info-pending').textContent = user.pending_claims_count || 0;
+            
+            // Populate skills checkboxes
+            populateMemberSkills(user.skills || []);
+            
+            document.getElementById('edit-member-modal').classList.add('active');
+        }
+    } catch (error) {
+        console.error('Error fetching member details:', error);
+        alert('Failed to load member details');
+    }
+}
+
+async function loadSkills() {
+    try {
+        const response = await fetch('/api/skills');
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            skills = data;
+        }
+    } catch (error) {
+        console.error('Error loading skills:', error);
+    }
+}
+
+function populateMemberSkills(userSkills) {
+    const container = document.getElementById('edit-skills-container');
+    container.innerHTML = '';
+    
+    const userSkillIds = (userSkills || []).map(s => utils.getUuid(s));
+    
+    skills.forEach(skill => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label style="display: flex; align-items: center; gap: 4px;">
+                <input type="checkbox" name="skills[]" value="${utils.getUuid(skill)}" 
+                    ${userSkillIds.includes(utils.getUuid(skill)) ? 'checked' : ''}>
+                ${skill.name}
+            </label>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function closeMemberModal() {
+    document.getElementById('edit-member-modal').classList.remove('active');
+}
+
+async function saveMember(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        email: formData.get('email'),
+        name: formData.get('name'),
+        role: formData.get('role'),
+        skill_ids: formData.getAll('skills[]')
+    };
+    
+    try {
+        const response = await fetch(`/api/team/members/${data.email}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Team member updated successfully!');
+            closeMemberModal();
+            loadTeamStats();
+        } else {
+            alert('Failed to update team member: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error updating team member:', error);
+        alert('Failed to update team member');
+    }
+}
+
+async function loadTeamIdeas() {
+    const container = document.getElementById('team-ideas-container');
+    
+    try {
+        // Get the selected team ID (for admins) or use the default team
+        const teamId = currentTeamId || teamStats?.teamId;
+        
+        if (!teamId || !teamStats || !teamStats.teamName) {
+            container.innerHTML = '<p style="text-align: center; color: #6c757d;">No team selected.</p>';
+            return;
+        }
+        
+        // Fetch ideas for the team
+        const response = await fetch(`/api/ideas?benefactor_team=${encodeURIComponent(teamStats.teamName)}`);
+        const ideas = await response.json();
+        
+        if (!ideas || ideas.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #6c757d;">No ideas found for this team.</p>';
+            return;
+        }
+        
+        // Display ideas as cards
+        let html = '<div class="ideas-grid">';
+        ideas.forEach(idea => {
+            html += createIdeaCard(idea);
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading team ideas:', error);
+        container.innerHTML = '<p style="text-align: center; color: #dc3545;">Error loading team ideas. Please try again.</p>';
+    }
+}
+
+// Render bounty information
+function renderBounty(idea) {
+    if (!idea.bounty && !idea.bounty_details) return '';
+    
+    let bountyHtml = '<div class="bounty">';
+    bountyHtml += '<span>Bounty: </span>';
+    
+    const parts = [];
+    
+    if (idea.bounty) {
+        parts.push(utils.escapeHtml(idea.bounty));
+    }
+    
+    if (idea.bounty_details && idea.bounty_details.is_monetary) {
+        let monetaryPart = `<span style="color: #28a745;">$${idea.bounty_details.amount.toFixed(2)}</span>`;
+        
+        // Add expense indicator if expensed
+        if (idea.bounty_details.is_expensed) {
+            monetaryPart += ' <span style="color: #6c757d; font-size: 9px;">(expensed)</span>';
+        }
+        
+        // Add approval status if needed
+        if (idea.bounty_details.requires_approval && !idea.bounty_details.is_approved) {
+            monetaryPart += ' <span style="color: #856404; font-size: 9px;">(pending approval)</span>';
+        }
+        
+        parts.push(monetaryPart);
+    }
+    
+    if (parts.length === 0) {
+        bountyHtml += '<span style="color: #6c757d;">None specified</span>';
+    } else {
+        bountyHtml += parts.join(' ');
+    }
+    
+    bountyHtml += '</div>';
+    return bountyHtml;
+}
+
+function createIdeaCard(idea) {
+    const statusClass = `status-${idea.status}`;
+    const priorityClass = `priority-${idea.priority}`;
+    const sizeClass = `size-${idea.size}`;
+    
+    const skillsHtml = idea.skills ? idea.skills.map(skill => 
+        `<span class="skill-tag">${utils.escapeHtml(skill.name || skill)}</span>`
+    ).join('') : '';
+    
+    const claimInfo = idea.claims && idea.claims.length > 0 
+        ? `<div class="claim-info">Claimed by ${utils.escapeHtml(idea.claims[0].name)}</div>`
+        : '';
+    
+    // Create full description for tooltip
+    const fullDescription = utils.escapeHtml(idea.description);
+    const truncatedDescription = idea.description.length > 150 
+        ? utils.escapeHtml(idea.description.substring(0, 150)) + '...'
+        : fullDescription;
+    
+    return `
+        <div class="idea-card" onclick="window.location.href='/idea/${utils.getUuid(idea)}'">
+            <div class="idea-header">
+                <h3 class="idea-title">${utils.escapeHtml(idea.title)}</h3>
+                <span class="status-badge ${statusClass}">${idea.status.toUpperCase()}</span>
+            </div>
+            
+            <div class="idea-meta">
+                <div class="priority-badge ${priorityClass}">Priority: ${idea.priority}</div>
+                <div class="size-badge ${sizeClass}">Size: ${idea.size.replace('_', ' ')}</div>
+            </div>
+            
+            ${skillsHtml ? `<div class="skills-tags">${skillsHtml}</div>` : ''}
+            
+            <p class="idea-description" ${idea.description.length > 150 ? `title="${fullDescription}"` : ''}>
+                ${truncatedDescription}
+            </p>
+            
+            ${renderBounty(idea)}
+            ${claimInfo}
+            
+            <div class="idea-footer">
+                <div>Submitted${idea.submitter_name ? ' by ' + utils.escapeHtml(idea.submitter_name) : ''}: ${utils.formatDate(idea.date_submitted)}</div>
+                <div>Team: ${utils.escapeHtml(idea.benefactor_team)}</div>
+                ${idea.needed_by ? `<div>Needed by: ${utils.formatDate(idea.needed_by)}</div>` : ''}
+            </div>
+            
+            <a href="/idea/${utils.getUuid(idea)}" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+        </div>
+    `;
+}
+
+function updateCharts() {
+    if (!teamStats) return;
+    
+    // Destroy existing charts
+    Object.values(chartInstances).forEach(chart => {
+        if (chart) chart.destroy();
+    });
+    chartInstances = {};
+    
+    // Create submitted ideas charts
+    createDoughnutChart('submitted-status-chart', 'Submitted by Status', teamStats.breakdowns.submitted_status);
+    createDoughnutChart('submitted-priority-chart', 'Submitted by Priority', teamStats.breakdowns.priority.submitted);
+    createDoughnutChart('submitted-size-chart', 'Submitted by Size', teamStats.breakdowns.size.submitted);
+    
+    // Create claimed ideas charts
+    createDoughnutChart('claimed-status-chart', 'Claimed by Status', teamStats.breakdowns.status);
+    createDoughnutChart('claimed-priority-chart', 'Claimed by Priority', teamStats.breakdowns.priority.claimed);
+    createDoughnutChart('claimed-size-chart', 'Claimed by Size', teamStats.breakdowns.size.claimed);
+    
+    // Create team skills chart
+    const teamSkillsData = {};
+    if (teamStats.breakdowns.team_skills) {
+        teamStats.breakdowns.team_skills.forEach(item => {
+            teamSkillsData[item.skill] = item.count;
+        });
+    }
+    createBarChart('team-skills-chart', 'Team Skills', teamSkillsData, 'skills');
+    
+    // Create skills needed chart with gap highlighting
+    const skillsNeededData = {};
+    const teamSkillsSet = new Set(Object.keys(teamSkillsData));
+    
+    if (teamStats.breakdowns.skills_needed) {
+        teamStats.breakdowns.skills_needed.forEach(item => {
+            skillsNeededData[item.skill] = item.count;
+        });
+    }
+    
+    // Create custom bar chart for skills needed with gap highlighting
+    createSkillsNeededChart('skills-needed-chart', 'Skills Needed', skillsNeededData, teamSkillsSet);
+    
+    // Update spending analytics if available
+    if (teamStats.spending) {
+        // Show spending sections
+        document.getElementById('spending-overview').style.display = 'block';
+        document.getElementById('spending-charts-section').style.display = 'block';
+        
+        // Update spending overview cards
+        document.getElementById('total-approved-spend').textContent = formatCurrency(teamStats.spending.total_approved_spend);
+        document.getElementById('total-expensed').textContent = formatCurrency(teamStats.spending.total_expensed || 0);
+        document.getElementById('pending-approval-spend').textContent = formatCurrency(teamStats.spending.pending_approval_spend);
+        document.getElementById('actual-spend').textContent = formatCurrency(teamStats.spending.actual_spend);
+        document.getElementById('committed-spend').textContent = formatCurrency(teamStats.spending.committed_spend);
+        
+        // Create spending charts
+        createDoughnutChart('spending-priority-chart', 'Spending by Priority', teamStats.spending.spending_by_priority);
+        createDoughnutChart('spending-size-chart', 'Spending by Size', teamStats.spending.spending_by_size);
+        
+        // Create monthly spending trend chart
+        createMonthlySpendingChart('spending-trend-chart', teamStats.spending.monthly_spending);
+        
+        // Update top spenders table
+        updateTopSpendersTable(teamStats.spending.top_spenders);
+    }
+}
+
+function formatCurrency(amount) {
+    return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function createMonthlySpendingChart(canvasId, monthlyData) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !monthlyData || monthlyData.length === 0) return;
+    
+    const ctx = canvas.getContext('2d');
+    const labels = monthlyData.map(item => item.month);
+    const values = monthlyData.map(item => item.amount);
+    
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Monthly Spend',
+                data: values,
+                borderColor: '#4a90e2',
+                backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Spend: ' + formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateTopSpendersTable(topSpenders) {
+    const tbody = document.getElementById('top-spenders-table');
+    
+    if (!topSpenders || topSpenders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">No spending data available</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    topSpenders.forEach((spender, index) => {
+        html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${utils.escapeHtml(spender.name)}</td>
+                <td>${utils.escapeHtml(spender.email)}</td>
+                <td>${formatCurrency(spender.total_claimed)}</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function createDoughnutChart(canvasId, title, data) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !data) return;
+    
+    const ctx = canvas.getContext('2d');
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+    
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: getChartColors(labels)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function createBarChart(canvasId, title, data, chartType) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !data) return;
+    
+    const ctx = canvas.getContext('2d');
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+    
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Count',
+                data: values,
+                backgroundColor: getChartColors(labels, chartType)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+function createSkillsNeededChart(canvasId, title, data, teamSkills) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !data) return;
+    
+    const ctx = canvas.getContext('2d');
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+    
+    // Determine which skills are gaps (not in team skills)
+    const backgroundColors = labels.map(skill => {
+        if (teamSkills.has(skill)) {
+            // Team has this skill - use normal color
+            const colors = getChartColors([skill], 'skills');
+            return colors[0] || '#4a90e2';
+        } else {
+            // Team lacks this skill - use light red
+            return '#ffcccc';
+        }
+    });
+    
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Count',
+                data: values,
+                backgroundColor: backgroundColors,
+                borderColor: backgroundColors.map(color => color === '#ffcccc' ? '#ff6666' : color),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const skill = context.label;
+                            if (!teamSkills.has(skill)) {
+                                return 'Gap: Team lacks this skill';
+                            }
+                            return '';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Define consistent color mappings for categories
+const COLOR_MAPPINGS = {
+    // Status colors
+    'status': {
+        'open': '#28a745',      // green
+        'claimed': '#ffc107',   // yellow/amber
+        'complete': '#6c757d',  // gray
+    },
+    
+    // Priority colors
+    'priority': {
+        'high': '#dc3545',      // red
+        'medium': '#fd7e14',    // orange
+        'low': '#28a745',       // green
+    },
+    
+    // Size colors
+    'size': {
+        'small': '#26a69a',     // refined teal
+        'medium': '#42a5f5',    // refined blue
+        'large': '#7e57c2',     // refined purple
+        'extra_large': '#ec407a', // refined pink
+    },
+    
+    // Team claims colors
+    'team': {
+        'Own Team': '#4a90e2',   // blue
+        'Other Teams': '#fd7e14', // orange
+    },
+    
+    // Skills colors - using a distinct palette for skills
+    'skills': {
+        'sql/databases': '#1f77b4',        // blue
+        'frontend/ui - tableau': '#ff7f0e', // orange
+        'frontend/ui - streamlit': '#2ca02c', // green
+        'frontend/ui - web': '#d62728',    // red
+        'frontend/ui - powerbi': '#9467bd', // purple
+        'python': '#8c564b',               // brown
+        'java': '#e377c2',                 // pink
+        'platform': '#7f7f7f',             // gray
+        'regulatory': '#bcbd22',           // olive
+    },
+    
+    // Default fallback colors for unmapped items
+    '_default': ['#4a90e2', '#28a745', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c', '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+};
+
+function getChartColors(labels, chartType) {
+    // If labels is a number (old behavior), return default colors
+    if (typeof labels === 'number') {
+        return COLOR_MAPPINGS._default.slice(0, labels);
+    }
+    
+    // Determine chart type from labels if not provided
+    if (!chartType) {
+        // Auto-detect chart type based on common labels
+        const labelsStr = labels.join(',').toLowerCase();
+        if (labelsStr.includes('high') || labelsStr.includes('low')) {
+            chartType = 'priority';
+        } else if (labelsStr.includes('open') || labelsStr.includes('claimed') || labelsStr.includes('complete')) {
+            chartType = 'status';
+        } else if (labelsStr.includes('small') || labelsStr.includes('large') || labelsStr.includes('extra_large')) {
+            chartType = 'size';
+        } else if (labelsStr.includes('own team') || labelsStr.includes('other teams')) {
+            chartType = 'team';
+        }
+    }
+    
+    // Map each label to its consistent color
+    const colors = [];
+    let defaultIndex = 0;
+    
+    labels.forEach(label => {
+        const lowerLabel = label.toLowerCase();
+        let color = null;
+        
+        // First check specific chart type mapping
+        if (chartType && COLOR_MAPPINGS[chartType]) {
+            if (COLOR_MAPPINGS[chartType][lowerLabel]) {
+                color = COLOR_MAPPINGS[chartType][lowerLabel];
+            } else if (COLOR_MAPPINGS[chartType][label]) {
+                color = COLOR_MAPPINGS[chartType][label];
+            }
+        }
+        
+        // If no color found, check all mappings
+        if (!color) {
+            for (const category of ['status', 'priority', 'size', 'team', 'skills']) {
+                if (COLOR_MAPPINGS[category][lowerLabel]) {
+                    color = COLOR_MAPPINGS[category][lowerLabel];
+                    break;
+                } else if (COLOR_MAPPINGS[category][label]) {
+                    color = COLOR_MAPPINGS[category][label];
+                    break;
+                }
+            }
+        }
+        
+        // If still no color, use default
+        if (!color) {
+            color = COLOR_MAPPINGS._default[defaultIndex % COLOR_MAPPINGS._default.length];
+            defaultIndex++;
+        }
+        
+        colors.push(color);
+    });
+    
+    return colors;
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    loadTeamData();
+    
+    // Member filters
+    document.getElementById('member-search-input').addEventListener('input', applyMemberFilters);
+    document.getElementById('member-role-filter').addEventListener('change', applyMemberFilters);
+    
+    // Edit member form
+    document.getElementById('edit-member-form').addEventListener('submit', saveMember);
+    
+    // Admin team selector
+    const adminTeamSelect = document.getElementById('admin-team-select');
+    if (adminTeamSelect) {
+        adminTeamSelect.addEventListener('change', function() {
+            const teamId = this.value;
+            
+            if (teamId) {
+                // Show individual team stats
+                currentTeamId = teamId; // Now using UUID
+                document.getElementById('all-teams-overview').style.display = 'none';
+                document.getElementById('team-stats-container').style.display = 'block';
+                document.getElementById('team-stats-cards').style.display = 'grid';
+                loadTeamStats();
+            } else {
+                // Show all teams overview
+                currentTeamId = null;
+                document.getElementById('all-teams-overview').style.display = 'block';
+                document.getElementById('team-stats-container').style.display = 'none';
+                document.getElementById('team-stats-cards').style.display = 'none';
+                loadAllTeamsOverview();
+            }
+        });
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('edit-member-modal').onclick = function(event) {
+        if (event.target === this) {
+            closeMemberModal();
+        }
+    };
+    
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        if (currentTeamId) {
+            loadTeamStats();
+        } else if (document.getElementById('all-teams-overview').style.display !== 'none') {
+            loadAllTeamsOverview();
+        }
+    }, 30000);
+});
+</script>
+{% endblock %}

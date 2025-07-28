@@ -1,0 +1,1327 @@
+{% extends "base.html" %}
+
+{% block title %}{{ idea.title }} - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<style>
+/* Larger styles for idea detail page */
+.idea-detail-bounty {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.idea-detail-bounty span {
+    display: inline-flex;
+    align-items: center;
+}
+
+.idea-detail-status {
+    padding: 6px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 16px;
+}
+
+.idea-detail-priority,
+.idea-detail-size {
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 12px;
+}
+
+.idea-detail-skill {
+    background-color: #f1f3f5;
+    color: #495057;
+    padding: 4px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+}
+</style>
+<div class="page-container">
+    <a href="{{ url_for('main.home') }}" style="display: inline-block; margin-bottom: 20px;">← Back to All Ideas</a>
+    
+    <div class="idea-header" style="margin-bottom: 30px;">
+        <h2 class="page-title" style="margin-bottom: 10px; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">{{ idea.title }}</h2>
+        <span class="status-badge status-{{ idea.status.value }} idea-detail-status">{{ idea.status.value.upper() }}</span>
+    </div>
+    
+    <div class="idea-meta" style="margin-bottom: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px;">
+        <div class="priority-badge priority-{{ idea.priority.value }} idea-detail-priority" style="display: inline-block;">Priority: {{ idea.priority.value }}</div>
+        <div class="size-badge size-{{ idea.size.value }} idea-detail-size" style="display: inline-block;">Size: {{ idea.size.value.replace('_', ' ') }}</div>
+    </div>
+    
+    
+    {% if idea.skills %}
+    <div class="skills-tags" style="margin-bottom: 20px;">
+        {% for skill in idea.skills %}
+        <span class="skill-tag idea-detail-skill">{{ skill.name }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div style="margin-bottom: 20px;">
+        <strong>Submitted by:</strong> {% if idea.submitter and idea.submitter.name %}{{ idea.submitter.name }}{% else %}{{ idea.email }}{% endif %}<br>
+        <strong>Team:</strong> {{ idea.benefactor_team }}<br>
+        <strong>Submitted on:</strong> {{ idea.date_submitted.strftime('%B %d, %Y') }}
+        {% if idea.needed_by %}
+        <br><strong>Needed by:</strong> {{ idea.needed_by.strftime('%B %d, %Y') }}
+        {% endif %}
+    </div>
+    
+    {% if idea.bounty or idea.bounty_details %}
+    <div class="idea-detail-bounty">
+        <span>Bounty:</span>
+        {% if idea.bounty %}
+            {{ idea.bounty }}
+        {% endif %}
+        {% if idea.bounty_details and idea.bounty_details.is_monetary %}
+            {% if idea.bounty %} {% endif %}
+            <span style="color: #28a745; font-size: 16px; font-weight: 600;">
+                ${{ "%.2f"|format(idea.bounty_details.amount) }}
+                {% if idea.bounty_details.is_expensed %}
+                    <span style="color: #6c757d; font-size: 11px;">(expensed)</span>
+                {% endif %}
+                {% if idea.bounty_details.requires_approval and not idea.bounty_details.is_approved %}
+                    <span style="color: #856404; font-size: 11px; margin-left: 6px;">
+                        <i class="fas fa-info-circle"></i> Pending approval
+                    </span>
+                {% endif %}
+            </span>
+        {% endif %}
+        {% if not idea.bounty and (not idea.bounty_details or not idea.bounty_details.is_monetary) %}
+            <span style="color: #6c757d;">No bounty specified</span>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div style="margin-bottom: 30px;">
+        <h3>Description</h3>
+        <p style="white-space: pre-wrap;">{{ idea.description }}</p>
+    </div>
+    
+    {% if idea.claims %}
+    <div style="margin-bottom: 30px;">
+        <h3>Claim History</h3>
+        <ul>
+            {% for claim in idea.claims %}
+            <li>
+                Claimed by <strong>{{ claim.claimer_name }}</strong> 
+                {% if claim.claimer_team %}({{ claim.claimer_team }}){% endif %}
+                on {{ claim.claim_date.strftime('%B %d, %Y') }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <!-- Enhanced SDLC Tracking Tabs -->
+    <div style="margin-top: 40px; margin-bottom: 30px;">
+        <div style="border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; gap: 20px;">
+                {% if not has_tab_access %}
+                <li style="display: inline-block;">
+                    <span style="padding: 10px 20px; font-weight: 500; color: #6c757d;">Restricted Access</span>
+                </li>
+                {% else %}
+                <li style="display: inline-block;">
+                    <button class="tab-button active" onclick="showTab('overview')" data-tab="overview" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; border-bottom: 3px solid #4a90e2; color: #4a90e2;">Overview</button>
+                </li>
+                <li style="display: inline-block;">
+                    <button class="tab-button" onclick="showTab('comments')" data-tab="comments" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; color: #6c757d;">Comments <span id="comments-count" style="background: #6c757d; color: white; border-radius: 10px; padding: 2px 6px; font-size: 12px; margin-left: 5px;">0</span></button>
+                </li>
+                <li style="display: inline-block;">
+                    <button class="tab-button" onclick="showTab('links')" data-tab="links" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; color: #6c757d;">Links & Resources</button>
+                </li>
+                <li style="display: inline-block;">
+                    <button class="tab-button" onclick="showTab('activity')" data-tab="activity" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; color: #6c757d;">Activity</button>
+                </li>
+                {% if idea.status_history and idea.status_history|length > 0 %}
+                <li style="display: inline-block;">
+                    <button class="tab-button" onclick="showTab('history')" data-tab="history" style="background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 500; color: #6c757d;">Status History</button>
+                </li>
+                {% endif %}
+                {% endif %}
+            </ul>
+        </div>
+        
+        <!-- Tab Content -->
+        <div id="tab-overview" class="tab-content" style="display: block;">
+            {% if has_tab_access and idea.status.value == 'claimed' and idea.sub_status %}
+            <div style="margin-bottom: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #4a90e2;">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">Development Progress</h3>
+                
+                <!-- Status and Progress Info -->
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-weight: 600; color: #495057;">Status: 
+                            <span class="sub-status-badge sub-status-{{ idea.sub_status.value }}">
+                                {{ idea.sub_status.value.replace('_', ' ').title() }}
+                            </span>
+                        </span>
+                        <span style="font-size: 14px; color: #6c757d;">{{ idea.progress_percentage }}% Complete</span>
+                    </div>
+                    
+                    {% if idea.expected_completion %}
+                    <div style="margin-bottom: 8px;">
+                        <strong>Expected Completion:</strong> {{ idea.expected_completion.strftime('%B %d, %Y') }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if idea.blocked_reason and idea.sub_status.value in ['blocked', 'on_hold'] %}
+                    <div style="margin-bottom: 10px; padding: 10px; background-color: #fff3cd; border-radius: 4px; border-left: 3px solid #ffc107;">
+                        <strong>Reason:</strong> {{ idea.blocked_reason }}
+                    </div>
+                    {% endif %}
+                    
+                </div>
+                
+                <!-- GANTT Chart Timeline -->
+                <div id="gantt-chart-container" style="position: relative; min-height: 200px; background: white; border: 1px solid #dee2e6; border-radius: 4px; padding: 20px; margin-bottom: 15px;">
+                    <!-- SVG will be inserted here by JavaScript -->
+                </div>
+                
+                <div style="margin-top: 15px; font-size: 12px; color: #6c757d;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #4a90e2; border-radius: 2px;"></span> Planned</span>
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #28a745; border-radius: 2px;"></span> Completed</span>
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #ffc107; border-radius: 2px;"></span> In Progress</span>
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #dc3545; border-radius: 2px;"></span> Blocked/Delayed</span>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        Timeline based on: {{ idea.size.value.replace('_', ' ').title() }} size idea • Due by {{ idea.needed_by.strftime('%B %d, %Y') if idea.needed_by else 'No deadline set' }}
+                    </div>
+                    
+                    {% if idea.sub_status_updated_at %}
+                    <div style="margin-top: 10px; font-size: 12px; color: #6c757d;">
+                        Last updated: {{ idea.sub_status_updated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                        {% if idea.sub_status_updated_by %} by {{ idea.sub_status_updated_by }}{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Action buttons -->
+                {% set is_claimer = false %}
+                {% for claim in idea.claims %}
+                    {% if claim.claimer_email == session.get('user_email') %}
+                        {% set is_claimer = true %}
+                    {% endif %}
+                {% endfor %}
+                {% set can_update = session.get('user_email') and (is_claimer or 
+                      session.get('is_admin') or 
+                      (session.get('user_managed_team_uuid') and idea.claims and idea.claims[0].claimer_team == session.get('user_team'))) %}
+                
+                {% if session.get('user_email') %}
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; display: flex; gap: 10px; flex-wrap: wrap;">
+                    {% if can_update %}
+                    <button class="btn btn-sm btn-secondary" onclick="showUpdateSubStatusModal()">Update Status</button>
+                    {% endif %}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="exportGanttChart()">Export Timeline</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="showGanttSettingsModal()">Customize Timeline</button>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if not has_tab_access %}
+            <div style="padding: 40px; text-align: center; color: #6c757d;">
+                <p style="font-size: 16px; margin-bottom: 10px;">This content is restricted.</p>
+                <p style="font-size: 14px;">Only the idea submitter, direct claimants, and their managers can view detailed information.</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if has_tab_access %}
+        <div id="tab-comments" class="tab-content" style="display: none;">
+            <div style="margin-bottom: 20px;">
+                {% if session.get('user_email') %}
+                <form id="add-comment-form" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <textarea id="comment-content" class="form-control" rows="3" placeholder="Add a comment..." style="resize: vertical;"></textarea>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="margin: 0;">
+                            <input type="checkbox" id="comment-internal" style="margin-right: 5px;">
+                            Internal note (only visible to team)
+                        </label>
+                        <button type="submit" class="btn btn-primary btn-sm">Add Comment</button>
+                    </div>
+                </form>
+                {% endif %}
+                <div id="comments-container">
+                    <div class="loading">Loading comments...</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if has_tab_access %}
+        <div id="tab-links" class="tab-content" style="display: none;">
+            <div style="margin-bottom: 20px;">
+                {% if session.get('user_email') %}
+                <button class="btn btn-primary btn-sm" onclick="showAddLinkModal()">Add Link</button>
+                {% endif %}
+            </div>
+            <div id="external-links-container">
+                <div class="loading">Loading links...</div>
+            </div>
+        </div>
+        
+        <div id="tab-activity" class="tab-content" style="display: none;">
+            <div id="activity-feed-container">
+                <div class="loading">Loading activity...</div>
+            </div>
+        </div>
+        
+        {% if idea.status_history and idea.status_history|length > 0 %}
+        <div id="tab-history" class="tab-content" style="display: none;">
+            <div id="status-history-timeline" style="position: relative; padding-left: 30px;">
+                <!-- Timeline will be populated by JavaScript -->
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+    
+    {% if idea.status.value == 'open' and session.get('user_role') in ['citizen_developer', 'developer'] %}
+    <div style="margin-top: 30px;">
+        <button id="claim-btn" class="btn btn-primary">Claim This Idea</button>
+    </div>
+    {% elif idea.status.value == 'open' and session.get('user_email') %}
+    <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+        <p style="margin: 0; color: #6c757d;">Only developers and citizen developers can claim ideas. 
+        <a href="{{ url_for('auth.profile') }}">Update your profile</a> if you'd like to claim ideas.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Update Sub-Status Modal -->
+<div id="update-sub-status-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Update Development Status</h3>
+            <button class="modal-close" onclick="closeUpdateSubStatusModal()">&times;</button>
+        </div>
+        
+        <form id="update-sub-status-form">
+            <div class="form-group">
+                <label for="sub-status">Status <span style="color: red;">*</span></label>
+                <select id="sub-status" class="form-control" required>
+                    <option value="">Select a status...</option>
+                    <option value="planning" {% if idea.sub_status and idea.sub_status.value == 'planning' %}selected{% endif %}>Planning</option>
+                    <option value="in_development" {% if idea.sub_status and idea.sub_status.value == 'in_development' %}selected{% endif %}>In Development</option>
+                    <option value="testing" {% if idea.sub_status and idea.sub_status.value == 'testing' %}selected{% endif %}>Testing</option>
+                    <option value="awaiting_deployment" {% if idea.sub_status and idea.sub_status.value == 'awaiting_deployment' %}selected{% endif %}>Awaiting Deployment</option>
+                    <option value="deployed" {% if idea.sub_status and idea.sub_status.value == 'deployed' %}selected{% endif %}>Deployed</option>
+                    <option value="verified" {% if idea.sub_status and idea.sub_status.value == 'verified' %}selected{% endif %}>Verified</option>
+                    <option value="on_hold" {% if idea.sub_status and idea.sub_status.value == 'on_hold' %}selected{% endif %}>On Hold</option>
+                    <option value="blocked" {% if idea.sub_status and idea.sub_status.value == 'blocked' %}selected{% endif %}>Blocked</option>
+                    <option value="cancelled" {% if idea.sub_status and idea.sub_status.value == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    <option value="rolled_back" {% if idea.sub_status and idea.sub_status.value == 'rolled_back' %}selected{% endif %}>Rolled Back</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="progress-group">
+                <label for="progress">Progress (%) <span style="color: red;">*</span></label>
+                <input type="number" id="progress" class="form-control" min="0" max="100" value="{{ idea.progress_percentage or 0 }}" required>
+                <small class="form-text text-muted">Enter a value between 0 and 100</small>
+            </div>
+            
+            <div class="form-group" id="blocked-reason-group" style="display: none;">
+                <label for="blocked-reason">Reason <span style="color: red;">*</span></label>
+                <textarea id="blocked-reason" class="form-control" rows="3" placeholder="Please explain why this is blocked or on hold...">{{ idea.blocked_reason or '' }}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="expected-completion">Expected Completion Date</label>
+                <input type="date" id="expected-completion" class="form-control" value="{% if idea.expected_completion %}{{ idea.expected_completion.strftime('%Y-%m-%d') }}{% endif %}">
+            </div>
+            
+            <!-- Stage-specific fields -->
+            <div id="stage-specific-fields">
+                <!-- Planning Stage Fields -->
+                <div id="planning-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Planning Details</h4>
+                    <div class="form-group">
+                        <label for="requirements-doc">Requirements Document URL</label>
+                        <input type="url" id="requirements-doc" class="form-control" placeholder="Link to requirements document">
+                    </div>
+                    <div class="form-group">
+                        <label for="design-spec">Design Specification URL</label>
+                        <input type="url" id="design-spec" class="form-control" placeholder="Link to design specification">
+                    </div>
+                </div>
+                
+                <!-- Development Stage Fields -->
+                <div id="development-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Development Details</h4>
+                    <div class="form-group">
+                        <label for="repository-url">Repository URL</label>
+                        <input type="url" id="repository-url" class="form-control" placeholder="Repository URL">
+                    </div>
+                    <div class="form-group">
+                        <label for="branch-name">Branch Name</label>
+                        <input type="text" id="branch-name" class="form-control" placeholder="feature/branch-name">
+                    </div>
+                    <div class="form-group">
+                        <label for="pr-urls">Pull Request URLs</label>
+                        <textarea id="pr-urls" class="form-control" rows="2" placeholder="One PR URL per line"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Testing Stage Fields -->
+                <div id="testing-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Testing Details</h4>
+                    <div class="form-group">
+                        <label for="test-plan">Test Plan URL</label>
+                        <input type="url" id="test-plan" class="form-control" placeholder="Link to test plan">
+                    </div>
+                    <div class="form-group">
+                        <label for="test-results">Test Results Summary</label>
+                        <textarea id="test-results" class="form-control" rows="2" placeholder="Test results summary (passed/failed/pending)"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="defects-found">Defects Found</label>
+                        <input type="number" id="defects-found" class="form-control" min="0" placeholder="Number of defects found">
+                    </div>
+                </div>
+                
+                <!-- Deployment Stage Fields -->
+                <div id="deployment-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Deployment Details</h4>
+                    <div class="form-group">
+                        <label for="deployment-guide">Deployment Guide URL</label>
+                        <input type="url" id="deployment-guide" class="form-control" placeholder="Link to deployment guide">
+                    </div>
+                    <div class="form-group">
+                        <label for="release-notes">Release Notes</label>
+                        <textarea id="release-notes" class="form-control" rows="2" placeholder="Key changes and features in this release"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="environment">Target Environment</label>
+                        <select id="environment" class="form-control">
+                            <option value="">Select environment...</option>
+                            <option value="dev">Development</option>
+                            <option value="qa">QA</option>
+                            <option value="staging">Staging</option>
+                            <option value="production">Production</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Verification Stage Fields -->
+                <div id="verification-fields" class="stage-fields" style="display: none;">
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #495057;">Verification Details</h4>
+                    <div class="form-group">
+                        <label for="verified-by">Verified By</label>
+                        <input type="text" id="verified-by" class="form-control" placeholder="Name of person who verified">
+                    </div>
+                    <div class="form-group">
+                        <label for="performance-metrics">Performance Metrics</label>
+                        <textarea id="performance-metrics" class="form-control" rows="2" placeholder="Key performance metrics (response time, throughput, etc.)"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="sign-off-notes">Sign-off Notes</label>
+                        <textarea id="sign-off-notes" class="form-control" rows="2" placeholder="Final sign-off comments"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="comment">Comment (Optional)</label>
+                <textarea id="comment" class="form-control" rows="2" placeholder="Add any additional notes about this status change..."></textarea>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Update Status</button>
+                <button type="button" class="btn btn-secondary" onclick="closeUpdateSubStatusModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add External Link Modal -->
+<div id="add-link-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Add External Link</h3>
+            <button class="modal-close" onclick="closeAddLinkModal()">&times;</button>
+        </div>
+        
+        <form id="add-link-form">
+            <div class="form-group">
+                <label for="link-type">Link Type <span style="color: red;">*</span></label>
+                <select id="link-type" class="form-control" required>
+                    <option value="">Select type...</option>
+                    <option value="repository">Repository</option>
+                    <option value="pull_request">Pull Request</option>
+                    <option value="ado_work_item">ADO Work Item</option>
+                    <option value="documentation">Documentation</option>
+                    <option value="gantt_chart">GANTT Chart</option>
+                    <option value="test_results">Test Results</option>
+                    <option value="deployment_guide">Deployment Guide</option>
+                    <option value="design_doc">Design Document</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="link-title">Title <span style="color: red;">*</span></label>
+                <input type="text" id="link-title" class="form-control" required placeholder="e.g., Main Repository, PR #123">
+            </div>
+            
+            <div class="form-group">
+                <label for="link-url">URL <span style="color: red;">*</span></label>
+                <input type="url" id="link-url" class="form-control" required placeholder="https://...">
+            </div>
+            
+            <div class="form-group">
+                <label for="link-description">Description (Optional)</label>
+                <textarea id="link-description" class="form-control" rows="2" placeholder="Brief description of this resource..."></textarea>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Add Link</button>
+                <button type="button" class="btn btn-secondary" onclick="closeAddLinkModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Claim Modal -->
+<div id="claim-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Claim This Idea</h3>
+            <button class="modal-close" onclick="closeClaimModal()">&times;</button>
+        </div>
+        
+        <form id="claim-form">
+            <div class="form-group">
+                <label for="claim-name">Your Name <span style="color: red;">*</span></label>
+                <input type="text" id="claim-name" class="form-control" value="{{ session.get('user_name', '') }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="claim-team">Your Team</label>
+                <input type="text" id="claim-team" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="claim-skills">Your Skills</label>
+                <textarea id="claim-skills" class="form-control" rows="3" placeholder="List your relevant skills...">{% if session.get('user_skills') %}{{ session.get('user_skills') | join(', ') }}{% endif %}</textarea>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Submit Claim</button>
+                <button type="button" class="btn btn-secondary" onclick="closeClaimModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/svg-gantt.js') }}?v={{ range(1000, 9999) | random }}"></script>
+<script>
+// Progress mapping for consistent synchronization with GANTT phases
+const progressMapping = {
+    'planning': { min: 0, default: 7, max: 15 },
+    'in_development': { min: 10, default: 30, max: 55 },
+    'testing': { min: 40, default: 55, max: 70 },
+    'awaiting_deployment': { min: 65, default: 72, max: 80 },
+    'deployed': { min: 75, default: 82, max: 90 },
+    'verified': { min: 85, default: 95, max: 100 },
+    'on_hold': null, // Keep current progress
+    'blocked': null, // Keep current progress
+    'cancelled': { min: 0, default: 0, max: 0 },
+    'rolled_back': { min: 0, default: 0, max: 0 }
+};
+
+// Calculate which phase a progress percentage falls into
+function getPhaseFromProgress(progress) {
+    if (progress <= 15) return 'planning';
+    if (progress <= 55) return 'in_development';
+    if (progress <= 80) return 'testing';
+    if (progress <= 90) return 'awaiting_deployment';
+    if (progress < 100) return 'deployed';
+    return 'verified';
+}
+
+// Sub-status update functionality
+const updateSubStatusModal = document.getElementById('update-sub-status-modal');
+const updateSubStatusForm = document.getElementById('update-sub-status-form');
+const subStatusSelect = document.getElementById('sub-status');
+const progressGroup = document.getElementById('progress-group');
+const blockedReasonGroup = document.getElementById('blocked-reason-group');
+
+async function showUpdateSubStatusModal() {
+    updateSubStatusModal.classList.add('active');
+    
+    // Trigger change event to show appropriate fields
+    const currentStatus = document.getElementById('sub-status').value;
+    if (currentStatus) {
+        showStageSpecificFields(currentStatus);
+        
+        // Load existing stage data
+        await loadStageData(currentStatus);
+    }
+}
+
+// Load existing stage data for the current status
+async function loadStageData(status) {
+    try {
+        const response = await fetch(`/api/ideas/{{ idea.uuid }}/stage-data?status=${status}`);
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Populate fields based on the status
+            switch(status) {
+                case 'planning':
+                    if (data.requirements_doc) document.getElementById('requirements-doc').value = data.requirements_doc;
+                    if (data.design_spec) document.getElementById('design-spec').value = data.design_spec;
+                    break;
+                case 'in_development':
+                    if (data.repository_url) document.getElementById('repository-url').value = data.repository_url;
+                    if (data.branch_name) document.getElementById('branch-name').value = data.branch_name;
+                    if (data.pr_urls) document.getElementById('pr-urls').value = data.pr_urls;
+                    break;
+                case 'testing':
+                    if (data.test_plan) document.getElementById('test-plan').value = data.test_plan;
+                    if (data.test_results) document.getElementById('test-results').value = data.test_results;
+                    if (data.defects_found) document.getElementById('defects-found').value = data.defects_found;
+                    break;
+                case 'awaiting_deployment':
+                case 'deployed':
+                    if (data.deployment_guide) document.getElementById('deployment-guide').value = data.deployment_guide;
+                    if (data.release_notes) document.getElementById('release-notes').value = data.release_notes;
+                    if (data.environment) document.getElementById('environment').value = data.environment;
+                    break;
+                case 'verified':
+                    if (data.verified_by) document.getElementById('verified-by').value = data.verified_by;
+                    if (data.performance_metrics) document.getElementById('performance-metrics').value = data.performance_metrics;
+                    if (data.sign_off_notes) document.getElementById('sign-off-notes').value = data.sign_off_notes;
+                    break;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading stage data:', error);
+    }
+}
+
+function closeUpdateSubStatusModal() {
+    updateSubStatusModal.classList.remove('active');
+}
+
+// Show/hide fields based on status selection
+if (subStatusSelect) {
+    subStatusSelect.addEventListener('change', function() {
+        const status = this.value;
+        
+        // Show blocked reason for blocked/on_hold statuses
+        if (status === 'blocked' || status === 'on_hold') {
+            blockedReasonGroup.style.display = 'block';
+            document.getElementById('blocked-reason').required = true;
+        } else {
+            blockedReasonGroup.style.display = 'none';
+            document.getElementById('blocked-reason').required = false;
+        }
+        
+        // Auto-set progress based on status using mapping
+        const progressInput = document.getElementById('progress');
+        const mapping = progressMapping[status];
+        
+        if (mapping) {
+            progressInput.value = mapping.default;
+            // Update min/max constraints
+            progressInput.min = mapping.min;
+            progressInput.max = mapping.max;
+        } else {
+            // For blocked/on_hold, keep current progress but don't constrain
+            progressInput.min = 0;
+            progressInput.max = 100;
+        }
+        
+        // Show/hide stage-specific fields
+        showStageSpecificFields(status);
+    });
+}
+
+// Function to show/hide stage-specific fields
+function showStageSpecificFields(status) {
+    // Hide all stage fields
+    document.querySelectorAll('.stage-fields').forEach(field => {
+        field.style.display = 'none';
+    });
+    
+    // Show fields for the selected stage
+    switch(status) {
+        case 'planning':
+            document.getElementById('planning-fields').style.display = 'block';
+            break;
+        case 'in_development':
+            document.getElementById('development-fields').style.display = 'block';
+            break;
+        case 'testing':
+            document.getElementById('testing-fields').style.display = 'block';
+            break;
+        case 'awaiting_deployment':
+        case 'deployed':
+            document.getElementById('deployment-fields').style.display = 'block';
+            break;
+        case 'verified':
+            document.getElementById('verification-fields').style.display = 'block';
+            break;
+    }
+}
+
+// Handle sub-status update submission
+if (updateSubStatusForm) {
+    updateSubStatusForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            sub_status: document.getElementById('sub-status').value,
+            progress_percentage: parseInt(document.getElementById('progress').value),
+            comment: document.getElementById('comment').value
+        };
+        
+        // Add optional fields
+        if (formData.sub_status === 'blocked' || formData.sub_status === 'on_hold') {
+            formData.blocked_reason = document.getElementById('blocked-reason').value;
+        }
+        
+        const expectedCompletion = document.getElementById('expected-completion').value;
+        if (expectedCompletion) {
+            formData.expected_completion = expectedCompletion;
+        }
+        
+        // Collect stage-specific fields
+        formData.stage_data = {};
+        switch(formData.sub_status) {
+            case 'planning':
+                formData.stage_data.requirements_doc = document.getElementById('requirements-doc').value;
+                formData.stage_data.design_spec = document.getElementById('design-spec').value;
+                break;
+            case 'in_development':
+                formData.stage_data.repository_url = document.getElementById('repository-url').value;
+                formData.stage_data.branch_name = document.getElementById('branch-name').value;
+                formData.stage_data.pr_urls = document.getElementById('pr-urls').value;
+                break;
+            case 'testing':
+                formData.stage_data.test_plan = document.getElementById('test-plan').value;
+                formData.stage_data.test_results = document.getElementById('test-results').value;
+                formData.stage_data.defects_found = document.getElementById('defects-found').value;
+                break;
+            case 'awaiting_deployment':
+            case 'deployed':
+                formData.stage_data.deployment_guide = document.getElementById('deployment-guide').value;
+                formData.stage_data.release_notes = document.getElementById('release-notes').value;
+                formData.stage_data.environment = document.getElementById('environment').value;
+                break;
+            case 'verified':
+                formData.stage_data.verified_by = document.getElementById('verified-by').value;
+                formData.stage_data.performance_metrics = document.getElementById('performance-metrics').value;
+                formData.stage_data.sign_off_notes = document.getElementById('sign-off-notes').value;
+                break;
+        }
+        
+        try {
+            const response = await fetch(`/api/ideas/{{ idea.uuid }}/sub-status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Status updated successfully!');
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to update status'));
+            }
+        } catch (error) {
+            alert('Error updating status. Please try again.');
+            console.error('Error:', error);
+        }
+    });
+}
+
+// Enhanced SDLC Tracking Functions
+window.showTab = function(tabName) {
+    console.log('showTab called with:', tabName);
+    
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.borderBottom = 'none';
+        btn.style.color = '#6c757d';
+    });
+    
+    // Show selected tab
+    const targetTab = document.getElementById(`tab-${tabName}`);
+    if (targetTab) {
+        targetTab.style.display = 'block';
+    }
+    
+    // Set active button
+    const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.borderBottom = '3px solid #4a90e2';
+        activeBtn.style.color = '#4a90e2';
+    }
+    
+    // Load content if needed
+    {% if has_tab_access %}
+    if (tabName === 'comments' && !document.getElementById('comments-container').dataset.loaded) {
+        loadComments();
+    } else if (tabName === 'links' && !document.getElementById('external-links-container').dataset.loaded) {
+        loadExternalLinks();
+    } else if (tabName === 'activity' && !document.getElementById('activity-feed-container').dataset.loaded) {
+        loadActivityFeed();
+    } else if (tabName === 'history') {
+        displayStatusHistory();
+    }
+    {% endif %}
+}
+
+// Load comments
+async function loadComments() {
+    try {
+        const response = await fetch(`/api/ideas/{{ idea.uuid }}/comments`);
+        const comments = await response.json();
+        
+        const container = document.getElementById('comments-container');
+        container.dataset.loaded = 'true';
+        
+        if (comments.length === 0) {
+            container.innerHTML = '<p style="color: #6c757d;">No comments yet. Be the first to comment!</p>';
+        } else {
+            let html = '';
+            comments.forEach(comment => {
+                html += `
+                    <div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; ${comment.is_internal ? 'border-left: 3px solid #ffc107;' : ''}">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <strong>${utils.escapeHtml(comment.author_name)}</strong>
+                            <span style="font-size: 12px; color: #6c757d;">${comment.created_at}</span>
+                        </div>
+                        <div style="white-space: pre-wrap;">${utils.escapeHtml(comment.content)}</div>
+                        ${comment.is_internal ? '<span style="font-size: 11px; color: #856404;">Internal note</span>' : ''}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        
+        // Update count
+        document.getElementById('comments-count').textContent = comments.length;
+    } catch (error) {
+        console.error('Error loading comments:', error);
+        document.getElementById('comments-container').innerHTML = '<p style="color: #dc3545;">Error loading comments</p>';
+    }
+}
+
+// Add comment
+const addCommentForm = document.getElementById('add-comment-form');
+if (addCommentForm) {
+    addCommentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const content = document.getElementById('comment-content').value.trim();
+        if (!content) return;
+        
+        try {
+            const response = await fetch(`/api/ideas/{{ idea.uuid }}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: content,
+                    is_internal: document.getElementById('comment-internal').checked
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                document.getElementById('comment-content').value = '';
+                document.getElementById('comment-internal').checked = false;
+                loadComments(); // Reload comments
+            } else {
+                alert('Error adding comment: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error adding comment');
+            console.error('Error:', error);
+        }
+    });
+}
+
+// Load external links
+async function loadExternalLinks() {
+    try {
+        const response = await fetch(`/api/ideas/{{ idea.uuid }}/external-links`);
+        const links = await response.json();
+        
+        const container = document.getElementById('external-links-container');
+        container.dataset.loaded = 'true';
+        
+        if (links.length === 0) {
+            container.innerHTML = '<p style="color: #6c757d;">No external links added yet.</p>';
+        } else {
+            let html = '<div style="display: grid; gap: 15px;">';
+            links.forEach(link => {
+                const icon = getLinkIcon(link.link_type);
+                html += `
+                    <div style="padding: 15px; background-color: #f8f9fa; border-radius: 8px; display: flex; align-items: start; gap: 15px;">
+                        <div style="font-size: 24px; color: #6c757d;">${icon}</div>
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 5px 0; font-size: 16px;">
+                                <a href="${utils.escapeHtml(link.url)}" target="_blank" style="color: #4a90e2; text-decoration: none;">
+                                    ${utils.escapeHtml(link.title)}
+                                </a>
+                            </h4>
+                            ${link.description ? `<p style="margin: 5px 0; color: #495057; font-size: 14px;">${utils.escapeHtml(link.description)}</p>` : ''}
+                            <div style="font-size: 12px; color: #6c757d;">
+                                ${link.link_type.replace(/_/g, ' ')} • Added by ${utils.escapeHtml(link.creator_name)} on ${link.created_at}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Error loading links:', error);
+        document.getElementById('external-links-container').innerHTML = '<p style="color: #dc3545;">Error loading links</p>';
+    }
+}
+
+// Get icon for link type
+function getLinkIcon(linkType) {
+    const icons = {
+        repository: '📁',
+        pull_request: '🔀',
+        ado_work_item: '📋',
+        documentation: '📚',
+        gantt_chart: '📊',
+        test_results: '✅',
+        deployment_guide: '🚀',
+        design_doc: '🎨',
+        other: '🔗'
+    };
+    return icons[linkType] || '🔗';
+}
+
+// Show add link modal
+function showAddLinkModal() {
+    document.getElementById('add-link-modal').classList.add('active');
+}
+
+function closeAddLinkModal() {
+    document.getElementById('add-link-modal').classList.remove('active');
+    document.getElementById('add-link-form').reset();
+}
+
+// Add external link
+const addLinkForm = document.getElementById('add-link-form');
+if (addLinkForm) {
+    addLinkForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const linkData = {
+            link_type: document.getElementById('link-type').value,
+            title: document.getElementById('link-title').value,
+            url: document.getElementById('link-url').value,
+            description: document.getElementById('link-description').value
+        };
+        
+        try {
+            const response = await fetch(`/api/ideas/{{ idea.uuid }}/external-links`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(linkData)
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                closeAddLinkModal();
+                loadExternalLinks(); // Reload links
+            } else {
+                alert('Error adding link: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error adding link');
+            console.error('Error:', error);
+        }
+    });
+}
+
+// Load activity feed
+async function loadActivityFeed() {
+    try {
+        const response = await fetch(`/api/ideas/{{ idea.uuid }}/activities`);
+        const activities = await response.json();
+        
+        const container = document.getElementById('activity-feed-container');
+        container.dataset.loaded = 'true';
+        
+        if (activities.length === 0) {
+            container.innerHTML = '<p style="color: #6c757d;">No activity recorded yet.</p>';
+        } else {
+            let html = '<div style="position: relative; padding-left: 30px;">';
+            activities.forEach((activity, index) => {
+                const isLast = index === activities.length - 1;
+                const icon = getActivityIcon(activity.activity_type);
+                
+                html += `
+                    <div style="position: relative; margin-bottom: ${isLast ? '0' : '20px'};">
+                        <div style="position: absolute; left: -30px; top: 5px; width: 24px; height: 24px; 
+                                   background-color: white; border: 2px solid #dee2e6; border-radius: 50%; 
+                                   display: flex; align-items: center; justify-content: center; font-size: 12px;">
+                            ${icon}
+                        </div>
+                        ${!isLast ? '<div style="position: absolute; left: -19px; top: 29px; width: 2px; height: calc(100% + 20px); background-color: #dee2e6;"></div>' : ''}
+                        <div style="padding: 10px 15px; background-color: #f8f9fa; border-radius: 8px;">
+                            <div style="font-size: 14px; margin-bottom: 5px;">
+                                <strong>${utils.escapeHtml(activity.actor_name)}</strong> ${utils.escapeHtml(activity.description)}
+                            </div>
+                            <div style="font-size: 12px; color: #6c757d;">${activity.created_at}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Error loading activity:', error);
+        document.getElementById('activity-feed-container').innerHTML = '<p style="color: #dc3545;">Error loading activity</p>';
+    }
+}
+
+// Get icon for activity type
+function getActivityIcon(activityType) {
+    const icons = {
+        status_change: '🔄',
+        comment_added: '💬',
+        link_added: '🔗',
+        link_removed: '❌',
+        progress_updated: '📊',
+        field_changed: '✏️',
+        assigned: '👤',
+        claimed: '✋',
+        approved: '✅',
+        rejected: '❌'
+    };
+    return icons[activityType] || '📝';
+}
+
+// Display status history timeline
+function displayStatusHistory() {
+    const statusHistory = {{ status_history_json | tojson }};
+    if (statusHistory.length > 0) {
+        const timeline = document.getElementById('status-history-timeline');
+        if (timeline) {
+            let timelineHtml = '';
+            statusHistory.forEach((entry, index) => {
+                const isLast = index === statusHistory.length - 1;
+                const fromStatus = entry.from_sub_status || entry.from_status;
+                const toStatus = entry.to_sub_status || entry.to_status;
+                
+                timelineHtml += `
+                    <div style="position: relative; margin-bottom: ${isLast ? '0' : '20px'};">
+                        <div style="position: absolute; left: -30px; top: 5px; width: 12px; height: 12px; 
+                                   background-color: ${isLast ? '#4a90e2' : '#dee2e6'}; 
+                                   border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 3px #f8f9fa;"></div>
+                        ${!isLast ? '<div style="position: absolute; left: -25px; top: 17px; width: 2px; height: calc(100% + 20px); background-color: #dee2e6;"></div>' : ''}
+                        <div style="background-color: #f8f9fa; padding: 12px 16px; border-radius: 8px; border-left: 3px solid ${isLast ? '#4a90e2' : '#dee2e6'};">
+                            <div style="font-weight: 600; margin-bottom: 4px;">
+                                ${fromStatus ? `${fromStatus.replace(/_/g, ' ')} → ` : ''}${toStatus.replace(/_/g, ' ')}
+                            </div>
+                            <div style="font-size: 12px; color: #6c757d;">
+                                ${new Date(entry.changed_at).toLocaleString()} by ${entry.changed_by}
+                                ${entry.duration_minutes ? ` • Duration: ${entry.duration_minutes} minutes` : ''}
+                            </div>
+                            ${entry.comment ? `<div style="margin-top: 4px; font-size: 13px; color: #495057;">${entry.comment}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            timeline.innerHTML = timelineHtml;
+        }
+    }
+}
+
+// GANTT Chart Rendering
+function renderGanttChart() {
+    console.log('renderGanttChart called');
+    const container = document.getElementById('gantt-chart-container');
+    if (!container) {
+        console.error('GANTT container not found');
+        return;
+    }
+    
+    // Get idea data with linked items count
+    const ideaData = {
+        id: '{{ idea.uuid }}',
+        size: '{{ idea.size.value }}',
+        status: '{{ idea.status.value }}',
+        subStatus: '{{ idea.sub_status.value if idea.sub_status else "" }}',
+        progress: {{ idea.progress_percentage or 0 }},
+        dateSubmitted: new Date('{{ idea.date_submitted.isoformat() }}'),
+        neededBy: {% if idea.needed_by %}new Date('{{ idea.needed_by.isoformat() }}'){% else %}null{% endif %},
+        claimDate: {% if idea.claims %}new Date('{{ idea.claims[0].claim_date.isoformat() }}'){% else %}null{% endif %},
+        linkedItems: {
+            comments: {{ idea.comments | length if idea.comments else 0 }},
+            links: {{ idea.external_links | length if idea.external_links else 0 }},
+            activities: {{ idea.activities | length if idea.activities else 0 }}
+        }
+    };
+    
+    // Check for custom settings
+    const customSettings = sessionStorage.getItem(`gantt-settings-{{ idea.uuid }}`);
+    if (customSettings) {
+        const settings = JSON.parse(customSettings);
+        ideaData.customSettings = settings;
+    }
+    
+    // Create and render the SVG GANTT chart
+    try {
+        const ganttChart = new SVGGanttChart('gantt-chart-container', ideaData);
+        ganttChart.render();
+        
+        // Store instance for export functionality
+        window.currentGanttChart = ganttChart;
+    } catch (error) {
+        console.error('Error rendering SVG GANTT chart:', error);
+        container.innerHTML = '<p style="color: #dc3545;">Error loading GANTT chart</p>';
+    }
+}
+
+// Export GANTT chart as PNG
+function exportGanttChart() {
+    if (window.currentGanttChart && window.currentGanttChart.exportAsPNG) {
+        window.currentGanttChart.exportAsPNG();
+    } else {
+        console.error('GANTT chart not available for export');
+    }
+}
+
+// Show GANTT settings modal
+function showGanttSettingsModal() {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('gantt-settings-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'gantt-settings-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>Customize Timeline</h3>
+                    <button class="modal-close" onclick="closeGanttSettingsModal()">&times;</button>
+                </div>
+                
+                <form id="gantt-settings-form">
+                    <div class="form-group">
+                        <label for="gantt-start-date">Start Date</label>
+                        <input type="date" id="gantt-start-date" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gantt-end-date">End Date</label>
+                        <input type="date" id="gantt-end-date" class="form-control" value="${new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Phase Durations (%)</label>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Planning:</label>
+                                <input type="number" id="phase-planning" class="form-control" min="0" max="100" value="15" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Development:</label>
+                                <input type="number" id="phase-development" class="form-control" min="0" max="100" value="40" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Testing:</label>
+                                <input type="number" id="phase-testing" class="form-control" min="0" max="100" value="25" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Deployment:</label>
+                                <input type="number" id="phase-deployment" class="form-control" min="0" max="100" value="10" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="width: 120px; margin: 0;">Verification:</label>
+                                <input type="number" id="phase-verification" class="form-control" min="0" max="100" value="10" style="width: 80px;">
+                                <span>%</span>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Total must equal 100%</small>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary">Apply Settings</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeGanttSettingsModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Add form submission handler
+        document.getElementById('gantt-settings-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate phase percentages
+            const phases = ['planning', 'development', 'testing', 'deployment', 'verification'];
+            let total = 0;
+            phases.forEach(phase => {
+                total += parseInt(document.getElementById(`phase-${phase}`).value) || 0;
+            });
+            
+            if (total !== 100) {
+                alert('Phase durations must total 100%');
+                return;
+            }
+            
+            // Store settings and re-render
+            const settings = {
+                startDate: document.getElementById('gantt-start-date').value,
+                endDate: document.getElementById('gantt-end-date').value,
+                phases: {}
+            };
+            
+            phases.forEach(phase => {
+                settings.phases[phase] = parseInt(document.getElementById(`phase-${phase}`).value) / 100;
+            });
+            
+            // Store in sessionStorage for this idea
+            sessionStorage.setItem(`gantt-settings-{{ idea.uuid }}`, JSON.stringify(settings));
+            
+            // Re-render chart with new settings
+            renderGanttChart();
+            closeGanttSettingsModal();
+        });
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeGanttSettingsModal() {
+    const modal = document.getElementById('gantt-settings-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Render GANTT chart when overview tab is shown
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, checking for GANTT container');
+    const container = document.getElementById('gantt-chart-container');
+    if (container) {
+        console.log('GANTT container found, rendering chart');
+        setTimeout(function() {
+            try {
+                renderGanttChart();
+            } catch (error) {
+                console.error('Error rendering GANTT chart:', error);
+            }
+        }, 100);
+        
+        window.addEventListener('resize', function() {
+            try {
+                renderGanttChart();
+            } catch (error) {
+                console.error('Error rendering GANTT chart on resize:', error);
+            }
+        });
+    }
+});
+
+// Claim functionality
+const claimBtn = document.getElementById('claim-btn');
+const claimModal = document.getElementById('claim-modal');
+const claimForm = document.getElementById('claim-form');
+
+if (claimBtn) {
+    claimBtn.addEventListener('click', function() {
+        claimModal.classList.add('active');
+    });
+}
+
+function closeClaimModal() {
+    claimModal.classList.remove('active');
+    claimForm.reset();
+}
+
+// Close modal on outside click
+claimModal.addEventListener('click', function(e) {
+    if (e.target === claimModal) {
+        closeClaimModal();
+    }
+});
+
+// Handle claim submission
+if (claimForm) {
+    claimForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append('name', document.getElementById('claim-name').value);
+        formData.append('team', document.getElementById('claim-team').value);
+        formData.append('skills', document.getElementById('claim-skills').value);
+        
+        try {
+            const response = await fetch(`/idea/{{ idea.uuid }}/claim`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.status === 401) {
+                // User is not authenticated
+                const data = await response.json();
+                alert(data.error || 'Please log in to claim this idea.');
+                window.location.href = '/verify-email';
+                return;
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Idea claimed successfully!');
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            alert('Error claiming idea. Please try again.');
+            console.error('Error:', error);
+        }
+    });
+}
+</script>
+{% endblock %}

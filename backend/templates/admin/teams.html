@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Teams - Admin - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Manage Teams</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+        <a href="{{ url_for('admin.teams') }}" class="admin-nav-link active">Manage Teams</a>
+        <a href="{{ url_for('admin.users') }}" class="admin-nav-link">Manage Users</a>
+        <a href="{{ url_for('admin.email_settings') }}" class="admin-nav-link">Email Settings</a>
+        <a href="{{ url_for('admin.bulk_upload') }}" class="admin-nav-link">Bulk Upload</a>
+    </div>
+    
+    <div style="margin-bottom: 30px;">
+        <h3>Add New Team</h3>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="new-team-input" class="form-control" placeholder="Enter team name" style="max-width: 300px;">
+            <button onclick="addTeam()" class="btn btn-primary">Add Team</button>
+        </div>
+    </div>
+    
+    <div>
+        <h3>Existing Teams</h3>
+        <div id="teams-container">
+            <div class="loading">Loading teams...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Teams management
+let allTeams = [];
+
+async function loadTeams() {
+    try {
+        const response = await fetch('/api/teams');
+        allTeams = await response.json();
+        displayTeams();
+    } catch (error) {
+        console.error('Error loading teams:', error);
+        document.getElementById('teams-container').innerHTML = '<div class="error">Error loading teams</div>';
+    }
+}
+
+function displayTeams() {
+    if (allTeams.length === 0) {
+        document.getElementById('teams-container').innerHTML = '<div class="empty-state">No teams found</div>';
+        return;
+    }
+    
+    // Separate approved and pending teams
+    const approvedTeams = allTeams.filter(team => team.is_approved !== false);
+    const pendingTeams = allTeams.filter(team => team.is_approved === false);
+    
+    let html = '<div style="max-width: 800px;">';
+    
+    // Approved teams section
+    if (approvedTeams.length > 0) {
+        html += '<h4 style="margin-bottom: 15px;">Approved Teams</h4>';
+        html += '<div style="display: grid; gap: 10px; margin-bottom: 30px;">';
+        
+        approvedTeams.forEach(team => {
+            html += `
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
+                    <input type="text" value="${utils.escapeHtml(team.name)}" class="form-control" id="team-${utils.getUuid(team)}" style="flex: 1;">
+                    <button onclick="updateTeam('${utils.getUuid(team)}')" class="btn btn-success btn-sm">Save</button>
+                    <button onclick="deleteTeam('${utils.getUuid(team)}')" class="btn btn-danger btn-sm">Delete</button>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
+    
+    // Pending teams section
+    if (pendingTeams.length > 0) {
+        html += '<h4 style="margin-bottom: 15px;">Pending Approval</h4>';
+        html += '<div style="display: grid; gap: 10px;">';
+        
+        pendingTeams.forEach(team => {
+            html += `
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #fff3cd; border-radius: 4px;">
+                    <input type="text" value="${utils.escapeHtml(team.name)}" class="form-control" id="team-${utils.getUuid(team)}" style="flex: 1;">
+                    <button onclick="approveTeam('${utils.getUuid(team)}')" class="btn btn-primary btn-sm">Approve</button>
+                    <button onclick="denyTeam('${utils.getUuid(team)}')" class="btn btn-warning btn-sm">Deny</button>
+                    <button onclick="updateTeam('${utils.getUuid(team)}')" class="btn btn-success btn-sm">Save Name</button>
+                    <button onclick="deleteTeam('${utils.getUuid(team)}')" class="btn btn-danger btn-sm">Delete</button>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    document.getElementById('teams-container').innerHTML = html;
+}
+
+async function addTeam() {
+    const input = document.getElementById('new-team-input');
+    const name = input.value.trim();
+    
+    if (!name) {
+        alert('Please enter a team name');
+        return;
+    }
+    
+    try {
+        await utils.fetchJson('/api/teams', {
+            method: 'POST',
+            body: JSON.stringify({ name })
+        });
+        
+        input.value = '';
+        loadTeams();
+    } catch (error) {
+        console.error('Error adding team:', error);
+        alert('Error adding team. It may already exist.');
+    }
+}
+
+async function updateTeam(teamId) {
+    const input = document.getElementById(`team-${teamId}`);
+    const name = input.value.trim();
+    
+    if (!name) {
+        alert('Team name cannot be empty');
+        loadTeams();
+        return;
+    }
+    
+    try {
+        await utils.fetchJson(`/api/teams/${teamId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name })
+        });
+        
+        alert('Team updated successfully');
+    } catch (error) {
+        console.error('Error updating team:', error);
+        alert('Error updating team. Please try again.');
+        loadTeams();
+    }
+}
+
+async function approveTeam(teamId) {
+    // Optionally allow name change before approval
+    const input = document.getElementById(`team-${teamId}`);
+    const name = input.value.trim();
+    
+    try {
+        await utils.fetchJson(`/api/teams/${teamId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ 
+                is_approved: true,
+                name: name  // Update name if changed
+            })
+        });
+        
+        loadTeams();
+    } catch (error) {
+        console.error('Error approving team:', error);
+        alert('Error approving team. Please try again.');
+    }
+}
+
+async function denyTeam(teamId) {
+    const team = allTeams.find(t => utils.getUuid(t) === teamId);
+    if (!team) return;
+    
+    if (!confirm(`Are you sure you want to deny the team "${team.name}"? This will remove the team assignment from all users who requested it.`)) {
+        return;
+    }
+    
+    try {
+        await utils.fetchJson(`/api/teams/${teamId}/deny`, {
+            method: 'POST'
+        });
+        
+        alert('Team denied. Users have been notified and their team assignments cleared.');
+        loadTeams();
+    } catch (error) {
+        console.error('Error denying team:', error);
+        alert('Error denying team. Please try again.');
+    }
+}
+
+async function deleteTeam(teamId) {
+    if (!confirm('Are you sure you want to delete this team?')) return;
+    
+    try {
+        await utils.fetchJson(`/api/teams/${teamId}`, {
+            method: 'DELETE'
+        });
+        
+        loadTeams();
+    } catch (error) {
+        console.error('Error deleting team:', error);
+        alert('Cannot delete team. It may be in use by existing users.');
+    }
+}
+
+// Allow Enter key to add team
+document.getElementById('new-team-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        addTeam();
+    }
+});
+
+// Initialize
+loadTeams();
+
+// Auto-refresh every 2 seconds
+setInterval(loadTeams, 2000);
+</script>
+{% endblock %}

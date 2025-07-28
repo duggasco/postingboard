@@ -1,0 +1,1125 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Admin Dashboard</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link active">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+        <a href="{{ url_for('admin.teams') }}" class="admin-nav-link">Manage Teams</a>
+        <a href="{{ url_for('admin.users') }}" class="admin-nav-link">Manage Users</a>
+        <a href="{{ url_for('admin.email_settings') }}" class="admin-nav-link">Email Settings</a>
+        <a href="{{ url_for('admin.bulk_upload') }}" class="admin-nav-link">Bulk Upload</a>
+    </div>
+    
+    <!-- Admin Notifications -->
+    <div id="notifications-container" style="margin-bottom: 30px; display: none;">
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px;">
+            <h3 style="margin: 0 0 15px 0; color: #856404; font-size: 1.1rem; font-weight: 600;">Pending Admin Actions</h3>
+            <div id="notifications-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+    </div>
+    
+    <div id="stats-container" class="stats-grid">
+        <div class="stat-card">
+            <h3 id="total-ideas">-</h3>
+            <p>Total Ideas</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="open-ideas">-</h3>
+            <p>Open Ideas</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="claimed-ideas">-</h3>
+            <p>Claimed Ideas</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="complete-ideas">-</h3>
+            <p>Complete Ideas</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="total-skills">-</h3>
+            <p>Total Skills</p>
+        </div>
+    </div>
+    
+    <!-- Spending Overview Section -->
+    <div style="margin-top: 40px; margin-bottom: 40px;">
+        <h3>Organization Spending Overview</h3>
+        <div class="stats-grid" style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+            <div class="stat-card" style="background: #e8f5e8;">
+                <h3 id="total-org-spend">-</h3>
+                <p>Total Approved Spend</p>
+            </div>
+            <div class="stat-card" style="background: #f0e6ff;">
+                <h3 id="total-org-expensed">-</h3>
+                <p>Total Expensed</p>
+            </div>
+            <div class="stat-card" style="background: #fff4e5;">
+                <h3 id="pending-org-spend">-</h3>
+                <p>Pending Approval</p>
+            </div>
+            <div class="stat-card" style="background: #e3f2fd;">
+                <h3 id="actual-org-spend">-</h3>
+                <p>Actual Spend</p>
+            </div>
+            <div class="stat-card" style="background: #f3e5f5;">
+                <h3 id="committed-org-spend">-</h3>
+                <p>Committed Spend</p>
+            </div>
+        </div>
+        
+        <!-- Top Spending Teams Chart -->
+        <div style="margin-top: 30px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+            <h4 style="margin-bottom: 20px; color: #495057;">Top Spending Teams</h4>
+            <canvas id="top-teams-spending-chart" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+    
+    <div style="margin-top: 40px;">
+        <h3>Manage Ideas</h3>
+        
+        <!-- Filters Section -->
+        <div style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input type="text" id="search-input" placeholder="Search by title or description..." class="form-control" style="max-width: 300px;">
+                <select id="priority-filter" class="form-control" style="max-width: 150px;">
+                    <option value="">All Priorities</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+                <select id="status-filter" class="form-control" style="max-width: 150px;">
+                    <option value="">All Statuses</option>
+                    <option value="open">Open</option>
+                    <option value="claimed">Claimed</option>
+                    <option value="complete">Complete</option>
+                </select>
+                <select id="size-filter" class="form-control" style="max-width: 150px;">
+                    <option value="">All Sizes</option>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="extra_large">Extra Large</option>
+                </select>
+                <select id="team-filter" class="form-control" style="max-width: 200px;">
+                    <option value="">All Teams</option>
+                </select>
+                <button id="clear-filters" class="btn btn-secondary">Clear Filters</button>
+            </div>
+        </div>
+        
+        <div id="ideas-table-container">
+            <div class="loading">Loading ideas...</div>
+        </div>
+        <div id="pagination-container" style="margin-top: 20px; text-align: center;"></div>
+    </div>
+</div>
+
+<!-- Edit Idea Modal -->
+<div id="edit-idea-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Idea</h3>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <form id="edit-idea-form">
+            <input type="hidden" id="edit-idea-id" name="id">
+            <div id="idea-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+                <h4 style="margin-top: 0; font-size: 16px;">Idea Analytics</h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div><strong>ID:</strong> <span id="info-id">-</span></div>
+                    <div><strong>Submitted:</strong> <span id="info-submitted">-</span></div>
+                    <div><strong>Submitter:</strong> <span id="info-submitter">-</span></div>
+                    <div><strong>Needed By:</strong> <span id="info-needed">-</span></div>
+                    <div><strong>Total Claims:</strong> <span id="info-claims">0</span></div>
+                    <div><strong>Pending Approvals:</strong> <span id="info-pending">0</span></div>
+                    <div><strong>Assigned To:</strong> <span id="info-assigned">None</span></div>
+                    <div><strong>Assigned By:</strong> <span id="info-assigned-by">-</span></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="edit-title">Title</label>
+                <input type="text" id="edit-title" name="title" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-description">Description</label>
+                <textarea id="edit-description" name="description" class="form-control" rows="4" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="edit-team">Team</label>
+                <select id="edit-team" name="team" class="form-control">
+                    <option value="">Select Team</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-priority">Priority</label>
+                <select id="edit-priority" name="priority" class="form-control" required>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-size">Size</label>
+                <select id="edit-size" name="size" class="form-control" required>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="extra_large">Extra Large</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-status">Status</label>
+                <select id="edit-status" name="status" class="form-control" required>
+                    <option value="open">Open</option>
+                    <option value="claimed">Claimed</option>
+                    <option value="complete">Complete</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-bounty">Bounty</label>
+                <input type="text" id="edit-bounty" name="bounty" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="edit-is-monetary" name="is_monetary" onchange="toggleMonetaryFields()">
+                    This idea has a monetary bounty
+                </label>
+            </div>
+            <div id="monetary-fields" style="display: none;">
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="edit-is-expensed" name="is_expensed" onchange="toggleAmountField()">
+                        Will be expensed
+                    </label>
+                </div>
+                <div id="amount-field" class="form-group" style="display: none;">
+                    <label for="edit-amount">Amount ($)</label>
+                    <input type="number" id="edit-amount" name="amount" class="form-control" min="0" step="0.01">
+                    <small id="approval-note" class="text-muted" style="display: none;">Amounts over $50 require manager/admin approval</small>
+                </div>
+                <div id="approval-status" class="form-group" style="display: none;">
+                    <label>Approval Status</label>
+                    <div class="approval-info">
+                        <span id="approval-status-text"></span>
+                        <button type="button" id="approve-bounty-btn" class="btn btn-sm btn-success" style="display: none;" onclick="approveBounty()">Approve</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="edit-email">Submitter Email</label>
+                <input type="email" id="edit-email" name="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Skills</label>
+                <div id="edit-skills-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;"></div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* Removed duplicate .notification-badge CSS - using global styles from styles.css */
+
+.priority-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.priority-badge.priority-high {
+    background: #fee;
+    color: #dc3545;
+}
+
+.priority-badge.priority-medium {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.priority-badge.priority-low {
+    background: #d4edda;
+    color: #155724;
+}
+
+.size-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.size-badge.size-small {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.size-badge.size-medium {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.size-badge.size-large {
+    background: #fff9c4;
+    color: #f57f17;
+}
+
+.size-badge.size-extra_large {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.pagination {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+}
+
+.pagination button {
+    padding: 5px 10px;
+    border: 1px solid #dee2e6;
+    background: white;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: #e9ecef;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination button.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.pagination span {
+    padding: 5px;
+}
+
+.admin-nav-link {
+    position: relative;
+}
+</style>
+<script>
+// Dashboard statistics loading
+(function() {
+    // Ensure DOM elements exist before accessing them
+    function ensureElement(id) {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.error(`Element with id '${id}' not found`);
+        }
+        return element;
+    }
+
+    // Load admin dashboard notifications (renamed to avoid conflict with bell notifications)
+    async function loadAdminDashboardNotifications() {
+        try {
+            const response = await fetch('/api/admin/notifications');
+            const data = await response.json();
+            
+            if (data.success && data.notifications.length > 0) {
+                const container = document.getElementById('notifications-container');
+                const list = document.getElementById('notifications-list');
+                
+                // Clear existing notifications
+                list.innerHTML = '';
+                
+                // Sort by priority (high first)
+                const sortedNotifications = data.notifications.sort((a, b) => {
+                    const priorityOrder = { 'high': 0, 'medium': 1, 'low': 2 };
+                    return priorityOrder[a.priority] - priorityOrder[b.priority];
+                });
+                
+                // Create notification items
+                sortedNotifications.forEach(notification => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; border-radius: 6px; border: 1px solid #ffeaa7;';
+                    
+                    const message = document.createElement('div');
+                    message.style.cssText = 'flex: 1; color: #856404; font-weight: 500;';
+                    message.innerHTML = `<span style="color: #${notification.priority === 'high' ? 'dc3545' : '856404'};">●</span> ${notification.message}`;
+                    
+                    const action = document.createElement('a');
+                    action.href = notification.link;
+                    action.className = 'btn btn-sm btn-primary';
+                    action.textContent = 'Review';
+                    action.style.marginLeft = '10px';
+                    
+                    item.appendChild(message);
+                    item.appendChild(action);
+                    list.appendChild(item);
+                });
+                
+                // Show the container
+                container.style.display = 'block';
+            } else {
+                // Hide the container if no notifications
+                document.getElementById('notifications-container').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+        }
+    }
+    
+    // Load dashboard statistics
+    async function loadStats() {
+        console.log('Loading stats... readyState:', document.readyState);
+        
+        // Simple direct load without complex retry logic
+        try {
+            const response = await fetch('/api/stats');
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const stats = await response.json();
+            console.log('Stats data:', stats);
+            
+            // Update stat cards
+            document.getElementById('total-ideas').textContent = stats.total_ideas || 0;
+            document.getElementById('open-ideas').textContent = stats.open_ideas || 0;
+            document.getElementById('claimed-ideas').textContent = stats.claimed_ideas || 0;
+            document.getElementById('complete-ideas').textContent = stats.complete_ideas || 0;
+            document.getElementById('total-skills').textContent = stats.total_skills || 0;
+            
+            // Update spending analytics if available
+            if (stats.spending) {
+                updateSpendingAnalytics(stats.spending);
+            }
+            
+            console.log('Stats loaded successfully');
+            
+        } catch (error) {
+            console.error('Error loading statistics:', error);
+            document.getElementById('total-ideas').textContent = 'Error';
+            document.getElementById('open-ideas').textContent = 'Error';
+            document.getElementById('claimed-ideas').textContent = 'Error';
+            document.getElementById('complete-ideas').textContent = 'Error';
+            document.getElementById('total-skills').textContent = 'Error';
+        }
+    }
+    
+    // Original complex retry logic
+    async function loadStatsWithRetry() {
+        console.log('Loading stats with retry... readyState:', document.readyState);
+        
+        // Double-check elements exist with retry logic
+        let retries = 0;
+        const maxRetries = 5;
+        
+        while (retries < maxRetries) {
+            const elements = {
+                totalIdeas: ensureElement('total-ideas'),
+                openIdeas: ensureElement('open-ideas'),
+                claimedIdeas: ensureElement('claimed-ideas'),
+                completeIdeas: ensureElement('complete-ideas'),
+                totalSkills: ensureElement('total-skills')
+            };
+            
+            // Check if all elements exist
+            const allElementsExist = Object.values(elements).every(el => el !== null);
+            
+            if (allElementsExist) {
+                // All elements found, proceed with loading stats
+                try {
+                    const response = await fetch('/api/stats');
+                    console.log('Response status:', response.status);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const stats = await response.json();
+                    console.log('Stats data:', stats);
+                    
+                    // Update stat cards
+                    elements.totalIdeas.textContent = stats.total_ideas || 0;
+                    elements.openIdeas.textContent = stats.open_ideas || 0;
+                    elements.claimedIdeas.textContent = stats.claimed_ideas || 0;
+                    elements.completeIdeas.textContent = stats.complete_ideas || 0;
+                    elements.totalSkills.textContent = stats.total_skills || 0;
+                    
+                    // Update spending analytics if available
+                    if (stats.spending) {
+                        updateSpendingAnalytics(stats.spending);
+                    }
+                    
+                    console.log('Stats loaded successfully');
+                    return; // Success, exit the function
+                    
+                } catch (error) {
+                    console.error('Error loading statistics:', error);
+                    // Show error in UI
+                    if (elements.totalIdeas) elements.totalIdeas.textContent = 'Error';
+                    if (elements.openIdeas) elements.openIdeas.textContent = 'Error';
+                    if (elements.claimedIdeas) elements.claimedIdeas.textContent = 'Error';
+                    if (elements.completeIdeas) elements.completeIdeas.textContent = 'Error';
+                    if (elements.totalSkills) elements.totalSkills.textContent = 'Error';
+                    return; // Error occurred, exit
+                }
+            }
+            
+            // Elements not found, retry after a delay
+            retries++;
+            console.log(`Elements not found, retry ${retries}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+        console.error('Failed to find all required DOM elements after retries');
+    }
+
+    // Initialize stats loading - simplified
+    function initStats() {
+        // Load immediately
+        loadStats();
+        loadAdminDashboardNotifications();
+        
+        // Also load on window load just in case
+        window.addEventListener('load', function() {
+            console.log('Window load event fired');
+            loadStats();
+            loadAdminDashboardNotifications();
+        });
+    }
+
+    // Start initialization based on document state
+    if (document.readyState === 'loading') {
+        console.log('Document still loading, waiting for DOMContentLoaded');
+        document.addEventListener('DOMContentLoaded', initStats);
+    } else {
+        console.log('Document already loaded, initializing directly');
+        initStats();
+    }
+    
+    // Refresh dashboard notifications periodically (every 30 seconds)
+    setInterval(() => {
+        loadAdminDashboardNotifications();
+    }, 30000);
+})();
+
+// Ideas management functionality
+let currentPage = 1;
+const itemsPerPage = 20;
+let allIdeas = [];
+let filteredIdeas = [];
+let allTeams = [];
+let allSkills = [];
+
+async function loadIdeas() {
+    try {
+        // Explicitly request all ideas without status filter
+        const ideas = await utils.fetchJson('/api/ideas?status=');
+        allIdeas = ideas;
+        filteredIdeas = allIdeas;
+        applyFilters();
+        
+        // Load teams for filter
+        await loadTeamsForFilter();
+        
+        // Load skills for edit modal
+        await loadSkills();
+    } catch (error) {
+        console.error('Error loading ideas:', error);
+        document.getElementById('ideas-table-container').innerHTML = '<div class="error">Error loading ideas</div>';
+    }
+}
+
+async function loadTeamsForFilter() {
+    try {
+        const teams = await utils.fetchJson('/api/teams');
+        allTeams = teams;
+        
+        const teamFilter = document.getElementById('team-filter');
+        teamFilter.innerHTML = '<option value="">All Teams</option>';
+        
+        const uniqueTeams = [...new Set(allIdeas.map(idea => idea.benefactor_team))].filter(team => team);
+        uniqueTeams.sort().forEach(team => {
+            const option = document.createElement('option');
+            option.value = team;
+            option.textContent = team;
+            teamFilter.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading teams:', error);
+    }
+}
+
+async function loadSkills() {
+    try {
+        const response = await fetch('/api/skills');
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            allSkills = data;
+        }
+    } catch (error) {
+        console.error('Error loading skills:', error);
+    }
+}
+
+function displayIdeas() {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageIdeas = filteredIdeas.slice(start, end);
+    
+    if (filteredIdeas.length === 0) {
+        document.getElementById('ideas-table-container').innerHTML = '<div class="empty-state">No ideas found</div>';
+        document.getElementById('pagination-container').innerHTML = '';
+        return;
+    }
+    
+    let tableHtml = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Team</th>
+                    <th>Priority</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Submitted By</th>
+                    <th>Claimed By</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    pageIdeas.forEach(idea => {
+        const priorityBadge = `<span class="priority-badge priority-${idea.priority}">${idea.priority}</span>`;
+        const sizeBadge = `<span class="size-badge size-${idea.size}">${idea.size.replace('_', ' ')}</span>`;
+        const statusBadge = `<span class="status-badge status-${idea.status}">${idea.status}</span>`;
+        
+        tableHtml += `
+            <tr data-idea-id="${utils.getUuid(idea)}">
+                <td>${utils.formatUuid(utils.getUuid(idea))}</td>
+                <td title="${utils.escapeHtml(idea.title)}">${utils.escapeHtml(idea.title)}</td>
+                <td>${utils.escapeHtml(idea.benefactor_team || '-')}</td>
+                <td>${priorityBadge}</td>
+                <td>${sizeBadge}</td>
+                <td>${statusBadge}</td>
+                <td>${idea.submitter_name ? utils.escapeHtml(idea.submitter_name) + ' (' + utils.escapeHtml(idea.email) + ')' : utils.escapeHtml(idea.email)}</td>
+                <td>${idea.claims && idea.claims.length > 0 ? idea.claims.map(c => utils.escapeHtml(c.name || c.email)).join(', ') : '-'}</td>
+                <td>${utils.formatDate(idea.date_submitted)}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="editIdea('${utils.getUuid(idea)}')">Edit</button>
+                    ${idea.status === 'claimed' || idea.status === 'complete' ? 
+                        `<button class="btn btn-warning btn-sm" onclick="unclaimIdea('${utils.getUuid(idea)}')">Unclaim</button>` : 
+                        ''}
+                    <button class="btn btn-danger btn-sm" onclick="deleteIdea('${utils.getUuid(idea)}')">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableHtml += '</tbody></table>';
+    document.getElementById('ideas-table-container').innerHTML = tableHtml;
+    
+    // Update pagination
+    updatePagination();
+}
+
+function updatePagination() {
+    const totalPages = Math.ceil(filteredIdeas.length / itemsPerPage);
+    const paginationContainer = document.getElementById('pagination-container');
+    
+    if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination">';
+    
+    // Previous button
+    html += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `<button onclick="changePage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += '<span>...</span>';
+        }
+    }
+    
+    // Next button
+    html += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+    
+    html += '</div>';
+    paginationContainer.innerHTML = html;
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(filteredIdeas.length / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        displayIdeas();
+    }
+}
+
+function applyFilters() {
+    const searchInput = document.getElementById('search-input').value.toLowerCase();
+    const priorityFilter = document.getElementById('priority-filter').value;
+    const statusFilter = document.getElementById('status-filter').value;
+    const sizeFilter = document.getElementById('size-filter').value;
+    const teamFilter = document.getElementById('team-filter').value;
+    
+    filteredIdeas = allIdeas.filter(idea => {
+        // Search filter
+        if (searchInput) {
+            const titleMatch = idea.title && idea.title.toLowerCase().includes(searchInput);
+            const descriptionMatch = idea.description && idea.description.toLowerCase().includes(searchInput);
+            if (!titleMatch && !descriptionMatch) {
+                return false;
+            }
+        }
+        
+        // Priority filter
+        if (priorityFilter && idea.priority !== priorityFilter) {
+            return false;
+        }
+        
+        // Status filter
+        if (statusFilter && idea.status !== statusFilter) {
+            return false;
+        }
+        
+        // Size filter
+        if (sizeFilter && idea.size !== sizeFilter) {
+            return false;
+        }
+        
+        // Team filter
+        if (teamFilter && idea.benefactor_team !== teamFilter) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    currentPage = 1;
+    displayIdeas();
+}
+
+// Edit modal functions
+function editIdea(ideaId) {
+    const idea = allIdeas.find(i => utils.getUuid(i) === ideaId);
+    if (!idea) return;
+    
+    // Populate analytics info
+    document.getElementById('info-id').innerHTML = utils.formatUuid(utils.getUuid(idea));
+    document.getElementById('info-submitted').textContent = utils.formatDate(idea.date_submitted);
+    document.getElementById('info-submitter').textContent = idea.submitter_name ? 
+        `${idea.submitter_name} (${idea.email})` : idea.email;
+    document.getElementById('info-needed').textContent = idea.needed_by ? 
+        utils.formatDate(idea.needed_by) : 'Not specified';
+    document.getElementById('info-claims').textContent = idea.claims ? idea.claims.length : 0;
+    document.getElementById('info-pending').textContent = idea.pending_approvals || 0;
+    document.getElementById('info-assigned').textContent = idea.assigned_to_email || 'None';
+    document.getElementById('info-assigned-by').textContent = idea.assigned_by || '-';
+    
+    // Populate form fields
+    document.getElementById('edit-idea-id').value = utils.getUuid(idea);
+    document.getElementById('edit-title').value = idea.title;
+    document.getElementById('edit-description').value = idea.description || '';
+    document.getElementById('edit-priority').value = idea.priority;
+    document.getElementById('edit-size').value = idea.size;
+    document.getElementById('edit-status').value = idea.status;
+    document.getElementById('edit-bounty').value = idea.bounty || '';
+    document.getElementById('edit-email').value = idea.email;
+    
+    // Fetch and populate bounty details
+    fetch(`/api/ideas/${ideaId}/bounty`)
+        .then(response => response.json())
+        .then(bountyData => {
+            if (bountyData.bounty) {
+                document.getElementById('edit-is-monetary').checked = bountyData.bounty.is_monetary;
+                document.getElementById('edit-is-expensed').checked = bountyData.bounty.is_expensed;
+                document.getElementById('edit-amount').value = bountyData.bounty.amount || '';
+                
+                // Show/hide fields based on current state
+                toggleMonetaryFields();
+                if (bountyData.bounty.is_monetary) {
+                    toggleAmountField();
+                }
+                
+                // Show approval status if applicable
+                const approvalStatus = document.getElementById('approval-status');
+                const approvalStatusText = document.getElementById('approval-status-text');
+                const approveBtn = document.getElementById('approve-bounty-btn');
+                
+                if (bountyData.bounty.requires_approval) {
+                    approvalStatus.style.display = 'block';
+                    if (bountyData.bounty.is_approved === null) {
+                        approvalStatusText.textContent = 'Pending approval';
+                        approvalStatusText.className = 'text-warning';
+                        approveBtn.style.display = 'inline-block';
+                    } else if (bountyData.bounty.is_approved) {
+                        approvalStatusText.textContent = `Approved by ${bountyData.bounty.approved_by || 'admin'}`;
+                        approvalStatusText.className = 'text-success';
+                        approveBtn.style.display = 'none';
+                    } else {
+                        approvalStatusText.textContent = 'Denied';
+                        approvalStatusText.className = 'text-danger';
+                        approveBtn.style.display = 'none';
+                    }
+                } else {
+                    approvalStatus.style.display = 'none';
+                }
+            } else {
+                // No bounty record, reset fields
+                document.getElementById('edit-is-monetary').checked = false;
+                document.getElementById('edit-is-expensed').checked = false;
+                document.getElementById('edit-amount').value = '';
+                toggleMonetaryFields();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching bounty details:', error);
+        });
+    
+    // Populate team dropdown
+    const teamSelect = document.getElementById('edit-team');
+    teamSelect.innerHTML = '<option value="">Select Team</option>';
+    if (allTeams) {
+        allTeams.forEach(team => {
+            const option = document.createElement('option');
+            option.value = team.name;
+            option.textContent = team.name;
+            option.selected = team.name === idea.benefactor_team;
+            teamSelect.appendChild(option);
+        });
+    }
+    
+    // Populate skills checkboxes
+    const skillsContainer = document.getElementById('edit-skills-container');
+    skillsContainer.innerHTML = '';
+    
+    if (allSkills) {
+        const ideaSkillIds = idea.skills ? idea.skills.map(s => utils.getUuid(s)) : [];
+        
+        allSkills.forEach(skill => {
+            const label = document.createElement('label');
+            label.style.display = 'flex';
+            label.style.alignItems = 'center';
+            label.style.gap = '5px';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'skills';
+            checkbox.value = utils.getUuid(skill);
+            checkbox.checked = ideaSkillIds.includes(utils.getUuid(skill));
+            
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(skill.name));
+            
+            skillsContainer.appendChild(label);
+        });
+    }
+    
+    // Show modal
+    document.getElementById('edit-idea-modal').classList.add('active');
+}
+
+function closeEditModal() {
+    document.getElementById('edit-idea-modal').classList.remove('active');
+}
+
+// Monetary bounty field handlers
+function toggleMonetaryFields() {
+    const isMonetary = document.getElementById('edit-is-monetary').checked;
+    const monetaryFields = document.getElementById('monetary-fields');
+    const amountField = document.getElementById('amount-field');
+    
+    monetaryFields.style.display = isMonetary ? 'block' : 'none';
+    // Always show amount field when monetary is checked
+    amountField.style.display = isMonetary ? 'block' : 'none';
+    
+    if (!isMonetary) {
+        // Reset fields when unchecked
+        document.getElementById('edit-is-expensed').checked = false;
+        document.getElementById('edit-amount').value = '';
+    }
+    
+    // Check amount for approval note
+    checkApprovalRequired();
+}
+
+function toggleAmountField() {
+    // Amount field visibility is now controlled by toggleMonetaryFields
+    // This function only updates approval requirements
+    checkApprovalRequired();
+}
+
+function checkApprovalRequired() {
+    const amount = parseFloat(document.getElementById('edit-amount').value) || 0;
+    const approvalNote = document.getElementById('approval-note');
+    approvalNote.style.display = amount > 50 ? 'block' : 'none';
+}
+
+async function approveBounty() {
+    const ideaId = document.getElementById('edit-idea-id').value;
+    
+    try {
+        const response = await fetch(`/api/ideas/${ideaId}/approve-bounty`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Bounty approved successfully!');
+            // Refresh the approval status
+            editIdea(ideaId);
+        } else {
+            alert('Error approving bounty: ' + result.message);
+        }
+    } catch (error) {
+        alert('Error approving bounty: ' + error.message);
+    }
+}
+
+// Form submission
+document.getElementById('edit-idea-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const ideaId = document.getElementById('edit-idea-id').value;
+    const formData = new FormData(e.target);
+    
+    const data = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        team: formData.get('team'),
+        priority: formData.get('priority'),
+        size: formData.get('size'),
+        status: formData.get('status'),
+        bounty: formData.get('bounty'),
+        email: formData.get('email'),
+        skill_ids: [],
+        // Bounty fields
+        is_monetary: document.getElementById('edit-is-monetary').checked,
+        is_expensed: document.getElementById('edit-is-expensed').checked,
+        amount: document.getElementById('edit-is-monetary').checked ? (parseFloat(document.getElementById('edit-amount').value) || 0.0) : 0.0
+    };
+    
+    // Get selected skills (UUIDs)
+    const checkedSkills = document.querySelectorAll('#edit-skills-container input[type="checkbox"]:checked');
+    data.skill_ids = Array.from(checkedSkills).map(cb => cb.value);
+    
+    // Debug log the data being sent
+    console.log('Updating idea with data:', data);
+    
+    try {
+        await utils.fetchJson(`/api/ideas/${ideaId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+        
+        closeEditModal();
+        loadIdeas();
+    } catch (error) {
+        console.error('Error updating idea:', error);
+        // Show more detailed error if available
+        const errorMsg = error.message || 'Error updating idea. Please try again.';
+        alert(errorMsg);
+    }
+});
+
+async function unclaimIdea(ideaId) {
+    if (!confirm('Are you sure you want to unclaim this idea? This will remove all claims and reset the status to open.')) {
+        return;
+    }
+    
+    try {
+        await utils.fetchJson(`/api/ideas/${ideaId}/unclaim`, {
+            method: 'POST'
+        });
+        
+        loadIdeas();
+    } catch (error) {
+        console.error('Error unclaiming idea:', error);
+        alert('Error unclaiming idea. Please try again.');
+    }
+}
+
+async function deleteIdea(ideaId) {
+    if (!confirm('Are you sure you want to delete this idea?')) return;
+    
+    try {
+        await utils.fetchJson(`/api/ideas/${ideaId}`, {
+            method: 'DELETE'
+        });
+        loadIdeas();
+    } catch (error) {
+        console.error('Error deleting idea:', error);
+        alert('Error deleting idea. Please try again.');
+    }
+}
+
+// Add event listeners for filters
+document.getElementById('search-input').addEventListener('input', applyFilters);
+document.getElementById('priority-filter').addEventListener('change', applyFilters);
+document.getElementById('status-filter').addEventListener('change', applyFilters);
+
+// Add event listener for amount field
+document.getElementById('edit-amount').addEventListener('input', checkApprovalRequired);
+document.getElementById('size-filter').addEventListener('change', applyFilters);
+document.getElementById('team-filter').addEventListener('change', applyFilters);
+
+document.getElementById('clear-filters').addEventListener('click', () => {
+    document.getElementById('search-input').value = '';
+    document.getElementById('priority-filter').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('size-filter').value = '';
+    document.getElementById('team-filter').value = '';
+    applyFilters();
+});
+
+// Spending Analytics Functions
+function formatCurrency(amount) {
+    return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function updateSpendingAnalytics(spending) {
+    // Update spending overview cards
+    const totalOrgSpend = document.getElementById('total-org-spend');
+    const totalOrgExpensed = document.getElementById('total-org-expensed');
+    const pendingOrgSpend = document.getElementById('pending-org-spend');
+    const actualOrgSpend = document.getElementById('actual-org-spend');
+    const committedOrgSpend = document.getElementById('committed-org-spend');
+    
+    if (totalOrgSpend) totalOrgSpend.textContent = formatCurrency(spending.total_approved_spend || 0);
+    if (totalOrgExpensed) totalOrgExpensed.textContent = formatCurrency(spending.total_expensed || 0);
+    if (pendingOrgSpend) pendingOrgSpend.textContent = formatCurrency(spending.pending_approval_spend || 0);
+    if (actualOrgSpend) actualOrgSpend.textContent = formatCurrency(spending.actual_spend || 0);
+    if (committedOrgSpend) committedOrgSpend.textContent = formatCurrency(spending.committed_spend || 0);
+    
+    // Create top spending teams chart
+    createTopSpendingTeamsChart(spending.top_spending_teams || []);
+}
+
+function createTopSpendingTeamsChart(topTeams) {
+    const canvas = document.getElementById('top-teams-spending-chart');
+    if (!canvas || topTeams.length === 0) return;
+    
+    const ctx = canvas.getContext('2d');
+    const labels = topTeams.map(team => team.team);
+    const values = topTeams.map(team => team.total_spend);
+    
+    // Destroy existing chart if it exists
+    if (window.topTeamsChart) {
+        window.topTeamsChart.destroy();
+    }
+    
+    window.topTeamsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Spend',
+                data: values,
+                backgroundColor: '#4a90e2',
+                borderColor: '#357abd',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        autoSkip: false,
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialize ideas loading
+loadIdeas();
+
+// Auto-refresh every 30 seconds
+setInterval(loadIdeas, 30000);
+</script>
+
+<style>
+.approval-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.approval-info span {
+    font-weight: 500;
+}
+
+.text-warning {
+    color: #856404;
+}
+
+.text-success {
+    color: #155724;
+}
+
+.text-danger {
+    color: #721c24;
+}
+</style>
+{% endblock %}

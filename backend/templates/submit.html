@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Idea - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <h2 class="page-title">Submit a New Idea</h2>
+    
+    <form id="submit-form" method="POST" action="{{ url_for('main.submit') }}">
+        <div class="form-group">
+            <label for="title">Title <span style="color: red;">*</span></label>
+            <input type="text" id="title" name="title" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Description <span style="color: red;">*</span></label>
+            <textarea id="description" name="description" class="form-control" rows="5" required></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Skills Needed <span style="color: red;">*</span></label>
+            <div class="skill-input-group">
+                <select id="skill-select" class="form-control">
+                    <option value="">Select a skill...</option>
+                </select>
+                <input type="text" id="skill-input" class="form-control" placeholder="Or type a custom skill">
+                <button type="button" id="add-skill-btn" class="btn btn-secondary">Add Skill</button>
+            </div>
+            <div id="selected-skills" class="selected-skills"></div>
+            <div style="margin-top: 5px;">
+                <small style="color: #6c757d;">Skills are required for this idea only and will not be saved to your profile.</small>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="priority">Priority <span style="color: red;">*</span></label>
+            <select id="priority" name="priority" class="form-control" required>
+                <option value="">Select priority...</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="size">Size <span style="color: red;">*</span></label>
+            <select id="size" name="size" class="form-control" required>
+                <option value="">Select size...</option>
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+                <option value="extra_large">Extra Large</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Your Team <span style="color: red;">*</span></label>
+            {% if user_team %}
+                <!-- User has an assigned team -->
+                <input type="text" id="team-input" name="team" class="form-control" value="{{ user_team }}" readonly style="background-color: #e9ecef;">
+                <div style="margin-top: 5px;">
+                    <small style="color: #6c757d;">Using your assigned team: {{ user_team }}</small>
+                </div>
+            {% else %}
+                <!-- User can select or enter a team -->
+                <div class="team-input-group">
+                    <select id="team-select" class="form-control">
+                        <option value="">Select a team...</option>
+                    </select>
+                    <input type="text" id="team-input" name="team" class="form-control" placeholder="Or enter a custom team">
+                </div>
+                <div style="margin-top: 5px;">
+                    <small style="color: #6c757d;">Your team will be saved for future submissions. 
+                    <a href="#" id="clear-saved-data" style="color: #dc3545;">Clear saved team</a></small>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="needed_by">Needed By (Optional)</label>
+            <input type="date" id="needed_by" name="needed_by" class="form-control">
+        </div>
+        
+        <!-- Bounty Section -->
+        <div class="form-group" style="margin-top: 20px;">
+            <label for="bounty" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                <span>Bounty (Optional)</span>
+                <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: normal; cursor: pointer;">
+                    <input type="checkbox" id="is_monetary" name="is_monetary" style="width: 16px; height: 16px; margin: 0;">
+                    <span style="font-size: 13px; color: #6c757d;">Monetary bounty?</span>
+                </label>
+            </label>
+            
+            <!-- Text bounty input (always visible) -->
+            <input type="text" id="bounty" name="bounty" class="form-control" 
+                   placeholder="e.g., Company swag, Lunch with leadership, Team shoutout, or leave blank if monetary only"
+                   style="margin-bottom: 12px;">
+            
+            <!-- Monetary options (conditionally visible) -->
+            <div id="monetary-options" style="display: none; padding: 12px; background: #f8f9fa; border-radius: 6px; border: 1px solid #dee2e6;">
+                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                    <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="is_expensed" name="is_expensed" style="width: 16px; height: 16px; margin: 0;">
+                        <span style="font-size: 13px;">Will be expensed</span>
+                    </label>
+                    
+                    <div id="amount-section" style="display: none; flex: 1; min-width: 200px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px; color: #495057;">$</span>
+                            <input type="number" id="amount" name="amount" class="form-control" 
+                                   placeholder="0.00" min="0" step="0.01" style="max-width: 120px; height: 32px; padding: 4px 8px;">
+                            <span id="approval-text" style="display: none; font-size: 12px; color: #856404; margin-left: 10px;">
+                                <i class="fas fa-info-circle"></i> Requires approval (>$50)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <button type="submit" class="btn btn-primary">Submit Idea</button>
+            <a href="{{ url_for('main.home') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/submit.js') }}?v={{ range(1000, 9999) | random }}"></script>
+{% endblock %}

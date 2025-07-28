@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}Email Settings - Admin{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Email Settings</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+        <a href="{{ url_for('admin.teams') }}" class="admin-nav-link">Manage Teams</a>
+        <a href="{{ url_for('admin.users') }}" class="admin-nav-link">Manage Users</a>
+        <a href="{{ url_for('admin.email_settings') }}" class="admin-nav-link active">Email Settings</a>
+        <a href="{{ url_for('admin.bulk_upload') }}" class="admin-nav-link">Bulk Upload</a>
+    </div>
+
+    <div class="email-settings-container">
+    <div class="settings-info">
+        <p>Configure SMTP settings for sending verification emails. Leave fields empty to disable email sending (verification codes will be displayed in console).</p>
+    </div>
+    
+    <form id="emailSettingsForm" class="email-settings-form">
+        <div class="form-section">
+            <h3>SMTP Server Configuration</h3>
+            
+            <div class="form-group">
+                <label for="smtpServer">SMTP Server</label>
+                <input type="text" id="smtpServer" name="smtp_server" placeholder="smtp.gmail.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="smtpPort">SMTP Port</label>
+                <input type="number" id="smtpPort" name="smtp_port" placeholder="587" value="587">
+            </div>
+            
+            <div class="form-group">
+                <label for="smtpUsername">Username</label>
+                <input type="text" id="smtpUsername" name="smtp_username" placeholder="your-email@gmail.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="smtpPassword">Password</label>
+                <input type="password" id="smtpPassword" name="smtp_password" placeholder="App-specific password">
+                <small>For Gmail, use an app-specific password</small>
+            </div>
+            
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="smtpUseTls" name="smtp_use_tls" checked>
+                    Use TLS
+                </label>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>Email Sender Information</h3>
+            
+            <div class="form-group">
+                <label for="fromEmail">From Email</label>
+                <input type="email" id="fromEmail" name="from_email" placeholder="noreply@example.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="fromName">From Name</label>
+                <input type="text" id="fromName" name="from_name" placeholder="Posting Board" value="Posting Board">
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+            <button type="button" id="testEmail" class="btn btn-secondary">Send Test Email</button>
+        </div>
+    </form>
+    
+    <div id="testEmailModal" class="modal">
+        <div class="modal-content">
+            <h3>Send Test Email</h3>
+            <form id="testEmailForm">
+                <div class="form-group">
+                    <label for="testEmailAddress">Test Email Address</label>
+                    <input type="email" id="testEmailAddress" required placeholder="test@example.com">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Send</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeTestEmailModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.email-settings-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.settings-info {
+    background: #f0f0f0;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 30px;
+}
+
+.email-settings-form {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-section {
+    margin-bottom: 30px;
+}
+
+.form-section h3 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 12px;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+}
+
+.checkbox-group input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 30px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: opacity 0.2s;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 90%;
+}
+
+.modal-content h3 {
+    margin-bottom: 20px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadEmailSettings();
+    
+    document.getElementById('emailSettingsForm').addEventListener('submit', saveEmailSettings);
+    document.getElementById('testEmail').addEventListener('click', showTestEmailModal);
+    document.getElementById('testEmailForm').addEventListener('submit', sendTestEmail);
+});
+
+async function loadEmailSettings() {
+    try {
+        const response = await fetch('/api/admin/email-settings');
+        const data = await response.json();
+        
+        if (data.settings) {
+            document.getElementById('smtpServer').value = data.settings.smtp_server || '';
+            document.getElementById('smtpPort').value = data.settings.smtp_port || 587;
+            document.getElementById('smtpUsername').value = data.settings.smtp_username || '';
+            document.getElementById('smtpPassword').value = data.settings.smtp_password || '';
+            document.getElementById('smtpUseTls').checked = data.settings.smtp_use_tls !== false;
+            document.getElementById('fromEmail').value = data.settings.from_email || '';
+            document.getElementById('fromName').value = data.settings.from_name || 'Posting Board';
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+async function saveEmailSettings(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const settings = {
+        smtp_server: formData.get('smtp_server'),
+        smtp_port: parseInt(formData.get('smtp_port')),
+        smtp_username: formData.get('smtp_username'),
+        smtp_password: formData.get('smtp_password'),
+        smtp_use_tls: formData.get('smtp_use_tls') === 'on',
+        from_email: formData.get('from_email'),
+        from_name: formData.get('from_name')
+    };
+    
+    try {
+        const response = await fetch('/api/admin/email-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Email settings saved successfully!');
+        } else {
+            alert('Error saving settings: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        alert('Error saving settings');
+    }
+}
+
+function showTestEmailModal() {
+    document.getElementById('testEmailModal').style.display = 'flex';
+}
+
+function closeTestEmailModal() {
+    document.getElementById('testEmailModal').style.display = 'none';
+}
+
+async function sendTestEmail(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('testEmailAddress').value;
+    
+    try {
+        const response = await fetch('/api/admin/test-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Test email sent successfully!');
+            closeTestEmailModal();
+        } else {
+            alert('Error sending test email: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error sending test email:', error);
+        alert('Error sending test email');
+    }
+}
+</script>
+{% endblock %}
