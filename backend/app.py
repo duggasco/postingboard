@@ -50,6 +50,20 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(auth)
     
+    # Add test auth route for documentation (development only)
+    if app.config.get('ENV') == 'development' or os.environ.get('FLASK_ENV') == 'development' or app.debug:
+        try:
+            from test_auth_route import test_auth_bp
+            app.register_blueprint(test_auth_bp)
+        except ImportError:
+            pass
+        
+        try:
+            from blueprints.test_routes import test_bp
+            app.register_blueprint(test_bp)
+        except ImportError:
+            pass
+    
     # Make git commit hash available to all templates
     @app.context_processor
     def inject_git_commit():
