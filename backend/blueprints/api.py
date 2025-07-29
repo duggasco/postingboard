@@ -1243,7 +1243,7 @@ def get_team_member(email):
             'skills': [{'uuid': s.uuid, 'name': s.name} for s in member.skills],
             'is_verified': member.is_verified,
             'created_at': member.created_at.isoformat() if member.created_at else None,
-            'last_verified_at': member.last_verified_at.isoformat() if member.last_verified_at else None,
+            'last_verified_at': member.verified_at.isoformat() if member.verified_at else None,
             'submitted_ideas_count': submitted_count,
             'claimed_ideas_count': claimed_count,
             'complete_submitted_count': complete_submitted,
@@ -2238,7 +2238,7 @@ def get_manager_requests():
                 'name': manager.name,
                 'email': manager.email,
                 'managed_team': manager.managed_team.name if manager.managed_team else 'N/A',
-                'last_updated': manager.last_verified_at.strftime('%Y-%m-%d') if manager.last_verified_at else None
+                'last_updated': manager.verified_at.strftime('%Y-%m-%d') if manager.verified_at else None
             })
         
         return jsonify({
@@ -3348,7 +3348,7 @@ def get_admin_users():
                 'pending_claims_count': pending_claims,
                 'has_pending_manager_request': pending_manager_request is not None,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
-                'last_verified_at': user.last_verified_at.isoformat() if user.last_verified_at else None
+                'last_verified_at': user.verified_at.isoformat() if user.verified_at else None
             }
             
             # Add pending manager request details if exists

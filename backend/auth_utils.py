@@ -88,7 +88,7 @@ def verify_code(db: Session, email: str, code: str):
     # Update user profile
     user = db.query(UserProfile).filter_by(email=email).first()
     user.is_verified = True
-    user.last_verified_at = datetime.utcnow()
+    user.verified_at = datetime.utcnow()
     
     db.commit()
     
