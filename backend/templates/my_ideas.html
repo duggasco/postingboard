@@ -297,7 +297,7 @@ async function approveClaimRequest(approvalId) {
             alert(result.message || 'Claim request approved!');
             loadMyIdeas(); // Reload to update the display
         } else {
-            alert('Failed to approve claim request: ' + result.error);
+            alert('Failed to approve claim request: ' + (result.message || result.error || 'Unknown error'));
         }
     } catch (error) {
         console.error('Error approving claim request:', error);
@@ -322,7 +322,7 @@ async function denyClaimRequest(approvalId) {
             alert(result.message || 'Claim request denied.');
             loadMyIdeas(); // Reload to update the display
         } else {
-            alert('Failed to deny claim request: ' + result.error);
+            alert('Failed to deny claim request: ' + (result.message || result.error || 'Unknown error'));
         }
     } catch (error) {
         console.error('Error denying claim request:', error);
