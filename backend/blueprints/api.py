@@ -1147,7 +1147,7 @@ def get_admin_notifications():
     finally:
         db.close()
 
-@api_bp.route('/admin/sync-notifications', methods=['POST'])
+@api_bp.route('/sync-admin-notifications', methods=['POST'])
 def sync_admin_notifications():
     """Create individual notifications for all pending admin actions."""
     if not session.get('is_admin'):

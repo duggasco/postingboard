@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Settings - Citizen Developer Posting Board{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 class="page-title" style="margin: 0;">Admin Settings</h2>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary">Logout</a>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">Dashboard</a>
+        <a href="{{ url_for('admin.ideas') }}" class="admin-nav-link">Manage Ideas</a>
+        <a href="{{ url_for('admin.skills') }}" class="admin-nav-link">Manage Skills</a>
+        <a href="{{ url_for('admin.teams') }}" class="admin-nav-link">Manage Teams</a>
+        <a href="{{ url_for('admin.users') }}" class="admin-nav-link">Manage Users</a>
+        <a href="{{ url_for('admin.bulk_upload') }}" class="admin-nav-link">Bulk Upload</a>
+        <a href="{{ url_for('admin.settings') }}" class="admin-nav-link active">Settings</a>
+    </div>
+    
+    <div class="settings-section">
+        <h3>Notification Management</h3>
+        <div class="card" style="padding: 20px; margin-top: 20px;">
+            <h4>Sync Admin Notifications</h4>
+            <p style="color: #666; margin-bottom: 20px;">
+                This will create individual bell notifications for all pending admin actions 
+                (team approvals, claim approvals, manager requests, etc.) that don't already have notifications.
+            </p>
+            <button id="sync-notifications-btn" class="btn btn-primary" onclick="syncNotifications()">
+                Sync Notifications
+            </button>
+            <div id="sync-result" style="margin-top: 15px; display: none;"></div>
+        </div>
+    </div>
+    
+    <div class="settings-section" style="margin-top: 40px;">
+        <h3>Email Configuration</h3>
+        <div class="card" style="padding: 20px; margin-top: 20px;">
+            <p style="color: #666; margin-bottom: 20px;">
+                Configure SMTP settings for sending verification emails. Leave fields empty to disable email sending 
+                (verification codes will be displayed in console).
+            </p>
+            
+            <form id="emailSettingsForm">
+                <div class="form-section">
+                    <h4>SMTP Server Configuration</h4>
+                    
+                    <div class="form-group">
+                        <label for="smtpServer">SMTP Server</label>
+                        <input type="text" id="smtpServer" name="smtp_server" placeholder="smtp.gmail.com">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="smtpPort">SMTP Port</label>
+                            <input type="number" id="smtpPort" name="smtp_port" placeholder="587" value="587">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="smtpUseTls">
+                                <input type="checkbox" id="smtpUseTls" name="smtp_use_tls" checked>
+                                Use TLS
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="smtpUsername">Username</label>
+                        <input type="text" id="smtpUsername" name="smtp_username" placeholder="your-email@gmail.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="smtpPassword">Password</label>
+                        <input type="password" id="smtpPassword" name="smtp_password" placeholder="App-specific password">
+                        <small>For Gmail, use an app-specific password</small>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4>Email Sender Information</h4>
+                    
+                    <div class="form-group">
+                        <label for="fromEmail">From Email</label>
+                        <input type="email" id="fromEmail" name="from_email" placeholder="noreply@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="fromName">From Name</label>
+                        <input type="text" id="fromName" name="from_name" placeholder="Posting Board" value="Posting Board">
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Email Settings</button>
+                    <button type="button" id="testEmail" class="btn btn-secondary">Send Test Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="settings-section" style="margin-top: 40px;">
+        <h3>System Information</h3>
+        <div class="card" style="padding: 20px; margin-top: 20px;">
+            <table class="info-table">
+                <tr>
+                    <td><strong>Version:</strong></td>
+                    <td>{{ git_commit or 'unknown' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Admin Email:</strong></td>
+                    <td>admin@system.local</td>
+                </tr>
+                <tr>
+                    <td><strong>Session Timeout:</strong></td>
+                    <td>7 days</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Test Email Modal -->
+<div id="testEmailModal" class="modal">
+    <div class="modal-content">
+        <h3>Send Test Email</h3>
+        <form id="testEmailForm">
+            <div class="form-group">
+                <label for="testEmailAddress">Test Email Address</label>
+                <input type="email" id="testEmailAddress" required placeholder="test@example.com">
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Send</button>
+                <button type="button" class="btn btn-secondary" onclick="closeTestEmailModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.settings-section {
+    margin-bottom: 40px;
+}
+
+.settings-section h3 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.25rem;
+}
+
+.settings-section h4 {
+    color: #444;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.info-table td {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.info-table tr:last-child td {
+    border-bottom: none;
+}
+
+#sync-result {
+    padding: 10px;
+    border-radius: 4px;
+}
+
+#sync-result.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+#sync-result.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+#sync-result.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+/* Email Settings Styles */
+.form-section {
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #555;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 12px;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 90%;
+}
+
+.modal-content h3 {
+    margin-bottom: 20px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+</style>
+
+<script>
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadEmailSettings();
+    
+    document.getElementById('emailSettingsForm').addEventListener('submit', saveEmailSettings);
+    document.getElementById('testEmail').addEventListener('click', showTestEmailModal);
+    document.getElementById('testEmailForm').addEventListener('submit', sendTestEmail);
+});
+
+// Notification sync functionality
+function syncNotifications() {
+    const btn = document.getElementById('sync-notifications-btn');
+    const resultDiv = document.getElementById('sync-result');
+    
+    // Disable button and show loading state
+    btn.disabled = true;
+    btn.textContent = 'Syncing...';
+    resultDiv.style.display = 'none';
+    
+    fetch('/api/sync-admin-notifications', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        resultDiv.style.display = 'block';
+        
+        if (data.success) {
+            resultDiv.className = 'success';
+            resultDiv.innerHTML = `
+                <strong>Success!</strong> ${data.message}
+                <br>
+                <small>Notifications have been created for all pending admin actions.</small>
+            `;
+        } else {
+            resultDiv.className = 'error';
+            resultDiv.innerHTML = `
+                <strong>Error:</strong> ${data.error || 'Failed to sync notifications'}
+            `;
+        }
+    })
+    .catch(error => {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'error';
+        resultDiv.innerHTML = `
+            <strong>Error:</strong> Failed to sync notifications. Please try again.
+            <br>
+            <small>${error.message}</small>
+        `;
+    })
+    .finally(() => {
+        // Re-enable button
+        btn.disabled = false;
+        btn.textContent = 'Sync Notifications';
+        
+        // Hide result after 10 seconds
+        setTimeout(() => {
+            resultDiv.style.display = 'none';
+        }, 10000);
+    });
+}
+
+// Email settings functionality
+async function loadEmailSettings() {
+    try {
+        const response = await fetch('/api/admin/email-settings');
+        const data = await response.json();
+        
+        if (data.settings) {
+            document.getElementById('smtpServer').value = data.settings.smtp_server || '';
+            document.getElementById('smtpPort').value = data.settings.smtp_port || 587;
+            document.getElementById('smtpUsername').value = data.settings.smtp_username || '';
+            document.getElementById('smtpPassword').value = data.settings.smtp_password || '';
+            document.getElementById('smtpUseTls').checked = data.settings.smtp_use_tls !== false;
+            document.getElementById('fromEmail').value = data.settings.from_email || '';
+            document.getElementById('fromName').value = data.settings.from_name || 'Posting Board';
+        }
+    } catch (error) {
+        console.error('Error loading email settings:', error);
+    }
+}
+
+async function saveEmailSettings(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const settings = {
+        smtp_server: formData.get('smtp_server'),
+        smtp_port: parseInt(formData.get('smtp_port')),
+        smtp_username: formData.get('smtp_username'),
+        smtp_password: formData.get('smtp_password'),
+        smtp_use_tls: formData.get('smtp_use_tls') === 'on',
+        from_email: formData.get('from_email'),
+        from_name: formData.get('from_name')
+    };
+    
+    try {
+        const response = await fetch('/api/admin/email-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Email settings saved successfully!');
+        } else {
+            alert('Error saving settings: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        alert('Error saving settings');
+    }
+}
+
+function showTestEmailModal() {
+    document.getElementById('testEmailModal').style.display = 'flex';
+}
+
+function closeTestEmailModal() {
+    document.getElementById('testEmailModal').style.display = 'none';
+}
+
+async function sendTestEmail(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('testEmailAddress').value;
+    
+    try {
+        const response = await fetch('/api/admin/test-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Test email sent successfully!');
+            closeTestEmailModal();
+        } else {
+            alert('Error sending test email: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error sending test email:', error);
+        alert('Error sending test email');
+    }
+}
+</script>
+{% endblock %}

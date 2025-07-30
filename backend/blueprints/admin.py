@@ -128,8 +128,8 @@ def teams():
 @admin_bp.route('/email-settings')
 @admin_required
 def email_settings():
-    """Manage email settings page."""
-    return render_template('admin/email_settings.html')
+    """Redirect to the new settings page."""
+    return redirect(url_for('admin.settings'))
 
 @admin_bp.route('/bulk-upload')
 @admin_required
@@ -156,3 +156,9 @@ def download_template(template_type):
     else:
         flash('Invalid template type', 'error')
         return redirect(url_for('admin.bulk_upload'))
+
+@admin_bp.route('/settings')
+@admin_required
+def settings():
+    """Admin settings page."""
+    return render_template('admin/settings.html')
