@@ -184,6 +184,22 @@
                     <option value="complete">Complete</option>
                 </select>
             </div>
+            <div class="form-group" id="substatus-group" style="display: none;">
+                <label for="edit-substatus">Sub-Status</label>
+                <select id="edit-substatus" name="substatus" class="form-control">
+                    <option value="">None</option>
+                    <option value="planning">Planning</option>
+                    <option value="in_development">In Development</option>
+                    <option value="testing">Testing</option>
+                    <option value="awaiting_deployment">Awaiting Deployment</option>
+                    <option value="deployed">Deployed</option>
+                    <option value="verified">Verified</option>
+                    <option value="on_hold">On Hold</option>
+                    <option value="blocked">Blocked</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="rolled_back">Rolled Back</option>
+                </select>
+            </div>
             <div class="form-group">
                 <label for="edit-bounty">Bounty</label>
                 <input type="text" id="edit-bounty" name="bounty" class="form-control">
@@ -513,10 +529,16 @@
     // Start initialization based on document state
     if (document.readyState === 'loading') {
         console.log('Document still loading, waiting for DOMContentLoaded');
-        document.addEventListener('DOMContentLoaded', initStats);
+        document.addEventListener('DOMContentLoaded', function() {
+            initStats();
+            // Add event listener for status change
+            document.getElementById('edit-status').addEventListener('change', toggleSubstatusField);
+        });
     } else {
         console.log('Document already loaded, initializing directly');
         initStats();
+        // Add event listener for status change
+        document.getElementById('edit-status').addEventListener('change', toggleSubstatusField);
     }
     
     // Refresh dashboard notifications periodically (every 30 seconds)
@@ -755,6 +777,11 @@ function editIdea(ideaId) {
     document.getElementById('edit-priority').value = idea.priority;
     document.getElementById('edit-size').value = idea.size;
     document.getElementById('edit-status').value = idea.status;
+    
+    // Handle substatus
+    toggleSubstatusField(); // Show/hide based on status
+    document.getElementById('edit-substatus').value = idea.sub_status || '';
+    
     document.getElementById('edit-bounty').value = idea.bounty || '';
     document.getElementById('edit-email').value = idea.email;
     
@@ -887,6 +914,13 @@ function checkApprovalRequired() {
     approvalNote.style.display = amount > 50 ? 'block' : 'none';
 }
 
+function toggleSubstatusField() {
+    const status = document.getElementById('edit-status').value;
+    const substatusGroup = document.getElementById('substatus-group');
+    // Show substatus field only for claimed status
+    substatusGroup.style.display = status === 'claimed' ? 'block' : 'none';
+}
+
 async function approveBounty() {
     const ideaId = document.getElementById('edit-idea-id').value;
     
@@ -926,6 +960,7 @@ document.getElementById('edit-idea-form').addEventListener('submit', async (e) =
         priority: formData.get('priority'),
         size: formData.get('size'),
         status: formData.get('status'),
+        sub_status: formData.get('substatus'),
         bounty: formData.get('bounty'),
         email: formData.get('email'),
         skill_ids: [],

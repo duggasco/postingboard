@@ -230,6 +230,15 @@
                 </div>
                 {% endif %}
             </div>
+            {% elif has_tab_access and idea.status.value == 'claimed' %}
+            <!-- Show basic overview for newly claimed ideas without sub_status -->
+            <div style="margin-bottom: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #4a90e2;">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">Development Progress</h3>
+                <div style="margin-bottom: 20px;">
+                    <p style="color: #6c757d; font-style: italic;">This idea has been claimed and is ready to begin development.</p>
+                    <p style="margin-top: 10px;">The development team should update the progress status to track the project through its lifecycle.</p>
+                </div>
+            </div>
             {% endif %}
             
             {% if not has_tab_access %}

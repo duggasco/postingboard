@@ -749,6 +749,15 @@ def update_idea(identifier):
                     )
                     db.add(completion_notification)
                     
+        if 'sub_status' in data:
+            if data['sub_status']:
+                from models import SubStatus
+                idea.sub_status = SubStatus(data['sub_status'])
+                idea.sub_status_updated_at = datetime.utcnow()
+                idea.sub_status_updated_by = session.get('user_email', 'admin')
+            else:
+                idea.sub_status = None
+                
         if 'email' in data:
             idea.email = data['email']
         if 'description' in data:
@@ -2516,6 +2525,11 @@ def approve_claim(identifier):
             
             # Update idea status
             idea.status = IdeaStatus.claimed
+            # Set initial sub_status to planning
+            from models import SubStatus
+            idea.sub_status = SubStatus.planning
+            idea.sub_status_updated_at = datetime.now()
+            idea.sub_status_updated_by = approval.claimer_email
             
             # Update approval status
             approval.status = 'approved'
