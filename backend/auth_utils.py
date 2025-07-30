@@ -164,6 +164,18 @@ def update_user_profile(db: Session, email: str, name: str = None, role: str = N
                 status='pending'
             )
             db.add(manager_request)
+            
+            # Create notification for admin
+            from models import Notification
+            team = db.query(Team).filter_by(uuid=managed_team_uuid).first()
+            notification = Notification(
+                user_email='admin@system.local',
+                type='manager_request_approval',
+                title='Manager request approval required',
+                message=f'{user.name or email} wants to manage team "{team.name if team else "Unknown"}"',
+                related_user_email=email
+            )
+            db.add(notification)
         
         # Don't set managed_team_uuid directly when creating request
     elif managed_team_uuid is not None and not create_manager_request:

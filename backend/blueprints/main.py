@@ -312,6 +312,17 @@ def claim_idea(identifier):
         )
         db.add(owner_notification)
         
+        # Notify admin about the new claim request
+        admin_notification = Notification(
+            user_email='admin@system.local',
+            type='claim_approval_required',
+            title='Claim approval required',
+            message=f'{claim_approval.claimer_name} is requesting to claim "{idea.title}"',
+            idea_uuid=idea.uuid,
+            related_user_email=claim_approval.claimer_email
+        )
+        db.add(admin_notification)
+        
         # If claimer has a manager, notify them too
         if user_profile and user_profile.team_uuid:
             # Get team manager

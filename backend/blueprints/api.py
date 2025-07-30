@@ -1147,6 +1147,95 @@ def get_admin_notifications():
     finally:
         db.close()
 
+@api_bp.route('/admin/sync-notifications', methods=['POST'])
+def sync_admin_notifications():
+    """Create individual notifications for all pending admin actions."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        from models import ManagerRequest, Team, ClaimApproval, Notification
+        created_count = 0
+        
+        # Create notifications for pending team approvals
+        pending_teams = db.query(Team).filter_by(is_approved=False).all()
+        for team in pending_teams:
+            # Check if notification already exists
+            existing = db.query(Notification).filter_by(
+                user_email='admin@system.local',
+                type='team_approval_required',
+                related_user_email=team.uuid  # Using team UUID as related reference
+            ).first()
+            
+            if not existing:
+                notification = Notification(
+                    user_email='admin@system.local',
+                    type='team_approval_required',
+                    title='Team approval required',
+                    message=f'Team "{team.name}" requires approval',
+                    related_user_email=team.uuid  # Store team UUID for reference
+                )
+                db.add(notification)
+                created_count += 1
+        
+        # Create notifications for pending claim approvals
+        pending_claims = db.query(ClaimApproval).filter_by(status='pending').all()
+        for claim in pending_claims:
+            # Check if notification already exists
+            existing = db.query(Notification).filter_by(
+                user_email='admin@system.local',
+                type='claim_approval_required',
+                idea_uuid=claim.idea_uuid,
+                related_user_email=claim.claimer_email
+            ).first()
+            
+            if not existing:
+                notification = Notification(
+                    user_email='admin@system.local',
+                    type='claim_approval_required',
+                    title='Claim approval required',
+                    message=f'{claim.claimer_name} is requesting to claim "{claim.idea.title}"',
+                    idea_uuid=claim.idea_uuid,
+                    related_user_email=claim.claimer_email
+                )
+                db.add(notification)
+                created_count += 1
+        
+        # Create notifications for pending manager requests
+        pending_manager_requests = db.query(ManagerRequest).filter_by(status='pending').all()
+        for request in pending_manager_requests:
+            # Check if notification already exists
+            existing = db.query(Notification).filter_by(
+                user_email='admin@system.local',
+                type='manager_request_approval',
+                related_user_email=request.user_email
+            ).first()
+            
+            if not existing:
+                notification = Notification(
+                    user_email='admin@system.local',
+                    type='manager_request_approval',
+                    title='Manager request approval required',
+                    message=f'{request.user.name or request.user_email} wants to manage team "{request.team.name}"',
+                    related_user_email=request.user_email
+                )
+                db.add(notification)
+                created_count += 1
+        
+        db.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Created {created_count} new notifications'
+        })
+    except Exception as e:
+        db.rollback()
+        print(f"Error syncing admin notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
 @api_bp.route('/user/notifications')
 def get_user_notifications():
     """Get notifications for the current user."""
