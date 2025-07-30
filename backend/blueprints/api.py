@@ -946,7 +946,7 @@ def admin_assign_idea(identifier):
             idea_uuid=idea.uuid,
             activity_type=ActivityType.assigned,
             actor_email=session.get('user_email', 'admin@system.local'),
-            details=f'Assigned to {assignee.name or assignee_email}'
+            description=f'Assigned to {assignee.name or assignee_email}'
         )
         db.add(activity)
         
