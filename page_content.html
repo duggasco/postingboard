@@ -1,0 +1,937 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Ideas - Citizen Developer Posting Board</title>
+    <link rel="stylesheet" href="/static/css/styles.css?v=3618">
+    
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">Citizen Developer Posting Board</h1>
+            <ul class="nav-links">
+                <li><a href="/" class="active">All Ideas</a></li>
+                <li><a href="/my-ideas" class="">My Ideas</a></li>
+                
+                <li><a href="/submit" class="">Submit Idea</a></li>
+                
+                    <li><a href="/verify-email" class="">Login</a></li>
+                
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Notifications Panel -->
+    <div id="notifications-panel" class="notifications-panel" style="display: none;">
+        <div class="notifications-header">
+            <h3>Notifications</h3>
+            <button class="close-btn" onclick="toggleNotifications()">×</button>
+        </div>
+        <div id="notifications-list" class="notifications-list">
+            <div class="loading">Loading notifications...</div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        
+            
+        
+        
+        
+<div class="page-container">
+    <h2 class="page-title">Browse Ideas</h2>
+    
+    <div class="filters-section">
+        <div class="filter-group">
+            <label for="skill-filter">Filter by Skill:</label>
+            <select id="skill-filter" class="filter-select"><option value="">All Skills</option><option value="ce9e9c52-5c3f-4cf2-9cf0-770cd15d2924">Frontend/UI - PowerBI</option><option value="6a898738-f752-43c2-8c0d-85680768cbc4">Frontend/UI - Streamlit</option><option value="f572e0d3-a7ae-4eaf-a57a-0743888640bb">Frontend/UI - Tableau</option><option value="1660b887-a56b-49a4-b462-4653184571c4">Frontend/UI - Web</option><option value="4d201d85-8b08-48d0-8d63-04518cd1afac">Java</option><option value="ec0998a9-6274-49ea-9e9d-6f0c035ef9f2">Platform</option><option value="b52d7ec8-0d72-4404-add3-52a8b249b8da">Python</option><option value="77226159-bea1-4b74-9f56-f457caecad81">Regulatory</option><option value="95a6ae4e-a810-488d-aa3f-fffe8402a8ef">SQL/Databases</option></select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="priority-filter">Filter by Priority:</label>
+            <select id="priority-filter" class="filter-select">
+                <option value="">All</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="status-filter">Filter by Status:</label>
+            <select id="status-filter" class="filter-select">
+                <option value="">All</option>
+                <option value="open" selected="">Open</option>
+                <option value="claimed">Claimed</option>
+                <option value="complete">Complete</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="sort-by">Sort by:</label>
+            <select id="sort-by" class="filter-select">
+                <option value="date_desc">Date (Newest First)</option>
+                <option value="date_asc">Date (Oldest First)</option>
+                <option value="priority">Priority</option>
+                <option value="size">Size</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="ideas-container" class="ideas-grid">
+            <div class="idea-card" onclick="window.location.href='/idea/701d7cf6-477c-4d2a-a696-bc28dcd03e4a'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Mobile App for Trade Approvals</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-medium">Priority: medium</div>
+                    <div class="size-badge size-large">Size: large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Create a mobile application that allows managers to approve trades on the go. Must have secure authentication.
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Updated bounty text <span style="color: #28a745;">$75.00</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Bob Citizen: Jul 22, 2025</div>
+                    <div>Team: SL - QAT</div>
+                    <div>Needed by: Sep 8, 2025</div>
+                </div>
+                
+                <a href="/idea/701d7cf6-477c-4d2a-a696-bc28dcd03e4a" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/1a86ae05-b3b3-48a6-8a4a-d52ce6e6c5c9'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Data Quality Monitoring Tool</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                <div class="skills-tags"><span class="skill-tag">Java</span><span class="skill-tag">SQL/Databases</span><span class="skill-tag">Python</span></div>
+                
+                <p class="idea-description">
+                    Develop a tool to monitor data quality across all trading systems. Should flag anomalies and generate quality scores.
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Bonus consideration + conference attendance</div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Admin User: Jul 20, 2025</div>
+                    <div>Team: Cash - GPP</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/1a86ae05-b3b3-48a6-8a4a-d52ce6e6c5c9" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/7c237dae-9ce8-490b-8501-f6bd313b6957'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - July - SL - QAT</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-small">Size: small</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in July 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for July <span style="color: #28a745;">$5817.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by John Developer: Jul 19, 2025</div>
+                    <div>Team: SL - QAT</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/7c237dae-9ce8-490b-8501-f6bd313b6957" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/bb6165d9-ec12-47e6-9f4c-433603d5ef95'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - July - COO - Busi</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-low">Priority: low</div>
+                    <div class="size-badge size-large">Size: large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in July 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for July <span style="color: #28a745;">$2800.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Jul 18, 2025</div>
+                    <div>Team: COO - Business Management</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/bb6165d9-ec12-47e6-9f4c-433603d5ef95" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/08dbc4b8-e3da-44f7-b8af-6e3978d5c900'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Automated Report Generation System</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-large">Size: large</div>
+                </div>
+                
+                <div class="skills-tags"><span class="skill-tag">SQL/Databases</span><span class="skill-tag">Python</span></div>
+                
+                <p class="idea-description">
+                    Build a system that automatically generates daily trading reports from multiple data sources. Should include data validation and error handling.
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Recognition in quarterly meeting + learning opportunity <span style="color: #28a745;">$7500.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Alice Submitter: Jul 15, 2025</div>
+                    <div>Team: SL - Trading</div>
+                    <div>Needed by: Sep 23, 2025</div>
+                </div>
+                
+                <a href="/idea/08dbc4b8-e3da-44f7-b8af-6e3978d5c900" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/89c1fb1d-9161-4a97-a086-f4e0261da422'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - June - Cash - EME</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-medium">Size: medium</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in June 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for June <span style="color: #28a745;">$3000.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Admin User: Jun 30, 2025</div>
+                    <div>Team: Cash - EMEA Product Strategy</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/89c1fb1d-9161-4a97-a086-f4e0261da422" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/ac2997d6-c6de-48ea-9aac-1ba5615af8ca'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - June - Cash - PMG</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in June 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for June <span style="color: #28a745;">$5080.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Jun 29, 2025</div>
+                    <div>Team: Cash - PMG</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/ac2997d6-c6de-48ea-9aac-1ba5615af8ca" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/a67727e5-e459-46f4-b130-87ce185a99ca'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - June - SL - Produ</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-low">Priority: low</div>
+                    <div class="size-badge size-large">Size: large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in June 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for June <span style="color: #28a745;">$4000.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Jun 29, 2025</div>
+                    <div>Team: SL - Product</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/a67727e5-e459-46f4-b130-87ce185a99ca" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/b6f8ad8e-3d45-4df7-a24e-a02f9972abb9'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - June - Cash - Sal</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in June 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for June <span style="color: #28a745;">$15000.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by John Developer: Jun 15, 2025</div>
+                    <div>Team: Cash - Sales</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/b6f8ad8e-3d45-4df7-a24e-a02f9972abb9" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/b8e7eea1-b219-47d9-ab77-4b412cc9afdf'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - June - SL - Clien</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-medium">Priority: medium</div>
+                    <div class="size-badge size-small">Size: small</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in June 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for June <span style="color: #28a745;">$1185.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Jun 11, 2025</div>
+                    <div>Team: SL - Clients</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/b8e7eea1-b219-47d9-ab77-4b412cc9afdf" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/37223bd6-330d-408a-8853-5b64264831a3'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - June - SL - Tradi</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-large">Size: large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in June 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for June <span style="color: #28a745;">$5250.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Jun 9, 2025</div>
+                    <div>Team: SL - Trading</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/37223bd6-330d-408a-8853-5b64264831a3" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/bb807d47-6333-478b-af84-0b6e49c8f4e9'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - June - Cash - PMG</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-medium">Priority: medium</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in June 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for June</div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Admin User: Jun 6, 2025</div>
+                    <div>Team: Cash - PMG</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/bb807d47-6333-478b-af84-0b6e49c8f4e9" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/c944a81e-fda2-48f6-b163-28d2f61f7f78'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - May - SL - QAT</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-medium">Size: medium</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in May 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for May <span style="color: #28a745;">$4855.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by John Developer: May 30, 2025</div>
+                    <div>Team: SL - QAT</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/c944a81e-fda2-48f6-b163-28d2f61f7f78" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/57af3e73-1156-49da-aa49-2027f68016cf'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - May - Cash - Sal</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-medium">Priority: medium</div>
+                    <div class="size-badge size-medium">Size: medium</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in May 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for May <span style="color: #28a745;">$2395.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by John Developer: May 28, 2025</div>
+                    <div>Team: Cash - Sales</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/57af3e73-1156-49da-aa49-2027f68016cf" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/214c4271-96a0-4476-adcc-06b626795c36'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - May - COO - IDA</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-low">Priority: low</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in May 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for May <span style="color: #28a745;">$8000.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: May 22, 2025</div>
+                    <div>Team: COO - IDA</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/214c4271-96a0-4476-adcc-06b626795c36" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/b669ca74-16ee-4793-bb44-964e15703d10'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - May - COO - Busi</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-low">Priority: low</div>
+                    <div class="size-badge size-medium">Size: medium</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in May 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for May <span style="color: #28a745;">$1600.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Admin User: May 13, 2025</div>
+                    <div>Team: COO - Business Management</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/b669ca74-16ee-4793-bb44-964e15703d10" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/b793cad3-ca7e-4779-b634-0db237edb4b9'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - May - Cash - EME</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in May 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for May <span style="color: #28a745;">$15000.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by John Developer: May 9, 2025</div>
+                    <div>Team: Cash - EMEA Product Strategy</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/b793cad3-ca7e-4779-b634-0db237edb4b9" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/e89f55ad-21ff-4ac2-b3d5-f241a967d187'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - April - Cash - PMG</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-low">Priority: low</div>
+                    <div class="size-badge size-small">Size: small</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in April 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for April <span style="color: #28a745;">$4746.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Apr 30, 2025</div>
+                    <div>Team: Cash - PMG</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/e89f55ad-21ff-4ac2-b3d5-f241a967d187" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/a1f1e756-3fe1-419d-bab8-0c465987b18e'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - April - COO - IDA</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-medium">Size: medium</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in April 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for April <span style="color: #28a745;">$4837.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Apr 21, 2025</div>
+                    <div>Team: COO - IDA</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/a1f1e756-3fe1-419d-bab8-0c465987b18e" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/66ead65c-c8b5-47d0-810e-1c49e2070dbd'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - April - Cash - EME</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-medium">Priority: medium</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in April 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for April</div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Admin User: Apr 16, 2025</div>
+                    <div>Team: Cash - EMEA Product Strategy</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/66ead65c-c8b5-47d0-810e-1c49e2070dbd" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/8b4c3124-74ff-40c7-bee1-193cc0568e68'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - March - Cash - US </h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-low">Priority: low</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in March 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for March <span style="color: #28a745;">$6000.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Mar 29, 2025</div>
+                    <div>Team: Cash - US Product Strategy</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/8b4c3124-74ff-40c7-bee1-193cc0568e68" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/e368151e-a313-4ceb-977e-501ae334ec33'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - March - Cash - GPP</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-small">Size: small</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in March 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for March <span style="color: #28a745;">$375.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Admin User: Mar 26, 2025</div>
+                    <div>Team: Cash - GPP</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/e368151e-a313-4ceb-977e-501ae334ec33" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/3c6f71f2-3773-4de5-b612-570dfba58ed1'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - March - Cash - US </h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-low">Priority: low</div>
+                    <div class="size-badge size-medium">Size: medium</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in March 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for March <span style="color: #28a745;">$4527.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Mar 17, 2025</div>
+                    <div>Team: Cash - US Product Strategy</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/3c6f71f2-3773-4de5-b612-570dfba58ed1" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/b532de22-a696-4cd5-8251-e6206f1f40ea'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - March - SL - Produ</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-medium">Priority: medium</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in March 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for March <span style="color: #28a745;">$1399.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by John Developer: Mar 15, 2025</div>
+                    <div>Team: SL - Product</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/b532de22-a696-4cd5-8251-e6206f1f40ea" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/3cdb269e-68cd-4550-aa0a-9091efa4e9f2'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - March - SL - Tradi</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-small">Size: small</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in March 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for March <span style="color: #28a745;">$750.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by John Developer: Mar 5, 2025</div>
+                    <div>Team: SL - Trading</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/3cdb269e-68cd-4550-aa0a-9091efa4e9f2" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/9b004901-090f-4b3c-a1d5-d3a4aa37b4eb'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - February - SL - Clien</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-medium">Priority: medium</div>
+                    <div class="size-badge size-large">Size: large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in February 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for February <span style="color: #28a745;">$3500.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Feb 28, 2025</div>
+                    <div>Team: SL - Clients</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/9b004901-090f-4b3c-a1d5-d3a4aa37b4eb" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/ab27e6c0-2fa4-4116-aac6-24a571ce5393'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - February - SL - Produ</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-low">Priority: low</div>
+                    <div class="size-badge size-small">Size: small</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in February 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for February <span style="color: #28a745;">$400.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span> <span style="color: #856404; font-size: 9px;">(pending approval)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Admin User: Feb 24, 2025</div>
+                    <div>Team: SL - Product</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/ab27e6c0-2fa4-4116-aac6-24a571ce5393" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/90f0cbb7-c058-486c-93af-de5018c1558f'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - February - Cash - Sal</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-low">Priority: low</div>
+                    <div class="size-badge size-extra_large">Size: extra large</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in February 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for February</div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by Sarah Manager: Feb 1, 2025</div>
+                    <div>Team: Cash - Sales</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/90f0cbb7-c058-486c-93af-de5018c1558f" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        
+            <div class="idea-card" onclick="window.location.href='/idea/91292d7f-11bc-4dd8-8bbd-9f6a2981fbfc'">
+                <div class="idea-header">
+                    <h3 class="idea-title">Test Idea - February - SL - Tradi</h3>
+                    <span class="status-badge status-open">OPEN</span>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="priority-badge priority-high">Priority: high</div>
+                    <div class="size-badge size-medium">Size: medium</div>
+                </div>
+                
+                
+                
+                <p class="idea-description">
+                    Test idea created for spending analytics in February 2025
+                </p>
+                
+                <div class="bounty"><span>Bounty: </span>Test bounty for February <span style="color: #28a745;">$1500.00</span> <span style="color: #6c757d; font-size: 9px;">(expensed)</span></div>
+                
+                
+                <div class="idea-footer">
+                    <div>Submitted by John Developer: Feb 1, 2025</div>
+                    <div>Team: SL - Trading</div>
+                    <div>Needed by: Oct 23, 2025</div>
+                </div>
+                
+                <a href="/idea/91292d7f-11bc-4dd8-8bbd-9f6a2981fbfc" class="view-details-link" onclick="event.stopPropagation()">View Details →</a>
+            </div>
+        </div>
+</div>
+
+    </main>
+
+    <script src="/static/js/main.js?v=6878"></script>
+    
+<script src="/static/js/home.js?v=7272"></script>
+
+    
+    <!-- Version indicator -->
+    <a href="/admin/" class="version-indicator" title="Admin Portal">
+        v.1be27eb
+    </a>
+
+</body></html>

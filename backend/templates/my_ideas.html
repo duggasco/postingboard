@@ -232,7 +232,8 @@ function createIdeaCard(idea) {
             </div>
             ${idea.claim_info ? `
                 <div class="claim-info">
-                    Claimed by ${utils.escapeHtml(idea.claim_info.name)} on ${utils.formatDate(idea.claim_info.date)}
+                    Claimed on ${utils.formatDate(idea.claim_info.claim_date)}
+                    ${idea.claim_info.claimer_team ? ` • Team: ${utils.escapeHtml(idea.claim_info.claimer_team)}` : ''}
                 </div>
             ` : ''}
         </div>

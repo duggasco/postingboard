@@ -2018,9 +2018,14 @@ def get_my_ideas():
                     Claim.claimer_email == user_email
                 ).first()
                 if claim:
+                    # Get the claimer's profile to get their team
+                    claimer_profile = db.query(UserProfile).filter(
+                        UserProfile.email == claim.claimer_email
+                    ).first()
+                    
                     claim_info = {
                         'claim_date': claim.claim_date.strftime('%Y-%m-%d'),
-                        'claimer_team': claim.claimer_team
+                        'claimer_team': claimer_profile.team.name if claimer_profile and claimer_profile.team else None
                     }
             
             idea_dict = {

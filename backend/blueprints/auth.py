@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from database import get_session
 from auth_utils import create_verification_code, verify_code, get_user_profile, update_user_profile
 from decorators import update_session_from_db
-from models import Skill, Team
+from models import Skill, Team, Notification
 from uuid_utils import is_valid_uuid
 
 auth = Blueprint('auth', __name__)
@@ -158,13 +158,16 @@ def update_profile():
                 db.commit()
                 team_uuid = new_team.uuid
                 
+                # Get current user profile for notification
+                current_user = get_user_profile(db, session['user_email'])
+                
                 # Create notification for admins about new team request
                 admin_notification = Notification(
                     user_email='admin@system.local',  # System notification for all admins
                     type='team_approval_request',
                     title='New team approval request',
-                    message=f'User {user.name or user.email} has requested to create team "{custom_team}"',
-                    related_user_email=user.email
+                    message=f'User {current_user.name if current_user else session["user_email"]} has requested to create team "{custom_team}"',
+                    related_user_email=session['user_email']
                 )
                 db.add(admin_notification)
                 db.commit()
