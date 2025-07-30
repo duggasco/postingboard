@@ -170,6 +170,13 @@
                 <label for="edit-email">Submitter Email</label>
                 <input type="email" id="edit-email" name="email" class="form-control" required>
             </div>
+            <div class="form-group" id="assign-group">
+                <label for="edit-assignee">Assign To Developer</label>
+                <select id="edit-assignee" name="assignee" class="form-control">
+                    <option value="">-- Not Assigned --</option>
+                </select>
+                <small class="text-muted">Assigning will immediately claim the idea for this developer</small>
+            </div>
             <div class="form-group">
                 <label>Skills</label>
                 <div id="edit-skills-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;"></div>
@@ -216,6 +223,17 @@ let allIdeas = [];
 let filteredIdeas = [];
 let teams = [];
 let skills = [];
+let developers = [];
+
+async function loadDevelopers() {
+    try {
+        const response = await fetch('/api/developers');
+        const data = await response.json();
+        developers = data;
+    } catch (error) {
+        console.error('Error loading developers:', error);
+    }
+}
 
 async function loadIdeas() {
     try {
@@ -437,9 +455,10 @@ async function editIdea(ideaId) {
     const idea = allIdeas.find(i => utils.getUuid(i) === ideaId);
     if (!idea) return;
     
-    // Ensure teams and skills are loaded
+    // Ensure teams, skills, and developers are loaded
     if (teams.length === 0) await loadTeams();
     if (skills.length === 0) await loadSkills();
+    if (developers.length === 0) await loadDevelopers();
     
     // Populate form
     document.getElementById('edit-idea-id').value = utils.getUuid(idea);
@@ -525,6 +544,24 @@ async function editIdea(ideaId) {
     document.getElementById('info-assigned').textContent = idea.assigned_to_email || 'None';
     document.getElementById('info-assigned-by').textContent = idea.assigned_by || '-';
     
+    // Populate assignee dropdown
+    const assigneeSelect = document.getElementById('edit-assignee');
+    assigneeSelect.innerHTML = '<option value="">-- Not Assigned --</option>';
+    
+    developers.forEach(dev => {
+        const option = document.createElement('option');
+        option.value = dev.email;
+        option.textContent = `${dev.name} (${dev.email})${dev.team ? ' - ' + dev.team : ''}`;
+        
+        // Check if this developer is currently assigned or has claimed the idea
+        if (idea.assigned_to_email === dev.email || 
+            (idea.claims && idea.claims.some(claim => claim.claimer_email === dev.email))) {
+            option.selected = true;
+        }
+        
+        assigneeSelect.appendChild(option);
+    });
+    
     // Populate skills checkboxes
     populateSkillsCheckboxes(idea.skills || []);
     
@@ -600,10 +637,16 @@ async function saveIdea(event) {
         amount: document.getElementById('edit-is-monetary').checked ? (parseFloat(document.getElementById('edit-amount').value) || 0.0) : 0.0
     };
     
+    // Get the assignee if changed
+    const assigneeEmail = formData.get('assignee');
+    const idea = allIdeas.find(i => utils.getUuid(i) === ideaId);
+    const currentAssignee = idea?.assigned_to_email || (idea?.claims && idea.claims.length > 0 ? idea.claims[0].claimer_email : null);
+    
     // Debug log the data being sent
     console.log('Updating idea with data:', data);
     
     try {
+        // First update the idea
         const response = await fetch(`/api/ideas/${ideaId}`, {
             method: 'PUT',
             headers: {
@@ -615,6 +658,38 @@ async function saveIdea(event) {
         const result = await response.json();
         
         if (result.success) {
+            // Then handle assignment if changed
+            if (assigneeEmail !== currentAssignee) {
+                if (assigneeEmail) {
+                    // Assign to new developer
+                    const assignResponse = await fetch(`/api/ideas/${ideaId}/assign`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ assignee_email: assigneeEmail })
+                    });
+                    
+                    const assignResult = await assignResponse.json();
+                    if (!assignResult.success) {
+                        alert('Failed to assign idea: ' + assignResult.message);
+                    }
+                } else if (currentAssignee) {
+                    // Unassign (unclaim) if previously assigned
+                    const unclaimResponse = await fetch(`/api/ideas/${ideaId}/unclaim`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const unclaimResult = await unclaimResponse.json();
+                    if (!unclaimResult.success) {
+                        alert('Failed to unclaim idea: ' + unclaimResult.message);
+                    }
+                }
+            }
+            
             alert('Idea updated successfully!');
             closeModal();
             loadIdeas();

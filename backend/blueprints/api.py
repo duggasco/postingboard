@@ -865,6 +865,131 @@ def unclaim_idea(identifier):
     finally:
         db.close()
 
+@api_bp.route('/ideas/<identifier>/assign', methods=['POST'])
+def assign_idea(identifier):
+    """Assign an idea to a developer (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    if not is_valid_uuid(identifier):
+        return jsonify({'error': 'Invalid identifier'}), 400
+    
+    db = get_session()
+    try:
+        idea = get_by_identifier(Idea, identifier, db)
+        if not idea:
+            return jsonify({'success': False, 'message': 'Idea not found'}), 404
+        
+        # Get assignee email from request
+        data = request.json
+        assignee_email = data.get('assignee_email')
+        
+        if not assignee_email:
+            return jsonify({'success': False, 'message': 'Assignee email is required'}), 400
+        
+        # Verify assignee exists and has appropriate role
+        assignee = db.query(UserProfile).filter_by(email=assignee_email).first()
+        if not assignee:
+            return jsonify({'success': False, 'message': 'Assignee not found'}), 404
+        
+        if assignee.role not in ['developer', 'citizen_developer']:
+            return jsonify({'success': False, 'message': 'User must be a developer to be assigned ideas'}), 400
+        
+        # Remove any existing claims
+        db.query(Claim).filter(Claim.idea_uuid == idea.uuid).delete()
+        
+        # Create new claim for the assignee
+        claim = Claim(
+            idea_uuid=idea.uuid,
+            claimer_email=assignee_email
+        )
+        db.add(claim)
+        
+        # Update idea assignment fields
+        idea.assigned_to_email = assignee_email
+        idea.assigned_at = datetime.utcnow()
+        idea.assigned_by = session.get('user_email', 'admin@system.local')
+        
+        # Update idea status to claimed
+        idea.status = IdeaStatus.claimed
+        
+        # Set initial sub_status to planning
+        idea.sub_status = SubStatus.planning
+        idea.sub_status_updated_at = datetime.utcnow()
+        idea.sub_status_updated_by = 'admin'
+        
+        # Create notification for assignee
+        assignee_notification = Notification(
+            user_email=assignee_email,
+            type='assigned',
+            title='You have been assigned an idea',
+            message=f'An admin has assigned you to work on "{idea.title}".',
+            idea_uuid=idea.uuid,
+            related_user_email=session.get('user_email', 'admin@system.local')
+        )
+        db.add(assignee_notification)
+        
+        # Create notification for idea submitter
+        if idea.email != assignee_email:
+            submitter_notification = Notification(
+                user_email=idea.email,
+                type='idea_assigned',
+                title='Your idea has been assigned',
+                message=f'Your idea "{idea.title}" has been assigned to {assignee.name or assignee_email}.',
+                idea_uuid=idea.uuid,
+                related_user_email=assignee_email
+            )
+            db.add(submitter_notification)
+        
+        # Create activity record
+        activity = IdeaActivity(
+            idea_uuid=idea.uuid,
+            activity_type=ActivityType.assigned,
+            actor_email=session.get('user_email', 'admin@system.local'),
+            details=f'Assigned to {assignee.name or assignee_email}'
+        )
+        db.add(activity)
+        
+        db.commit()
+        return jsonify({
+            'success': True,
+            'message': f'Idea assigned to {assignee.name or assignee_email}'
+        })
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+@api_bp.route('/developers')
+def get_developers():
+    """Get list of developers for assignment (admin only)."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    db = get_session()
+    try:
+        # Get all users with developer or citizen_developer role
+        developers = db.query(UserProfile).filter(
+            UserProfile.role.in_(['developer', 'citizen_developer'])
+        ).order_by(UserProfile.name, UserProfile.email).all()
+        
+        developer_list = []
+        for dev in developers:
+            developer_list.append({
+                'email': dev.email,
+                'name': dev.name or dev.email,
+                'role': dev.role,
+                'team': dev.team.name if dev.team else None,
+                'skills': [skill.name for skill in dev.skills] if dev.skills else []
+            })
+        
+        return jsonify(developer_list)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
 @api_bp.route('/stats')
 def get_stats():
     """Get dashboard statistics."""

@@ -234,6 +234,13 @@
                 <label for="edit-email">Submitter Email</label>
                 <input type="email" id="edit-email" name="email" class="form-control" required>
             </div>
+            <div class="form-group" id="assign-group">
+                <label for="edit-assignee">Assign To Developer</label>
+                <select id="edit-assignee" name="assignee" class="form-control">
+                    <option value="">-- Not Assigned --</option>
+                </select>
+                <small class="text-muted">Assigning will immediately claim the idea for this developer</small>
+            </div>
             <div class="form-group">
                 <label>Skills</label>
                 <div id="edit-skills-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;"></div>
@@ -554,6 +561,16 @@ let allIdeas = [];
 let filteredIdeas = [];
 let allTeams = [];
 let allSkills = [];
+let allDevelopers = [];
+
+async function loadDevelopers() {
+    try {
+        const developers = await utils.fetchJson('/api/developers');
+        allDevelopers = developers;
+    } catch (error) {
+        console.error('Error loading developers:', error);
+    }
+}
 
 async function loadIdeas() {
     try {
@@ -754,9 +771,14 @@ function applyFilters() {
 }
 
 // Edit modal functions
-function editIdea(ideaId) {
+async function editIdea(ideaId) {
     const idea = allIdeas.find(i => utils.getUuid(i) === ideaId);
     if (!idea) return;
+    
+    // Ensure developers are loaded
+    if (allDevelopers.length === 0) {
+        await loadDevelopers();
+    }
     
     // Populate analytics info
     document.getElementById('info-id').innerHTML = utils.formatUuid(utils.getUuid(idea));
@@ -784,6 +806,24 @@ function editIdea(ideaId) {
     
     document.getElementById('edit-bounty').value = idea.bounty || '';
     document.getElementById('edit-email').value = idea.email;
+    
+    // Populate assignee dropdown
+    const assigneeSelect = document.getElementById('edit-assignee');
+    assigneeSelect.innerHTML = '<option value="">-- Not Assigned --</option>';
+    
+    allDevelopers.forEach(dev => {
+        const option = document.createElement('option');
+        option.value = dev.email;
+        option.textContent = `${dev.name} (${dev.email})${dev.team ? ' - ' + dev.team : ''}`;
+        
+        // Check if this developer is currently assigned or has claimed the idea
+        if (idea.assigned_to_email === dev.email || 
+            (idea.claims && idea.claims.some(claim => claim.claimer_email === dev.email))) {
+            option.selected = true;
+        }
+        
+        assigneeSelect.appendChild(option);
+    });
     
     // Fetch and populate bounty details
     fetch(`/api/ideas/${ideaId}/bounty`)
@@ -974,14 +1014,36 @@ document.getElementById('edit-idea-form').addEventListener('submit', async (e) =
     const checkedSkills = document.querySelectorAll('#edit-skills-container input[type="checkbox"]:checked');
     data.skill_ids = Array.from(checkedSkills).map(cb => cb.value);
     
+    // Get the assignee if changed
+    const assigneeEmail = formData.get('assignee');
+    const idea = allIdeas.find(i => utils.getUuid(i) === ideaId);
+    const currentAssignee = idea?.assigned_to_email || (idea?.claims && idea.claims.length > 0 ? idea.claims[0].claimer_email : null);
+    
     // Debug log the data being sent
     console.log('Updating idea with data:', data);
     
     try {
+        // First update the idea
         await utils.fetchJson(`/api/ideas/${ideaId}`, {
             method: 'PUT',
             body: JSON.stringify(data)
         });
+        
+        // Then handle assignment if changed
+        if (assigneeEmail !== currentAssignee) {
+            if (assigneeEmail) {
+                // Assign to new developer
+                await utils.fetchJson(`/api/ideas/${ideaId}/assign`, {
+                    method: 'POST',
+                    body: JSON.stringify({ assignee_email: assigneeEmail })
+                });
+            } else if (currentAssignee) {
+                // Unassign (unclaim) if previously assigned
+                await utils.fetchJson(`/api/ideas/${ideaId}/unclaim`, {
+                    method: 'POST'
+                });
+            }
+        }
         
         closeEditModal();
         loadIdeas();
