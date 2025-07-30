@@ -1033,7 +1033,7 @@ document.getElementById('edit-idea-form').addEventListener('submit', async (e) =
         if (assigneeEmail !== currentAssignee) {
             if (assigneeEmail) {
                 // Assign to new developer
-                await utils.fetchJson(`/api/ideas/${ideaId}/assign`, {
+                await utils.fetchJson(`/api/ideas/${ideaId}/admin-assign`, {
                     method: 'POST',
                     body: JSON.stringify({ assignee_email: assigneeEmail })
                 });

@@ -662,7 +662,7 @@ async function saveIdea(event) {
             if (assigneeEmail !== currentAssignee) {
                 if (assigneeEmail) {
                     // Assign to new developer
-                    const assignResponse = await fetch(`/api/ideas/${ideaId}/assign`, {
+                    const assignResponse = await fetch(`/api/ideas/${ideaId}/admin-assign`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'

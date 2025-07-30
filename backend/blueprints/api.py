@@ -865,8 +865,8 @@ def unclaim_idea(identifier):
     finally:
         db.close()
 
-@api_bp.route('/ideas/<identifier>/assign', methods=['POST'])
-def assign_idea(identifier):
+@api_bp.route('/ideas/<identifier>/admin-assign', methods=['POST'])
+def admin_assign_idea(identifier):
     """Assign an idea to a developer (admin only)."""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
